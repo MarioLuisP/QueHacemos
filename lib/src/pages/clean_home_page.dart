@@ -8,6 +8,15 @@ import '../cache/cache_models.dart';
 import '../widgets/cards/fast_event_card.dart';
 
 /// HomePage LIMPIA que usa cache + filtros optimizados
+// NUEVO: Modelo para items planos
+class FlatItem {
+  final String type; // 'header' o 'event'
+  final String? title; // Para headers
+  final EventCacheItem? event; // Para eventos
+
+  FlatItem.header(this.title) : type = 'header', event = null;
+  FlatItem.event(this.event) : type = 'event', title = null;
+}
 /// Zero complejidad, solo mostrar eventos desde memoria
 class CleanHomePage extends StatefulWidget {
   const CleanHomePage({super.key});

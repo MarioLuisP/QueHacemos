@@ -415,6 +415,18 @@ class EventCardColorPalette {
           text: Colors.black87,
         );
   }
+  /// MÉTODO NUEVO - no tocar el getColors() existente
+  static EventCardOptimizedColors getOptimizedColors(String theme, String category) {
+    final themeColors = EventCardColorPalette.colors[theme] ?? EventCardColorPalette.colors['normal']!;
+    final baseColors = themeColors[category] ??
+        const EventCardColors(
+          base: Color(0xFFE0E0E0),
+          dark: Color(0xFFB4B4B4),
+          text: Colors.black87,
+        );
+
+    return EventCardOptimizedColors.fromBase(baseColors);
+  }
 }
 
 /// Nombres de categorías con emojis (movido desde EventDataBuilder)
@@ -542,11 +554,37 @@ class AppColors {
   }
 }
 
-extension ColorBrightness on Color {
-  Color withBrightness(double factor) {
-    final r = (red * factor).clamp(0, 255).toInt();
-    final g = (green * factor).clamp(0, 255).toInt();
-    final b = (blue * factor).clamp(0, 255).toInt();
-    return Color.fromARGB(alpha, r, g, b);
+  extension ColorBrightness on Color {
+    Color withBrightness(double factor) {
+      final r = (red * factor).clamp(0, 255).toInt();
+      final g = (green * factor).clamp(0, 255).toInt();
+      final b = (blue * factor).clamp(0, 255).toInt();
+      return Color.fromARGB(alpha, r, g, b);
+    }
   }
+/// Versión con opacities pre-calculadas usando withAlpha
+class EventCardOptimizedColors extends EventCardColors {
+final Color textFaded90;
+final Color textFaded70;
+final Color textFaded30;
+
+const EventCardOptimizedColors({
+required super.base,
+required super.dark,
+required super.text,
+required this.textFaded90,
+required this.textFaded70,
+required this.textFaded30,
+});
+
+factory EventCardOptimizedColors.fromBase(EventCardColors colors) {
+return EventCardOptimizedColors(
+base: colors.base,
+dark: colors.dark,
+text: colors.text,
+textFaded90: colors.text.withAlpha(229), // 0.9 * 255
+textFaded70: colors.text.withAlpha(179), // 0.7 * 255
+textFaded30: colors.text.withAlpha(77),  // 0.3 * 255
+);
+}
 }
