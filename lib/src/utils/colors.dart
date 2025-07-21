@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/preferences_provider.dart';
-import '../providers/preferences_provider.dart'; // ← AGREGAR ESTA LÍNEA
+
 
 // ============ NUEVA ESTRUCTURA: COLORES PRECALCULADOS PARA TARJETAS ============
 
