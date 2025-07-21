@@ -5,8 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/simple_home_provider.dart';
 import '../providers/category_constants.dart';
 import '../cache/cache_models.dart';
-import '../widgets/cards/fast_event_card.dart';
-
+import '../widgets/cards/event_card_widget.dart';
 /// HomePage LIMPIA que usa cache + filtros optimizados
 // NUEVO: Modelo para items planos
 class FlatItem {
@@ -279,7 +278,7 @@ class _CleanHomePageState extends State<CleanHomePage> {
 
   /// Tarjeta de evento usando FastEventCard
   Widget _buildEventTile(EventCacheItem event, SimpleHomeProvider provider) {
-    return FastEventCard(
+    return EventCardWidget(
       event: event,
       provider: provider,
     );

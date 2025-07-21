@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'src/providers/favorites_provider.dart';
 import 'src/providers/simple_home_provider.dart';
 import 'src/pages/clean_home_page.dart';
 
@@ -27,7 +28,7 @@ class MyApp extends StatelessWidget {
         ),
 
         // TODO: Otros providers cuando sean necesarios
-        // ChangeNotifierProvider(create: (context) => FavoritesProvider()),
+        ChangeNotifierProvider(create: (context) => FavoritesProvider()),
         // ChangeNotifierProvider(create: (context) => PreferencesProvider()),
       ],
       child: MaterialApp(

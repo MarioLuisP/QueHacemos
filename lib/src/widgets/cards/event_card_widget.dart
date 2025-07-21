@@ -1,11 +1,12 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quehacemos_cba/src/providers/simple_home_provider.dart'; // NUEVO: El que existe
-import 'package:quehacemos_cba/src/providers/favorites_provider.dart';
-import 'package:quehacemos_cba/src/cache/cache_models.dart';             // NUEVO: Para EventCacheItem
-import 'package:quehacemos_cba/src/utils/colors.dart';                   // NUEVO: Colores optimizados
-import 'package:quehacemos_cba/src/utils/dimens.dart';
-import 'package:quehacemos_cba/src/widgets/event_detail_modal.dart';
+import '../../providers/simple_home_provider.dart';
+import '../../cache/cache_models.dart';
+import '../../utils/dimens.dart';
+import '../../utils/colors.dart';
+import '../../providers/favorites_provider.dart';  // ✅ AGREGAR
+import '../event_detail_modal.dart';
 
 class EventCardWidget extends StatelessWidget {
   final EventCacheItem event;
@@ -20,13 +21,13 @@ class EventCardWidget extends StatelessWidget {
 @override
 Widget build(BuildContext context) {
   // NUEVO: Usar colores pre-calculados
-  final colors = EventCardColorPalette.getOptimizedColors('normal', event.type);
+  final colors = EventCardColorPalette.getOptimizedColors('normal', 'arte');
   final formattedDate = provider.formatEventDate(event.date, format: 'card');
   final categoryWithEmoji = CategoryDisplayNames.getCategoryWithEmoji(event.type);
 
   return GestureDetector(
     onTap: () {
-      EventDetailModal.show(context, event, provider);
+      //EventDetailModal.show(context, event, provider);
     },
     child: Card(
       margin: const EdgeInsets.symmetric(
@@ -39,11 +40,12 @@ Widget build(BuildContext context) {
       ),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [colors.base, colors.dark], // NUEVO: Pre-calculados
-          ),
+          color: colors.base,
+         // gradient: LinearGradient(
+          //  begin: Alignment.topLeft,
+          //  end: Alignment.bottomRight,
+          //  colors: [colors.base, colors.dark], // NUEVO: Pre-calculados
+          //),
           borderRadius: BorderRadius.circular(AppDimens.borderRadius),
         ),
         child: Padding(

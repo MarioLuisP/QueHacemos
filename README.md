@@ -154,3 +154,8 @@ source ~/setup-flutter.sh
 fc
 
 flutter run -t lib/src/main.dart
+# Para correr:
+flutter run
+
+# Para compilar:
+flutter build apk --release --split-per-abi
