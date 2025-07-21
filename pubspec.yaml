@@ -1,0 +1,34 @@
+name: quehacemos_cba
+description: "App de eventos culturales Córdoba - Versión cache optimizada"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # UI y Estado
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.2
+
+  # Dates y localización
+  intl: ^0.20.2
+
+  # Storage local (para futuro SQLite)
+  shared_preferences: ^2.0.0
+  sqflite: ^2.4.2
+  path: ^1.8.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
