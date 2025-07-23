@@ -485,6 +485,26 @@ class AppColors {
     'Niños': ninos,
     'Danza': danza,
   };
+// NUEVO: Mapeo de datos raw a nombres display
+  static const Map<String, String> _rawToDisplayMapping = {
+    'arte': 'Arte',
+    'teatro': 'Teatro',
+    'standup': 'StandUp',
+    'musica': 'Música',
+    'cine': 'Cine',
+    'mic': 'Mic',
+    'cursos': 'Cursos',
+    'ferias': 'Ferias',
+    'calle': 'Calle',
+    'redes': 'Redes',
+    'ninos': 'Niños',
+    'danza': 'Danza',
+  };
+
+// NUEVO: Método público para normalizar categorías
+  static String normalizeCategory(String rawCategory) {
+    return _rawToDisplayMapping[rawCategory.toLowerCase()] ?? rawCategory;
+  }
 
   // Colores sepia (MANTENIDOS para compatibilidad)
   static const sepiaColors = {
