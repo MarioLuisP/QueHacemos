@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'src/providers/favorites_provider.dart';
 import 'src/providers/simple_home_provider.dart';
 import 'src/pages/clean_home_page.dart';
-
+import 'dart:ui' as ui;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
