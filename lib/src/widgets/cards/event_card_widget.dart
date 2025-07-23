@@ -11,165 +11,204 @@ import '../event_detail_modal.dart';
 class EventCardWidget extends StatelessWidget {
   final EventCacheItem event;
   final SimpleHomeProvider provider;
-  
+
   const EventCardWidget({
     super.key,
     required this.event,
     required this.provider,
   });
 
-@override
-Widget build(BuildContext context) {
-  // NUEVO: Usar colores pre-calculados
-  final colors = EventCardColorPalette.getOptimizedColors('normal', 'arte');
-  final formattedDate = provider.formatEventDate(event.date, format: 'card');
-  final categoryWithEmoji = CategoryDisplayNames.getCategoryWithEmoji(event.type);
+  @override
+  Widget build(BuildContext context) {
 
-  return GestureDetector(
-    onTap: () {
-      //EventDetailModal.show(context, event, provider);
-    },
-    child: Card(
-      margin: const EdgeInsets.symmetric(
+    return Container( // NUEVO: Container directo, elimina Card
+      margin: const EdgeInsets.symmetric( // CAMBIO: Movido de Card a Container
         horizontal: AppDimens.paddingMedium,
         vertical: AppDimens.paddingSmall,
       ),
-      elevation: AppDimens.cardElevation,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppDimens.borderRadius),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: colors.base,
-         // gradient: LinearGradient(
-          //  begin: Alignment.topLeft,
-          //  end: Alignment.bottomRight,
-          //  colors: [colors.base, colors.dark], // NUEVO: Pre-calculados
-          //),
-          borderRadius: BorderRadius.circular(AppDimens.borderRadius),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimens.paddingMedium),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Título
-              Text(
-                event.title,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: colors.text, // NUEVO: Pre-calculado
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              
-              const SizedBox(height: AppDimens.paddingSmall),
-              
-              // Categoría con emoji
-              Text(
-                categoryWithEmoji,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: colors.text.withOpacity(0.9),
-                ),
-              ),
-              
-              const SizedBox(height: AppDimens.paddingSmall),
-              
-              // Línea divisoria
-              Container(
-                height: 0.5,
-                color: colors.text.withOpacity(0.3),
-              ),
-              
-              const SizedBox(height: AppDimens.paddingSmall),
-              
-              // Fecha + favorito
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '🗓  $formattedDate',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: colors.text,
-                      ),
-                    ),
-                  ),
-                  Consumer<FavoritesProvider>(
-                    builder: (context, favoritesProvider, child) {
-                      final isFavorite = favoritesProvider.isFavorite(event.id.toString());
-                      return IconButton(
-                        iconSize: 24,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: Icon(
-                          isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorite ? Colors.red : colors.text,
-                        ),
-                        onPressed: () => favoritesProvider.toggleFavorite(event.id.toString()),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 1),
-              
-              // Ubicación
-              Row(
-                children: [
-                  const Text('📍', style: TextStyle(fontSize: 20)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          event.location,
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: colors.text,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          event.district,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: colors.text.withOpacity(0.7),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: AppDimens.paddingSmall),
-              
-              // Precio
-              Text(
-                '🎟  ${event.price.isNotEmpty ? event.price : 'Consultar'}',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: colors.text,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+      child: GestureDetector( // CAMBIO: GestureDetector ahora dentro del Container
+        onTap: () {
+          //EventDetailModal.show(context, event, provider);
+        },
+        child: Container( // CAMBIO: Este Container ahora maneja decoración Y contenido
+          decoration: BoxDecoration(
+            gradient: LinearGradient( // NUEVO: Restaurado tu gradiente querido
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [event.baseColor, event.darkColor], // NUEVO: Gradiente con pre-calculados
+            ),
+            borderRadius: BorderRadius.circular(AppDimens.borderRadius),
+            boxShadow: [ // NUEVO: Reemplaza elevation de Card
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1), // NUEVO: Shadow manual
+                blurRadius: AppDimens.cardElevation, // NUEVO: Usa misma elevación
+                offset: const Offset(0, 2), // NUEVO: Shadow hacia abajo
               ),
             ],
           ),
+
+
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimens.paddingMedium),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Título
+                Text(
+                  event.title,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: event.textColor, // NUEVO: Pre-calculado
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
+                const SizedBox(height: AppDimens.paddingSmall),
+
+                // Categoría con emoji
+                Text(
+                  event.categoryWithEmoji,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: event.textFaded90,
+                  ),
+                ),
+
+                const SizedBox(height: AppDimens.paddingSmall),
+
+                SizedBox(
+                  height: 6,
+                  width: double.infinity, // ¡AQUÍ ESTÁ LA CLAVE!
+                  child: CustomPaint(
+                      painter: LinePainter(event.textFaded30),
+                  ),
+                ),
+                const SizedBox(height: AppDimens.paddingSmall),
+
+                // Fecha + favorito
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '🗓  ${event.formattedDateForCard}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: event.textColor,
+                        ),
+                      ),
+                    ),
+                    Selector<FavoritesProvider, bool>( // CAMBIO: Selector específico
+                      selector: (context, favProvider) => favProvider.isFavorite(event.id.toString()), // CAMBIO: Solo escucha cambios de ESTE evento
+                      builder: (context, isFavorite, child) { // CAMBIO: Solo rebuilda si cambia isFavorite de este evento
+                        return IconButton(
+                          iconSize: 24,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: isFavorite ? Colors.red : event.textColor, // CAMBIO: Usa color precalculado
+                          ),
+                          onPressed: () { // CAMBIO: context.read para evitar dependencia del builder
+                            context.read<FavoritesProvider>().toggleFavorite(event.id.toString());
+                          },
+                        );
+                      },
+                    ),
+
+
+                  ],
+                ),
+
+                const SizedBox(height: 1),
+
+                // Ubicación
+                Row(
+                  children: [
+                    const Text('📍', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            event.location,
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: event.textColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            event.district,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: event.textFaded70,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: AppDimens.paddingSmall),
+
+                // Precio
+                // Precio + Premium
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '🎟  ${event.price.isNotEmpty ? event.price : 'Consultar'}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: event.textColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (event.premiumEmoji.isNotEmpty) // NUEVO: Solo si hay emoji premium
+                      Text(
+                        event.premiumEmoji, // NUEVO: Emoji precalculado
+                        style: const TextStyle(fontSize: 30),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-    ),
-  );
+    );
+
+  }
 }
+class LinePainter extends CustomPainter {
+  final Color color;
+
+  const LinePainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2;
+
+    canvas.drawLine(
+        Offset(0, size.height / 2),
+        Offset(size.width, size.height / 2),
+        paint
+    );
+  }
+
+  @override
+  bool shouldRepaint(LinePainter oldDelegate) => oldDelegate.color != color;
 }

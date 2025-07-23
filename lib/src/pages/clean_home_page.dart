@@ -194,6 +194,7 @@ class _CleanHomePageState extends State<CleanHomePage> {
   }
 
   /// Lista de eventos agrupados por fecha
+  /// Lista de eventos optimizada con alturas fijas
   Widget _buildEventsList(SimpleHomeProvider provider) {
     if (provider.events.isEmpty) {
       return const Center(
@@ -216,48 +217,59 @@ class _CleanHomePageState extends State<CleanHomePage> {
       );
     }
 
-    final sortedDates = provider.getSortedDateKeys();
+    // ✅ NUEVO: Crear lista plana precalculada
+    final flatItems = _createFlatItems(provider);
 
-    return ListView.builder(
-      itemCount: _getTotalItemCount(provider, sortedDates),
-      itemBuilder: (context, index) {
-        return _buildListItem(provider, sortedDates, index);
-      },
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      slivers: [
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+                (context, index) {
+              final item = flatItems[index];
+
+              if (item.type == 'header') {
+                return SizedBox(
+                  height: 60.0,  // ✅ Altura fija para headers
+                  child: _buildDateHeader(item.title!),
+                );
+              } else {
+                return SizedBox(
+                  height: 305.0,  // ✅ Altura fija para eventos
+                  child: EventCardWidget(
+                    event: item.event!,
+                    provider: provider,
+                    key: ValueKey(item.event!.id),  // ✅ Key estable
+                  ),
+                );
+              }
+            },
+            childCount: flatItems.length,
+          ),
+        ),
+      ],
     );
   }
 
-  /// Calcular total de items (headers + eventos)
-  int _getTotalItemCount(SimpleHomeProvider provider, List<String> sortedDates) {
-    int count = 0;
-    for (final date in sortedDates) {
-      count++; // Header
-      count += provider.groupedEvents[date]?.length ?? 0; // Eventos
-    }
-    return count;
-  }
-
-  /// Construir item de lista (header o evento)
-  Widget _buildListItem(SimpleHomeProvider provider, List<String> sortedDates, int index) {
-    int currentIndex = 0;
+  /// ✅ NUEVO: Crear lista plana precalculada (O(n) una sola vez)
+  List<FlatItem> _createFlatItems(SimpleHomeProvider provider) {
+    final flatItems = <FlatItem>[];
+    final sortedDates = provider.getSortedDateKeys();
 
     for (final date in sortedDates) {
-      // Header
-      if (currentIndex == index) {
-        return _buildDateHeader(provider.getSectionTitle(date));
-      }
-      currentIndex++;
+      // Agregar header
+      flatItems.add(FlatItem.header(provider.getSectionTitle(date)));
 
-      // Eventos de esta fecha
+      // Agregar eventos de esta fecha
       final eventsForDate = provider.groupedEvents[date] ?? [];
       for (final event in eventsForDate) {
-        if (currentIndex == index) {
-          return _buildEventTile(event, provider);
-        }
-        currentIndex++;
+        flatItems.add(FlatItem.event(event));
       }
     }
 
-    return const SizedBox.shrink();
+    return flatItems;
   }
 
   /// Header de fecha
