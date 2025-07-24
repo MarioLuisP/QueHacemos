@@ -25,64 +25,64 @@ class EventCardColorPalette {
   static const Map<String, Map<String, EventCardColors>> colors = {
     'normal': {
       'Música': EventCardColors(
-        base: Color(0xFFFCA1AE), // SIN CAMBIO
-        dark: Color(0xFFE88A99), // NUEVO: _darkenColor(#FCA1AE, 0.2)
-        text: Color(0xFF3D1A1F), // SIN CAMBIO
+        base: Color(0xFFFCA1AE),
+        dark: Color(0xFFCA818B), // 20% más oscuro
+        text: Color(0xFF3D1A1F),
       ),
       'Teatro': EventCardColors(
-        base: Color(0xFFD7D26D), // SIN CAMBIO
-        dark: Color(0xFFC5C05B), // NUEVO: _darkenColor(#D7D26D, 0.2)
-        text: Color(0xFF2D3D00), // SIN CAMBIO
+        base: Color(0xFFD7D26D),
+        dark: Color(0xFFACA857), // 20% más oscuro
+        text: Color(0xFF2D3D00),
       ),
       'StandUp': EventCardColors(
-        base: Color(0xFF3CCDC7), // SIN CAMBIO
-        dark: Color(0xFF32B8B2), // NUEVO: _darkenColor(#3CCDC7, 0.2)
-        text: Color(0xFF002D3D), // SIN CAMBIO
+        base: Color(0xFF3CCDC7),
+        dark: Color(0xFF30A49F), // 20% más oscuro
+        text: Color(0xFF002D3D),
       ),
       'Arte': EventCardColors(
-        base: Color(0xFFFD8977), // SIN CAMBIO
-        dark: Color(0xFFE97566), // NUEVO: _darkenColor(#FD8977, 0.2)
-        text: Color(0xFF3D1E00), // SIN CAMBIO
+        base: Color(0xFFFD8977),
+        dark: Color(0xFFCA6E5F), // 20% más oscuro
+        text: Color(0xFF3D1E00),
       ),
       'Cine': EventCardColors(
-        base: Color(0xFFEBE7A7), // SIN CAMBIO
-        dark: Color(0xFFD9D595), // NUEVO: _darkenColor(#EBE7A7, 0.2)
-        text: Color(0xFF001B3D), // SIN CAMBIO
+        base: Color(0xFFEBE7A7),
+        dark: Color(0xFFBCB986), // 20% más oscuro
+        text: Color(0xFF001B3D),
       ),
       'Mic': EventCardColors(
-        base: Color(0xFFE1BEE7), // SIN CAMBIO
-        dark: Color(0xFFCFACD5), // NUEVO: _darkenColor(#E1BEE7, 0.2)
-        text: Color(0xFF2D003D), // SIN CAMBIO
+        base: Color(0xFFE1BEE7),
+        dark: Color(0xFFB498B9), // 20% más oscuro
+        text: Color(0xFF2D003D),
       ),
       'Cursos': EventCardColors(
-        base: Color(0xFFF5DD7E), // SIN CAMBIO
-        dark: Color(0xFFE3CB6C), // NUEVO: _darkenColor(#F5DD7E, 0.2)
-        text: Color(0xFF3D2D00), // SIN CAMBIO
+        base: Color(0xFFF5DD7E),
+        dark: Color(0xFFC4B165), // 20% más oscuro
+        text: Color(0xFF3D2D00),
       ),
       'Ferias': EventCardColors(
-        base: Color(0xFFFFCDD2), // SIN CAMBIO
-        dark: Color(0xFFEDBBC0), // NUEVO: _darkenColor(#FFCDD2, 0.2)
-        text: Color(0xFF3D000F), // SIN CAMBIO
+        base: Color(0xFFFFCDD2),
+        dark: Color(0xFFCCA4A8), // 20% más oscuro
+        text: Color(0xFF3D000F),
       ),
       'Calle': EventCardColors(
-        base: Color(0xFFB3E5FC), // SIN CAMBIO
-        dark: Color(0xFFA1D3EA), // NUEVO: _darkenColor(#B3E5FC, 0.2)
-        text: Color(0xFF001E3D), // SIN CAMBIO
+        base: Color(0xFFB3E5FC),
+        dark: Color(0xFF8FB7CA), // 20% más oscuro
+        text: Color(0xFF001E3D),
       ),
       'Redes': EventCardColors(
-        base: Color(0xFFC8E6C9), // SIN CAMBIO
-        dark: Color(0xFFB6D4B7), // NUEVO: _darkenColor(#C8E6C9, 0.2)
-        text: Color(0xFF002D0F), // SIN CAMBIO
+        base: Color(0xFFC8E6C9),
+        dark: Color(0xFFA0B8A1), // 20% más oscuro
+        text: Color(0xFF002D0F),
       ),
       'Niños': EventCardColors(
-        base: Color(0xFFD6CBAE), // SIN CAMBIO
-        dark: Color(0xFFC4B99C), // NUEVO: _darkenColor(#D6CBAE, 0.2)
-        text: Color(0xFF3D2814), // SIN CAMBIO
+        base: Color(0xFFD6CBAE),
+        dark: Color(0xFFABA28B), // 20% más oscuro
+        text: Color(0xFF3D2814),
       ),
       'Danza': EventCardColors(
-        base: Color(0xFFFDA673), // SIN CAMBIO
-        dark: Color(0xFFEB9461), // NUEVO: _darkenColor(#FDA673, 0.2)
-        text: Color(0xFF2D1400), // SIN CAMBIO
+        base: Color(0xFFFDA673),
+        dark: Color(0xFFCA855C), // 20% más oscuro
+        text: Color(0xFF2D1400),
       ),
     },
 
@@ -433,18 +433,18 @@ class EventCardColorPalette {
 /// Evita recalcular en cada build() del widget
 class CategoryDisplayNames {
   static const Map<String, String> withEmojis = {
-    'musica': 'Música en vivo 🎵',
-    'teatro': 'Teatro y Performance 🎭',
-    'standup': 'StandUp y Humor 🎤',
-    'arte': 'Arte y Exposiciones 🎨',
-    'cine': 'Cine y Proyecciones 🎬',
-    'mic': 'Mic abierto y Poesía 🎙️',
-    'cursos': 'Cursos y Talleres 📚',
-    'ferias': 'Ferias artesanales 🛍️',
-    'calle': 'Eventos al Aire Libre 🌳',
-    'redes': 'Eventos Digitales 📱',
-    'ninos': 'Niños y Familia 👶',
-    'danza': 'Danza y Movimientos 💃',
+    'musica': '🎵 Música en vivo',
+    'teatro': '🎭 Teatro y Performance',
+    'standup': '🎤 StandUp y Humor',
+    'arte': '🎨 Arte y Exposiciones',
+    'cine': '🎬 Cine y Proyecciones',
+    'mic': '🎙️ Mic abierto y Poesía',
+    'cursos': '📚 Cursos y Talleres',
+    'ferias': '🛍️ Ferias artesanales',
+    'calle': '🌳 Eventos al Aire Libre',
+    'redes': '📱 Eventos Digitales',
+    'ninos': '👶 Niños y Familia',
+    'danza': '💃 Danza y Movimientos',
   };
 
   static String getCategoryWithEmoji(String type) {

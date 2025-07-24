@@ -237,7 +237,7 @@ class _CleanHomePageState extends State<CleanHomePage> {
                 );
               } else {
                 return SizedBox(
-                  height: 305.0,  // ✅ Altura fija para eventos
+                  height: 237.0,  // ✅ Altura fija para eventos
                   child: EventCardWidget(
                     event: item.event!,
                     provider: provider,

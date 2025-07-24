@@ -35,21 +35,25 @@ class EventCardWidget extends StatelessWidget {
             gradient: LinearGradient( // NUEVO: Restaurado tu gradiente querido
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [event.baseColor, event.darkColor], // NUEVO: Gradiente con pre-calculados
+              colors: [event.baseColor, event.darkColor],
+              stops: [0.0, 0.9],// NUEVO: Gradiente con pre-calculados
             ),
             borderRadius: BorderRadius.circular(AppDimens.borderRadius),
             boxShadow: [ // NUEVO: Reemplaza elevation de Card
               BoxShadow(
-                color: Colors.black.withOpacity(0.1), // NUEVO: Shadow manual
+                color: Colors.black.withAlpha(25), // NUEVO: Shadow manual
                 blurRadius: AppDimens.cardElevation, // NUEVO: Usa misma elevación
-                offset: const Offset(0, 2), // NUEVO: Shadow hacia abajo
+                offset: const Offset(0, 6), // NUEVO: Shadow hacia abajo
               ),
             ],
           ),
 
 
           child: Padding(
-            padding: const EdgeInsets.all(AppDimens.paddingMedium),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 22,  // lados
+              vertical: 9,    // arriba/abajo
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -71,7 +75,7 @@ class EventCardWidget extends StatelessWidget {
                 Text(
                   event.categoryWithEmoji,
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: event.textFaded90,
                   ),
@@ -86,7 +90,7 @@ class EventCardWidget extends StatelessWidget {
                       painter: LinePainter(event.textFaded30),
                   ),
                 ),
-                const SizedBox(height: AppDimens.paddingSmall),
+                //const SizedBox(height: AppDimens.paddingSmall),
 
                 // Fecha + favorito
                 Row(
@@ -95,7 +99,7 @@ class EventCardWidget extends StatelessWidget {
                       child: Text(
                         '🗓  ${event.formattedDateForCard}',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.w600,
                           color: event.textColor,
                         ),
@@ -140,17 +144,13 @@ class EventCardWidget extends StatelessWidget {
                               fontSize: 18,
                               color: event.textColor,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             event.district,
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 16,
                               color: event.textFaded70,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -166,19 +166,17 @@ class EventCardWidget extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        '🎟  ${event.price.isNotEmpty ? event.price : 'Consultar'}',
+                        '🎫  ${event.price.isNotEmpty ? event.price : 'Consultar'}',
                         style: TextStyle(
                           fontSize: 16,
                           color: event.textColor,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (event.premiumEmoji.isNotEmpty) // NUEVO: Solo si hay emoji premium
                       Text(
                         event.premiumEmoji, // NUEVO: Emoji precalculado
-                        style: const TextStyle(fontSize: 30),
+                        style: const TextStyle(fontSize: 20),
                       ),
                   ],
                 ),

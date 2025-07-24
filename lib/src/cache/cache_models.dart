@@ -96,9 +96,9 @@ class EventCacheItem {
 // NUEVO: Helper para emoji premium
   static String _calculatePremiumEmoji(int rating) {
     if (rating >= 400) return ' 💎💎💎💎'; // Platinum 400+
-    if (rating >= 300) return ' ⭐⭐⭐';   // Gold 300-399
-    if (rating >= 200) return ' ✨✨';     // Silver 200-299
-    if (rating >= 100) return ' 💥';      // Bronze 100-199
+    if (rating >= 300) return ' 💎💎💎';   // Gold 300-399
+    if (rating >= 200) return ' 💎💎';     // Silver 200-299
+    if (rating >= 100) return ' 💎';      // Bronze 100-199
     return '';                            // Normal 0-99 (string vacío)
   }
 
