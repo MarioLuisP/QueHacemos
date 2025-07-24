@@ -153,23 +153,7 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 12),
 
-          // Filtros rápidos
-          Row(
-            children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  children: [
-                    _buildQuickFilter('Todos', () => provider.clearAllFilters()),
-                    _buildQuickFilter('🎨 Arte', () => provider.setCategories({'arte'})),
-                    _buildQuickFilter('🎭 Teatro', () => provider.setCategories({'teatro'})),
-                    _buildQuickFilter('🛍️ Ferias', () => provider.setCategories({'ferias'})),
-                    _buildQuickFilter('🎵 Música', () => provider.setCategories({'musica'})),
-                  ],
-                ),
-              ),
-            ],
-          ),
+
 
           // Info de filtros aplicados
           if (provider.appliedFiltersText != 'Sin filtros')

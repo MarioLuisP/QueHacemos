@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:quehacemos_cba/src/pages/pages.dart';
 import 'package:quehacemos_cba/src/pages/favorites_page.dart';
+import 'package:provider/provider.dart';
+import 'package:quehacemos_cba/src/providers/preferences_provider.dart';
 
 
 class MainScreen extends StatefulWidget {
@@ -13,7 +15,14 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   DateTime? _selectedDate;
-
+  @override
+  void initState() {
+    super.initState();
+    // Inicializar PreferencesProvider después de que se construye la UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<PreferencesProvider>(context, listen: false).init();
+    });
+  }
   void _onItemTapped(int index) {
     setState(() {
       _currentIndex = index;

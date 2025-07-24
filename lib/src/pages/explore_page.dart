@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quehacemos_cba/src/providers/home_viewmodel.dart';
-import 'package:quehacemos_cba/src/providers/preferences_provider.dart';
+import 'package:quehacemos_cba/src/providers/simple_home_provider.dart'; // CAMBIO: nuevo provider
 import 'package:quehacemos_cba/src/widgets/chips/filter_chips_widget.dart';
-import 'package:quehacemos_cba/src/widgets/cards/fast_event_card.dart';
+import 'package:quehacemos_cba/src/widgets/cards/event_card_widget.dart'; // CAMBIO: nueva tarjeta
+import '../widgets/cards/event_card_widget.dart'; // NUEVO: widget actualizado
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -13,122 +13,111 @@ class ExplorePage extends StatefulWidget {
 }
 
 class _ExplorePageState extends State<ExplorePage> {
-  late HomeViewModel _viewModel;
+  late SimpleHomeProvider _provider; // CAMBIO: SimpleHomeProvider
   final TextEditingController _searchController = TextEditingController();
-
-  // 🚀 OPTIMIZACIÓN: Variables para evitar rebuilds innecesarios
-  Set<String> _lastAppliedFilters = {};
 
   @override
   void initState() {
     super.initState();
-    _viewModel = HomeViewModel();
-    _viewModel.initialize();
+    // CAMBIO: Obtener provider del context y inicializar
+    _provider = Provider.of<SimpleHomeProvider>(context, listen: false); // CAMBIO
+    _provider.initialize(); // CAMBIO: método simplificado
+
     _searchController.addListener(() {
-      _viewModel.setSearchQuery(_searchController.text);
+      _provider.setSearchQuery(_searchController.text); // CAMBIO: método directo
     });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _viewModel.dispose();
+    // CAMBIO: No dispose del provider (es singleton)
     super.dispose();
-  }
-
-  // 🎯 FUNCIÓN DE OPTIMIZACIÓN: Chequea si realmente necesitamos aplicar filtros
-  bool _needsFilterUpdate(Set<String> currentFilters) {
-    if (_lastAppliedFilters.length != currentFilters.length) return true;
-    for (String filter in currentFilters) {
-      if (!_lastAppliedFilters.contains(filter)) return true;
-    }
-    return false;
   }
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [ChangeNotifierProvider.value(value: _viewModel)],
-      child: Consumer2<HomeViewModel, PreferencesProvider>(
-        builder: (context, viewModel, prefs, _) {
-          // 🔥 OPTIMIZACIÓN: Solo aplicar filtros cuando REALMENTE cambien
-          if (_needsFilterUpdate(prefs.activeFilterCategories)) {
-            _lastAppliedFilters = Set.from(prefs.activeFilterCategories);
-            // ✅ CORREGIDO: Diferir la actualización para evitar setState durante build
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              viewModel.applyCategoryFilters(prefs.activeFilterCategories);
-            });
-          }
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Explorar Eventos'),
-              centerTitle: true,
-              toolbarHeight: 40.0,
-              elevation: 2.0,
-            ),
-            body: Column(
-              children: [
-                // Campo de búsqueda
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Busca eventos (ej. payasos)',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Theme.of(context).colorScheme.primary,
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 14.0,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30.0),
-                        borderSide: const BorderSide(color: Colors.black, width: 1.0),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30.0),
-                        borderSide: const BorderSide(color: Colors.black, width: 1.0),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30.0),
-                        borderSide: const BorderSide(color: Colors.black, width: 1.5),
-                      ),
+    // CAMBIO: Consumer simple en lugar de MultiProvider
+    return Consumer<SimpleHomeProvider>(
+      builder: (context, provider, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Explorar Eventos'),
+            centerTitle: true,
+            toolbarHeight: 40.0,
+            elevation: 2.0,
+          ),
+          body: Column(
+            children: [
+              // Campo de búsqueda
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Busca eventos (ej. payasos)',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isNotEmpty // NUEVO: botón clear
+                        ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        provider.setSearchQuery(''); // NUEVO: limpiar búsqueda
+                      },
+                    )
+                        : null,
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.primary,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 14.0,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30.0),
+                      borderSide: const BorderSide(color: Colors.black, width: 1.0),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30.0),
+                      borderSide: const BorderSide(color: Colors.black, width: 1.0),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30.0),
+                      borderSide: const BorderSide(color: Colors.black, width: 1.5),
                     ),
                   ),
                 ),
+              ),
 
-                // Fila de chips + refresh
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: FilterChipsRow(prefs: prefs, viewModel: viewModel),
-                ),
+              // CAMBIO: FilterChipsRow sin parámetros (ya migrado)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: FilterChipsRow(), // CAMBIO: sin parámetros
+              ),
 
-                const SizedBox(height: 8.0),
+              const SizedBox(height: 8.0),
 
-                // ✅ CORREGIDO: Lista optimizada SIN headers usando filteredEvents
-                Expanded(
-                  child: viewModel.isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : viewModel.hasError
-                      ? Center(
-                    child: Text('Error: ${viewModel.errorMessage}'),
-                  )
-                      : viewModel.filteredEvents.isEmpty
-                      ? const Center(child: Text('No hay eventos.'))
-                      : _buildOptimizedEventsList(viewModel),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+              // CAMBIO: Lista simplificada usando SimpleHomeProvider
+              Expanded(
+                child: provider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : provider.errorMessage != null
+                    ? Center(
+                  child: Text('Error: ${provider.errorMessage}'),
+                )
+                    : provider.events.isEmpty
+                    ? const Center(child: Text('No hay eventos.'))
+                    : _buildOptimizedEventsList(provider), // CAMBIO: pasar provider
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  // ✅ CORREGIDO: Método optimizado usando filteredEvents (SIN headers)
-  Widget _buildOptimizedEventsList(HomeViewModel viewModel) {
-    // ✅ USAR: filteredEvents en lugar de getFlatItemsForHomePage
-    final limitedEvents = viewModel.filteredEvents.take(20).toList();
+  // CAMBIO: Método simplificado usando SimpleHomeProvider
+  Widget _buildOptimizedEventsList(SimpleHomeProvider provider) {
+    // CAMBIO: Usar provider.events directamente (ya filtrado)
+    final limitedEvents = provider.events.take(20).toList(); // CAMBIO
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(
@@ -142,13 +131,13 @@ class _ExplorePageState extends State<ExplorePage> {
                   (context, index) {
                 final event = limitedEvents[index];
 
-                // ✅ SOLO tarjetas con altura fija - SIN headers
+                // CAMBIO: EventCardWidget + altura 237.0
                 return SizedBox(
-                  height: 230.0, // ✅ Altura fija optimizada
-                  child: FastEventCard(
+                  height: 237.0,
+                  child: EventCardWidget(
                     event: event,
-                    key: ValueKey(event['id']),
-                    viewModel: viewModel,
+                    provider: provider, // NUEVO: agregar parámetro provider
+                    key: ValueKey(event.id),
                   ),
                 );
               },

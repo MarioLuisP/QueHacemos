@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';  // NUEVO: agregar esta línea
 import 'src/providers/favorites_provider.dart';
 import 'src/providers/simple_home_provider.dart';
 import 'src/pages/home_page.dart';
+import 'src/themes/themes.dart'; // NUEVO: import temas
+
 import 'src/navigation/bottom_nav.dart';
 import 'dart:ui' as ui;
 void main() async {
@@ -34,25 +36,21 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => FavoritesProvider()),
         // ChangeNotifierProvider(create: (context) => PreferencesProvider()),
       ],
-      child: MaterialApp(
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: const [Locale('es', ''), Locale('en', '')],
-        title: 'Eventos Córdoba - Cache Test',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          useMaterial3: true,
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
-          ),
-        ),
-        home: const MainScreen(),
-        debugShowCheckedModeBanner: false,
-      ),
-    );
+      child: Consumer<SimpleHomeProvider>( // CAMBIO: envolver con Consumer
+        builder: (context, provider, child) {
+          return MaterialApp( // CAMBIO: ahora dentro del Consumer
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [Locale('es', ''), Locale('en', '')],
+            title: 'Eventos Córdoba - Cache Test', theme: AppThemes.themes[provider.theme] ?? AppThemes.themes['normal']!,
+            home: const MainScreen(),
+            debugShowCheckedModeBanner: false,
+          );
+        }, // NUEVO: cerrar Consumer builder
+      ), // NUEVO: cerrar Consumer
+    ); // NUEVO: cerrar MultiProvider
   }
 }

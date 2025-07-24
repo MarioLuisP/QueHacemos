@@ -1,6 +1,7 @@
 // lib/src/providers/simple_home_provider.dart
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../cache/event_cache_service.dart';
 import '../cache/memory_filter_service.dart';
 import '../cache/cache_models.dart';
@@ -18,6 +19,15 @@ class SimpleHomeProvider with ChangeNotifier {
   MemoryFilters _currentFilters = MemoryFilters.empty;
   FilteredEvents _filteredEvents = FilteredEvents.empty;
 
+  // NUEVO: Propiedades para filtros de categorías
+  Set<String> _selectedCategories = {}; // NUEVO: categorías habilitadas en Settings
+  Set<String> _activeFilterCategories = {};
+
+  // NUEVO: Tema UI (3 líneas)
+  String _theme = 'normal'; // NUEVO
+  String get theme => _theme; // NUEVO
+  void setTheme(String theme) { _theme = theme; notifyListeners(); } // NUEVO
+
   // Getters públicos
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -27,8 +37,15 @@ class SimpleHomeProvider with ChangeNotifier {
   int get eventCount => _filteredEvents.totalCount;
   String get appliedFiltersText => _filteredEvents.appliedFilters;
 
-  /// Inicializar provider (cargar cache + aplicar filtros)
+  // NUEVO: Getters para filtros de categorías
+  Set<String> get selectedCategories => _selectedCategories; // NUEVO
+  Set<String> get activeFilterCategories => _activeFilterCategories; // NUEVO
+
+  /// Inicializar provider (cargar cache + preferencias + aplicar filtros) // CAMBIO: comentario actualizado
   Future<void> initialize() async {
+    // NUEVO: Cargar preferencias primero
+    await _loadCategoryPreferences(); // NUEVO
+
     if (_cacheService.isLoaded) {
       print('✅ Cache ya cargado, aplicando filtros...');
       _applyCurrentFilters();
@@ -53,13 +70,87 @@ class SimpleHomeProvider with ChangeNotifier {
     }
   }
 
-  /// Cambiar filtros de categorías
-  void setCategories(Set<String> categories) {
-    print('🏷️ Cambiando categorías: $categories');
+  /// NUEVO: Cargar preferencias de categorías desde SharedPreferences
+  Future<void> _loadCategoryPreferences() async { // NUEVO
+    final prefs = await SharedPreferences.getInstance(); // NUEVO
 
-    _currentFilters = _currentFilters.copyWith(categories: categories);
-    _applyCurrentFilters();
+    // NUEVO: Cargar selectedCategories (default: todas)
+    final selectedList = prefs.getStringList('selectedCategories') ?? [ // NUEVO
+      'Música', 'Teatro', 'StandUp', 'Arte', 'Cine', 'Mic', // NUEVO
+      'Cursos', 'Ferias', 'Calle', 'Redes', 'Niños', 'Danza' // NUEVO
+    ]; // NUEVO
+    _selectedCategories = selectedList.toSet(); // NUEVO
+
+    // NUEVO: Cargar activeFilterCategories (default: vacío)
+    final activeList = prefs.getStringList('activeFilterCategories') ?? []; // NUEVO
+    _activeFilterCategories = activeList.toSet(); // NUEVO
+
+    print('📂 Categorías cargadas: selected=${_selectedCategories.length}, active=${_activeFilterCategories.length}'); // NUEVO
   }
+
+  /// NUEVO: Guardar preferencias de categorías en SharedPreferences
+  Future<void> _saveCategoryPreferences() async { // NUEVO
+    final prefs = await SharedPreferences.getInstance(); // NUEVO
+    await prefs.setStringList('selectedCategories', _selectedCategories.toList()); // NUEVO
+    await prefs.setStringList('activeFilterCategories', _activeFilterCategories.toList()); // NUEVO
+    print('💾 Preferencias guardadas: selected=${_selectedCategories.length}, active=${_activeFilterCategories.length}'); // NUEVO
+  } // NUEVO
+
+  /// NUEVO: Toggle categoría seleccionada (para Settings)
+  Future<void> toggleCategory(String category) async { // NUEVO
+    if (_selectedCategories.contains(category)) { // NUEVO
+      _selectedCategories.remove(category); // NUEVO
+      // NUEVO: Si se desactiva una categoría, también quitarla de filtros activos
+      _activeFilterCategories.remove(category); // NUEVO
+    } else { // NUEVO
+      _selectedCategories.add(category); // NUEVO
+    } // NUEVO
+
+    // NUEVO: Guardar en SharedPreferences
+    await _saveCategoryPreferences(); // NUEVO
+    notifyListeners(); // NUEVO
+    print('🏷️ Toggle categoría: $category, activas: ${_selectedCategories.length}'); // NUEVO
+  } // NUEVO
+
+  /// NUEVO: Toggle filtro activo (para chips en Explore)
+  Future<void> toggleFilterCategory(String category) async { // NUEVO
+    if (_activeFilterCategories.contains(category)) { // NUEVO
+      _activeFilterCategories.remove(category); // NUEVO
+    } else { // NUEVO
+      _activeFilterCategories.add(category); // NUEVO
+    } // NUEVO
+
+    // NUEVO: Aplicar filtros con las nuevas categorías
+    _currentFilters = _currentFilters.copyWith(categories: _activeFilterCategories); // NUEVO
+    _applyCurrentFilters(); // NUEVO
+
+    // NUEVO: Guardar estado
+    await _saveCategoryPreferences(); // NUEVO
+    print('🔍 Toggle filtro: $category, filtros activos: ${_activeFilterCategories.length}'); // NUEVO
+  } // NUEVO
+
+  /// NUEVO: Limpiar filtros activos (botón refresh)
+  Future<void> clearActiveFilterCategories() async { // NUEVO
+    _activeFilterCategories.clear(); // NUEVO
+    _currentFilters = _currentFilters.copyWith(categories: {}); // NUEVO
+    _applyCurrentFilters(); // NUEVO
+    await _saveCategoryPreferences(); // NUEVO
+    print('🧹 Filtros de categoría limpiados'); // NUEVO
+  } // NUEVO
+
+  /// NUEVO: Resetear categorías seleccionadas (botón restablecer en Settings)
+  Future<void> resetCategories() async { // NUEVO
+    _selectedCategories = { // NUEVO
+      'Música', 'Teatro', 'StandUp', 'Arte', 'Cine', 'Mic', // NUEVO
+      'Cursos', 'Ferias', 'Calle', 'Redes', 'Niños', 'Danza' // NUEVO
+    }; // NUEVO
+    _activeFilterCategories.clear(); // NUEVO
+    _currentFilters = _currentFilters.copyWith(categories: {}); // NUEVO
+    _applyCurrentFilters(); // NUEVO
+    await _saveCategoryPreferences(); // NUEVO
+    notifyListeners(); // NUEVO
+    print('🔄 Categorías restablecidas a default'); // NUEVO
+  } // NUEVO
 
   /// Cambiar búsqueda
   void setSearchQuery(String query) {
@@ -219,6 +310,7 @@ class SimpleHomeProvider with ChangeNotifier {
   // === DEBUG ===
 
   /// Estadísticas para debug
+  /// Estadísticas para debug
   Map<String, dynamic> getDebugStats() {
     return {
       'cacheLoaded': _cacheService.isLoaded,
@@ -228,6 +320,11 @@ class SimpleHomeProvider with ChangeNotifier {
       'groupedDates': _filteredEvents.groupedByDate.keys.length,
       'isLoading': _isLoading,
       'hasError': _errorMessage != null,
+      // NUEVO: Estadísticas de categorías
+      'selectedCategoriesCount': _selectedCategories.length, // NUEVO
+      'activeCategoriesCount': _activeFilterCategories.length, // NUEVO
+      'selectedCategories': _selectedCategories.toList(), // NUEVO
+      'activeCategories': _activeFilterCategories.toList(), // NUEVO
     };
   }
 
@@ -240,5 +337,8 @@ class SimpleHomeProvider with ChangeNotifier {
     print('  Eventos filtrados: ${stats['filteredEventCount']}');
     print('  Filtros actuales: ${stats['currentFilters']}');
     print('  Fechas agrupadas: ${stats['groupedDates']}');
+    // NUEVO: Debug de categorías
+    print('  Categorías seleccionadas: ${stats['selectedCategoriesCount']} ${stats['selectedCategories']}'); // NUEVO
+    print('  Filtros activos: ${stats['activeCategoriesCount']} ${stats['activeCategories']}'); // NUEVO
   }
 }
