@@ -1,115 +1,60 @@
+// lib/src/providers/preferences_provider.dart
+
 import 'package:flutter/material.dart';
-import 'package:quehacemos_cba/src/models/user_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+/// Provider LIMPIO solo para temas
+/// Usa SharedPreferences directo (nueva arquitectura)
 class PreferencesProvider with ChangeNotifier {
-  String _theme = 'normal';
-  Set<String> _selectedCategories = {};
-  Set<String> _activeFilterCategories = {};
-  int _eventCleanupDays = 3;        // NUEVO: días limpieza eventos
-  int _favoriteCleanupDays = 7;     // NUEVO: días limpieza favoritos
-  PreferencesProvider();
+  String _theme = 'normal'; // Default tema normal
 
-  Future<void> init() async {
-    await _loadPreferences();
-  }
-
+  // Getter público
   String get theme => _theme;
-  Set<String> get selectedCategories => _selectedCategories;
-  Set<String> get activeFilterCategories => _activeFilterCategories;
-  int get eventCleanupDays => _eventCleanupDays;      // NUEVO: getter eventos
-  int get favoriteCleanupDays => _favoriteCleanupDays;
 
-  Future<void> _loadPreferences() async {
-    _theme = await UserPreferences.getTheme();
-    _selectedCategories = await UserPreferences.getCategories();
-    _eventCleanupDays = await UserPreferences.getEventCleanupDays();
-    _favoriteCleanupDays = await UserPreferences.getFavoriteCleanupDays();
-    // Si no hay nada guardado, activar todas por defecto
-    if (_selectedCategories.isEmpty) {
-      _selectedCategories = {
-        'Música',
-        'Teatro',
-        'StandUp',
-        'Arte',
-        'Cine',
-        'Mic',
-        'Cursos',
-        'Ferias',
-        'Calle',
-        'Redes',
-        'Niños',
-        'Danza',
-      };
-    }
-
-    _activeFilterCategories = await UserPreferences.getActiveFilterCategories();
-    notifyListeners();
+  /// Inicializar: cargar tema guardado
+  Future<void> initialize() async {
+    await _loadTheme();
+    print('🎨 PreferencesProvider inicializado con tema: $_theme');
   }
 
+  /// Cambiar tema y persistir
   Future<void> setTheme(String theme) async {
-    _theme = theme;
-    await UserPreferences.setTheme(theme);
-    notifyListeners();
-  }
-
-  Future<void> toggleCategory(String category) async {
-    if (_selectedCategories.contains(category)) {
-      _selectedCategories.remove(category);
-      _activeFilterCategories.remove(category);
-      await UserPreferences.setActiveFilterCategories(_activeFilterCategories);
-    } else {
-      _selectedCategories.add(category);
+    if (_theme != theme) {
+      _theme = theme;
+      await _saveTheme();
+      notifyListeners();
+      print('🎨 Tema cambiado a: $theme');
     }
-
-    await UserPreferences.setCategories(_selectedCategories);
-    notifyListeners();
   }
 
-  Future<void> resetCategories() async {
-    _selectedCategories = {
-      'Música',
-      'Teatro',
-      'StandUp',
-      'Arte',
-      'Cine',
-      'Mic',
-      'Cursos',
-      'Ferias',
-      'Calle',
-      'Redes',
-      'Niños',
-      'Danza',
+  /// Cargar tema desde SharedPreferences
+  Future<void> _loadTheme() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _theme = prefs.getString('app_theme') ?? 'normal';
+      print('📂 Tema cargado: $_theme');
+    } catch (e) {
+      print('❌ Error cargando tema: $e');
+      _theme = 'normal'; // Fallback
+    }
+  }
+
+  /// Guardar tema en SharedPreferences
+  Future<void> _saveTheme() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('app_theme', _theme);
+      print('💾 Tema guardado: $_theme');
+    } catch (e) {
+      print('❌ Error guardando tema: $e');
+    }
+  }
+
+  /// Debug info
+  Map<String, dynamic> getDebugInfo() {
+    return {
+      'currentTheme': _theme,
+      'availableThemes': ['normal', 'dark', 'fluor', 'harmony', 'sepia', 'pastel'],
     };
-    _activeFilterCategories.clear();
-    await UserPreferences.setCategories(_selectedCategories);
-    await UserPreferences.setActiveFilterCategories(_activeFilterCategories);
-    notifyListeners();
   }
-
-  Future<void> toggleFilterCategory(String category) async {
-    if (_activeFilterCategories.contains(category)) {
-      _activeFilterCategories.remove(category);
-    } else {
-      _activeFilterCategories.add(category);
-    }
-    await UserPreferences.setActiveFilterCategories(_activeFilterCategories);
-    notifyListeners();
-  }
-  Future<void> clearActiveFilterCategories() async {
-    _activeFilterCategories.clear();
-    await UserPreferences.setActiveFilterCategories(_activeFilterCategories);
-    notifyListeners();
-  }
-  Future<void> setEventCleanupDays(int days) async {        // NUEVO: método completo
-    _eventCleanupDays = days;                               // NUEVO: actualizar estado local
-    await UserPreferences.setEventCleanupDays(days);        // NUEVO: persistir en SharedPrefs
-    notifyListeners();                                      // NUEVO: notificar cambios UI
-  }
-
-  Future<void> setFavoriteCleanupDays(int days) async {     // NUEVO: método completo
-    _favoriteCleanupDays = days;                            // NUEVO: actualizar estado local
-    await UserPreferences.setFavoriteCleanupDays(days);     // NUEVO: persistir en SharedPrefs
-    notifyListeners();                                      // NUEVO: notificar cambios UI
-  }
-
 }

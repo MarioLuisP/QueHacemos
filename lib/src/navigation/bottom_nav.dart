@@ -19,9 +19,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     // Inicializar PreferencesProvider después de que se construye la UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<PreferencesProvider>(context, listen: false).init();
-    });
+
   }
   void _onItemTapped(int index) {
     setState(() {

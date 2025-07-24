@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quehacemos_cba/src/providers/simple_home_provider.dart';
+import 'package:quehacemos_cba/src/providers/preferences_provider.dart'; // NUEVO: import nuevo provider
 import './../utils/dimens.dart';
 import './../utils/colors.dart';
 
@@ -9,8 +10,8 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SimpleHomeProvider>(
-      builder: (context, provider, child) {
+    return Consumer2<SimpleHomeProvider, PreferencesProvider>( // CAMBIO: Consumer2 para ambos providers
+      builder: (context, homeProvider, preferencesProvider, child) { // CAMBIO: ahora recibe ambos providers
         final List<Map<String, dynamic>> categories = [
           {'name': 'Música', 'emoji': '🎶', 'color': AppColors.musica},
           {'name': 'Teatro', 'emoji': '🎭', 'color': AppColors.teatro},
@@ -62,12 +63,12 @@ class SettingsPage extends StatelessWidget {
                         crossAxisSpacing: AppDimens.paddingSmall,
                         childAspectRatio: 2.5,
                         children: [
-                          _buildThemeButton(context, provider, 'Normal', 'normal'),
-                          _buildThemeButton(context, provider, 'Oscuro', 'dark'),
-                          _buildThemeButton(context, provider, 'Sepia', 'sepia'),
-                          _buildThemeButton(context, provider, 'Pastel', 'pastel'),
-                          _buildThemeButton(context, provider, 'Harmony', 'harmony'),
-                          _buildThemeButton(context, provider, 'Fluor', 'fluor'),
+                          _buildThemeButton(context, preferencesProvider, 'Normal', 'normal'), // CAMBIO: usa preferencesProvider
+                          _buildThemeButton(context, preferencesProvider, 'Oscuro', 'dark'),   // CAMBIO: usa preferencesProvider
+                          _buildThemeButton(context, preferencesProvider, 'Sepia', 'sepia'),   // CAMBIO: usa preferencesProvider
+                          _buildThemeButton(context, preferencesProvider, 'Pastel', 'pastel'), // CAMBIO: usa preferencesProvider
+                          _buildThemeButton(context, preferencesProvider, 'Harmony', 'harmony'), // CAMBIO: usa preferencesProvider
+                          _buildThemeButton(context, preferencesProvider, 'Fluor', 'fluor'),   // CAMBIO: usa preferencesProvider
                         ],
                       ),
                     ],
@@ -107,7 +108,7 @@ class SettingsPage extends StatelessWidget {
                         crossAxisSpacing: AppDimens.paddingSmall,
                         childAspectRatio: 4.5,
                         children: categories.map((category) {
-                          final isSelected = provider.selectedCategories
+                          final isSelected = homeProvider.selectedCategories // CAMBIO: sigue usando homeProvider para categorías
                               .contains(category['name']);
                           final color = AppColors.adjustForTheme(
                             context,
@@ -116,7 +117,7 @@ class SettingsPage extends StatelessWidget {
 
                           return _buildCategoryButton(
                             context,
-                            provider,
+                            homeProvider, // CAMBIO: sigue usando homeProvider para categorías
                             category['name'] as String,
                             category['emoji'] as String,
                             color,
@@ -128,7 +129,7 @@ class SettingsPage extends StatelessWidget {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: provider.resetCategories,
+                          onPressed: homeProvider.resetCategories, // CAMBIO: sigue usando homeProvider para categorías
                           child: const Text('Restablecer selección'),
                         ),
                       ),
@@ -146,11 +147,11 @@ class SettingsPage extends StatelessWidget {
   // ========== MÉTODOS ==========
   Widget _buildThemeButton(
       BuildContext context,
-      SimpleHomeProvider provider,
+      PreferencesProvider preferencesProvider, // CAMBIO: tipo específico PreferencesProvider
       String label,
       String theme,
       ) {
-    final isSelected = provider.theme == theme;
+    final isSelected = preferencesProvider.theme == theme; // CAMBIO: usa preferencesProvider.theme
 
     return Container(
       width: double.infinity,
@@ -162,7 +163,7 @@ class SettingsPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => provider.setTheme(theme),
+          onTap: () => preferencesProvider.setTheme(theme), // CAMBIO: usa preferencesProvider.setTheme
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
@@ -193,7 +194,7 @@ class SettingsPage extends StatelessWidget {
 
   Widget _buildCategoryButton(
       BuildContext context,
-      SimpleHomeProvider provider,
+      SimpleHomeProvider homeProvider, // MANTIENE: SimpleHomeProvider para categorías
       String name,
       String emoji,
       Color color,
@@ -212,7 +213,7 @@ class SettingsPage extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () async {
-            await provider.toggleCategory(name);
+            await homeProvider.toggleCategory(name); // MANTIENE: homeProvider para categorías
           },
           child: Container(
             decoration: BoxDecoration(
