@@ -12,6 +12,9 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  table_calendar: ^3.0.9
+
+
 
   # UI y Estado
   cupertino_icons: ^1.0.8

@@ -146,7 +146,36 @@ class SimpleHomeProvider with ChangeNotifier {
       return dateString;
     }
   }
+  /// NUEVO: Obtener eventos para una fecha específica (para calendario)
+  Future<List<EventCacheItem>> getEventsForDate(DateTime date) async {
+    if (!_cacheService.isLoaded) {
+      await initialize();
+    }
 
+    final dateString = "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}"; // NUEVO: Formato yyyy-MM-dd
+    return _cacheService.getEventsForDate(dateString);
+  }
+
+  /// NUEVO: Obtener conteos de eventos por rango de fechas (para calendario)
+  Map<DateTime, int> getEventCountsForDateRange(DateTime start, DateTime end) {
+    if (!_cacheService.isLoaded) {
+      return {};
+    }
+
+    final counts = <DateTime, int>{};
+
+    // NUEVO: Iterar cada día del rango
+    for (DateTime date = start; date.isBefore(end.add(Duration(days: 1))); date = date.add(Duration(days: 1))) {
+      final dateString = "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}"; // NUEVO: Formato yyyy-MM-dd
+      final count = _cacheService.getEventCountForDate(dateString);
+      if (count > 0) {
+        final cacheKey = DateTime(date.year, date.month, date.day); // NUEVO: Key sin hora
+        counts[cacheKey] = count;
+      }
+    }
+
+    return counts;
+  }
   /// Obtener abreviación del mes
   String _getMonthAbbrev(int month) {
     const months = ['', 'ene', 'feb', 'mar', 'abr', 'may', 'jun',

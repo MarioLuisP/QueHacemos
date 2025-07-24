@@ -14,7 +14,9 @@ class EventCacheService {
   List<EventCacheItem> _cache = [];
   bool _isLoaded = false;
   DateTime? _lastLoadTime;
-
+  // NUEVO: Estructuras auxiliares para lookup O(1)
+  Map<String, List<EventCacheItem>> _eventsByDate = {};  // "2025-07-23" → [events]
+  Map<String, int> _eventCountsByDate = {};              // "2025-07-23" → count
   // Getters públicos
   List<EventCacheItem> get allEvents => List.unmodifiable(_cache);
   bool get isLoaded => _isLoaded;
@@ -43,6 +45,7 @@ class EventCacheService {
 
       // Ordenar por fecha (más recientes primero)
       _cache.sort((a, b) => a.date.compareTo(b.date));
+      _precalculateGroups();
 
       _isLoaded = true;
       _lastLoadTime = DateTime.now();
@@ -58,6 +61,29 @@ class EventCacheService {
     }
   }
 
+  /// NUEVO: Precalcular agrupaciones para lookup O(1)
+  void _precalculateGroups() {
+    print('🔢 Precalculando agrupaciones...');
+
+    // NUEVO: Limpiar estructuras anteriores
+    _eventsByDate.clear();
+    _eventCountsByDate.clear();
+
+    // NUEVO: Agrupar eventos por fecha
+    for (final event in _cache) {
+      final dateKey = event.date.length >= 10
+          ? event.date.substring(0, 10)  // NUEVO: Extraer yyyy-MM-dd
+          : event.date;
+
+      _eventsByDate.putIfAbsent(dateKey, () => []).add(event); // NUEVO: Agregar a grupo
+    }
+
+    // NUEVO: Precalcular counts
+    _eventCountsByDate = _eventsByDate.map((date, events) =>
+        MapEntry(date, events.length));
+
+    print('✅ Agrupaciones precalculadas: ${_eventsByDate.keys.length} fechas');
+  }
   /// Filtrar eventos en memoria pura (microsegundos)
   List<EventCacheItem> filter({
     Set<String>? categories,
@@ -109,6 +135,25 @@ class EventCacheService {
       return null;
     }
   }
+  /// NUEVO: Obtener eventos para fecha específica - O(1)
+  List<EventCacheItem> getEventsForDate(String dateString) {
+    if (!_isLoaded) {
+      print('⚠️ Cache no cargado para getEventsForDate');
+      return [];
+    }
+
+    return _eventsByDate[dateString] ?? []; // NUEVO: Lookup O(1)
+  }
+
+  /// NUEVO: Obtener count de eventos para fecha específica - O(1)
+  int getEventCountForDate(String dateString) {
+    if (!_isLoaded) {
+      return 0;
+    }
+
+    return _eventCountsByDate[dateString] ?? 0; // NUEVO: Lookup O(1)
+  }
+
 
   /// Toggle favorito en cache (update inmediato)
   bool toggleFavorite(int eventId) {
@@ -177,6 +222,8 @@ class EventCacheService {
     print('🔄 Forzando recarga de cache...');
     _isLoaded = false;
     _cache.clear();
+    _eventsByDate.clear();      // NUEVO: Limpiar lookup tables
+    _eventCountsByDate.clear(); // NUEVO: Limpiar lookup tables
     await loadCache();
   }
 
