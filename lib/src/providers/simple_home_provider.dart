@@ -5,7 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../cache/event_cache_service.dart';
 import '../cache/memory_filter_service.dart';
 import '../cache/cache_models.dart';
-import 'category_constants.dart';
+import '../utils/colors.dart';
+//import 'category_constants.dart';
 
 /// Provider SIMPLE que reemplaza HomeViewModel de 300 líneas
 /// Responsabilidad única: manejar estado UI + filtros sobre cache

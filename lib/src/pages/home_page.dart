@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/simple_home_provider.dart';
-import '../providers/category_constants.dart';
+
 import '../cache/cache_models.dart';
 import '../widgets/cards/event_card_widget.dart';
 /// HomePage LIMPIA que usa cache + filtros optimizados
