@@ -41,7 +41,7 @@ class _HomePageState extends State<HomePage> {
     _provider = context.read<SimpleHomeProvider>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _provider.initialize();
+      //_provider.initialize();
       // NUEVO: Si viene fecha del calendario, filtrar
       if (widget.selectedDate != null) {
         _provider.setSelectedDate(widget.selectedDate!);

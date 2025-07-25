@@ -21,7 +21,7 @@ class _ExplorePageState extends State<ExplorePage> {
     super.initState();
     // CAMBIO: Obtener provider del context y inicializar
     _provider = Provider.of<SimpleHomeProvider>(context, listen: false); // CAMBIO
-    _provider.initialize(); // CAMBIO: método simplificado
+    //_provider.initialize();
 
     _searchController.addListener(() {
       _provider.setSearchQuery(_searchController.text); // CAMBIO: método directo

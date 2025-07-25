@@ -92,7 +92,15 @@ class SyncService {
       final currentBatchVersion = await _getCurrentBatchVersion();
       final newBatchVersion = batchData['metadata']?['nombre_lote'] as String? ?? 'unknown';
       final totalEventsInDB = await _eventRepository.getTotalEvents();
+      final isFirstTime = totalEventsInDB == 0;
 
+// Para mock: simular 10 lotes💥💥
+      if (isFirstTime) {
+        print('📥 Primera descarga: simulando 10 lotes');
+        return List.generate(10, (i) => MockEvents.cacheEvents).expand((x) => x).toList();
+      } else {
+        return MockEvents.cacheEvents;
+      }
       if (currentBatchVersion == newBatchVersion && totalEventsInDB > 0) {
         print('📄 Mismo lote, no hay actualizaciones');
         // NUEVO: Notificar que la app está actualizada

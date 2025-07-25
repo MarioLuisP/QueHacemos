@@ -26,6 +26,16 @@ class SimpleHomeProvider with ChangeNotifier {
   Set<String> _activeFilterCategories = {};
   String _theme = 'normal'; // NUEVO: Tema actual de la app
 
+  // NUEVO: Constructor aquí
+  SimpleHomeProvider() {
+    _initializeAsync();
+  }
+
+  // NUEVO: Método async aquí
+  void _initializeAsync() {
+    initialize();
+  }
+
 
   // Getters públicos
   bool get isLoading => _isLoading;
