@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/simple_home_provider.dart'; // NUEVO: provider actualizado
 import '../widgets/cards/event_card_widget.dart'; // NUEVO: widget actualizado

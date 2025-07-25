@@ -6,6 +6,7 @@ import '../cache/event_cache_service.dart';
 import '../cache/memory_filter_service.dart';
 import '../cache/cache_models.dart';
 import '../utils/colors.dart';
+import '../sync/sync_service.dart';
 //import 'category_constants.dart';
 
 /// Provider SIMPLE que reemplaza HomeViewModel de 300 líneas
@@ -42,6 +43,9 @@ class SimpleHomeProvider with ChangeNotifier {
 
   /// Inicializar provider (cargar cache + preferencias + aplicar filtros) // CAMBIO: comentario actualizado
   Future<void> initialize() async {
+    // NUEVO: Sync automático al startup (pobla la DB)
+    await SyncService().syncOnAppStart();
+
     // NUEVO: Cargar preferencias primero
     await _loadAllPreferences(); // NUEVO
 

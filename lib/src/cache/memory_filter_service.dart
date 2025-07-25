@@ -142,7 +142,7 @@ class MemoryFilterService {
   /// Solo favoritos
   FilteredEvents getFavoriteEvents() {
     final allEvents = _cacheService.allEvents;
-    final favorites = allEvents.where((event) => event.isFavorite).toList();
+    final favorites = allEvents.where((event) => event.favorite).toList();
 
     final groupedByDate = _groupEventsByDate(favorites);
 
@@ -217,7 +217,7 @@ class MemoryFilterService {
     }
 
     // Otros stats
-    final favoriteCount = allEvents.where((e) => e.isFavorite).length;
+    final favoriteCount = allEvents.where((e) => e.favorite).length;
     final uniqueDates = dateCount.keys.length;
     final uniqueCategories = categoryCount.keys.length;
 

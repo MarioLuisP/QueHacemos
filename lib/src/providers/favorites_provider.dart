@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 class FavoritesProvider with ChangeNotifier {
   Set<String> _favoriteIds = {};
 
-  bool isFavorite(String eventId) => _favoriteIds.contains(eventId);
+  bool favorite(String eventId) => _favoriteIds.contains(eventId);
 
   void toggleFavorite(String eventId) {
     if (_favoriteIds.contains(eventId)) {

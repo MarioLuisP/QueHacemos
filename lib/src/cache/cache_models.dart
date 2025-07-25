@@ -13,7 +13,7 @@ class EventCacheItem {
   final String price;
   final String district;
   final int rating;
-  final bool isFavorite;
+  final bool favorite;
   final String formattedDateForCard; // NUEVO: Fecha precalculada para tarjetas
   final String categoryWithEmoji;    // NUEVO: Categoría con emoji precalculada
   final Color baseColor;             // NUEVO: Color base precalculado
@@ -33,7 +33,7 @@ class EventCacheItem {
     required this.price,
     required this.district,
     required this.rating,
-    required this.isFavorite,
+    required this.favorite,
     required this.formattedDateForCard, // NUEVO
     required this.categoryWithEmoji,    // NUEVO
     required this.baseColor,            // NUEVO
@@ -68,7 +68,7 @@ class EventCacheItem {
       price: map['price'] as String? ?? '',
       district: map['district'] as String? ?? '',
       rating: map['rating'] as int? ?? 0,
-      isFavorite: map['isFavorite'] as bool? ?? false,
+      favorite: (map['favorite'] as int? ?? 0) == 1,  // ← Leer int, convertir a bool
       formattedDateForCard: formattedDate,    // NUEVO: Precalculado
       categoryWithEmoji: categoryEmoji,       // NUEVO: Precalculado
       baseColor: optimizedColors.base,        // NUEVO: Precalculado
@@ -127,7 +127,7 @@ class EventCacheItem {
       'price': price,
       'district': district,
       'rating': rating,
-      'isFavorite': isFavorite,
+      'favorite': favorite,
     };
   }
 
@@ -141,7 +141,7 @@ class EventCacheItem {
     String? price,
     String? district,
     int? rating,
-    bool? isFavorite,
+   bool? favorite,
     String? theme,
   }) {
     // CAMBIO: Si cambia type o date, recalcular campos dependientes
@@ -164,7 +164,7 @@ class EventCacheItem {
         price: price ?? this.price,
         district: district ?? this.district,
         rating: rating ?? this.rating,
-        isFavorite: isFavorite ?? this.isFavorite,
+        favorite: favorite ?? this.favorite,
         formattedDateForCard: formattedDate,          // NUEVO: Recalculado
         categoryWithEmoji: categoryEmoji,             // NUEVO: Recalculado
         baseColor: optimizedColors.base,              // NUEVO: Recalculado
@@ -186,7 +186,7 @@ class EventCacheItem {
         price: price ?? this.price,
         district: district ?? this.district,
         rating: rating ?? this.rating,
-        isFavorite: isFavorite ?? this.isFavorite,
+        favorite: favorite ?? this.favorite,
         formattedDateForCard: this.formattedDateForCard,    // CAMBIO: Mantener precalculado
         categoryWithEmoji: this.categoryWithEmoji,          // CAMBIO: Mantener precalculado
         baseColor: this.baseColor,                          // CAMBIO: Mantener precalculado

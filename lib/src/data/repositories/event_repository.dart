@@ -160,7 +160,7 @@ class EventRepository {
   }
 
   /// Verificar si un evento es favorito
-  Future<bool> isFavorite(int eventoId) async {
+  Future<bool> favorite(int eventoId) async {
     final db = await DatabaseHelper.database;
     final results = await db.query(
       'eventos',                                        // CAMBIO: misma tabla
@@ -169,7 +169,7 @@ class EventRepository {
       limit: 1,
     );
     if (results.isEmpty) return false;                 // NUEVO: validar que existe
-    return (results.first['favorite'] as int) == 1;   // NUEVO: revisar campo favorite
+    return results.first['favorite'] as bool;
   }
   /// Agregar evento a favoritos
   Future<void> addToFavorites(int eventoId) async {      // CAMBIO: solo necesita ID
@@ -196,7 +196,7 @@ class EventRepository {
 
   /// Toggle favorito (agregar/remover)
   Future<bool> toggleFavorite(int eventoId) async {      // CAMBIO: solo necesita ID
-    final isFav = await isFavorite(eventoId);
+    final isFav = await favorite(eventoId);
 
     if (isFav) {
       await removeFromFavorites(eventoId);

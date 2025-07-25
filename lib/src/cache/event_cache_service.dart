@@ -1,7 +1,8 @@
 // lib/src/cache/event_cache_service.dart
 
 import 'cache_models.dart';
-import '../mock/mock_events.dart';
+//import '../mock/mock_events.dart';
+import '../data/repositories/event_repository.dart';
 
 /// Servicio de cache en memoria - Corazón del sistema
 /// Maneja 203KB de eventos para scroll 90Hz
@@ -34,11 +35,10 @@ class EventCacheService {
       print('📥 Cargando cache en memoria...');
 
       // TODO: En futuro será desde SQLite
-      // final repository = CacheRepository();
-      // final data = await repository.getCacheData();
-
+      final repository = EventRepository();
+      final mockData = await repository.getAllEvents();
       // Por ahora: mock data
-      final mockData = MockEvents.cacheEvents;
+      //final mockData = MockEvents.cacheEvents;
 
       // Convertir a EventCacheItem
       _cache = mockData.map((map) => EventCacheItem.fromMap(map, theme: theme)).toList();
@@ -163,10 +163,10 @@ class EventCacheService {
     if (index == -1) return false;
 
     final currentEvent = _cache[index];
-    final newFavoriteState = !currentEvent.isFavorite;
+    final newFavoriteState = !currentEvent.favorite;
 
     // Update inmediato en cache
-    _cache[index] = currentEvent.copyWith(isFavorite: newFavoriteState);
+    _cache[index] = currentEvent.copyWith(favorite: newFavoriteState);
 
     print('💖 Favorito toggled en cache: $eventId = $newFavoriteState');
 
@@ -270,7 +270,7 @@ class EventCacheService {
       'memoryUsage': '${_cache.length * 203} bytes',
       'lastLoadTime': _lastLoadTime?.toIso8601String(),
       'categories': categoryCount,
-      'favoriteCount': _cache.where((e) => e.isFavorite).length,
+      'favoriteCount': _cache.where((e) => e.favorite).length,
     };
   }
 

@@ -4,9 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/simple_home_provider.dart';
 import '../../cache/cache_models.dart';
 import '../../utils/dimens.dart';
-import '../../utils/colors.dart';
 import '../../providers/favorites_provider.dart';  // ✅ AGREGAR
-import '../event_detail_modal.dart';
 
 class EventCardWidget extends StatelessWidget {
   final EventCacheItem event;
@@ -106,15 +104,15 @@ class EventCardWidget extends StatelessWidget {
                       ),
                     ),
                     Selector<FavoritesProvider, bool>( // CAMBIO: Selector específico
-                      selector: (context, favProvider) => favProvider.isFavorite(event.id.toString()), // CAMBIO: Solo escucha cambios de ESTE evento
-                      builder: (context, isFavorite, child) { // CAMBIO: Solo rebuilda si cambia isFavorite de este evento
+                      selector: (context, favProvider) => favProvider.favorite(event.id.toString()), // CAMBIO: Solo escucha cambios de ESTE evento
+                      builder: (context, favorite, child) { // CAMBIO: Solo rebuilda si cambia favorite de este evento
                         return IconButton(
                           iconSize: 24,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           icon: Icon(
-                            isFavorite ? Icons.favorite : Icons.favorite_border,
-                            color: isFavorite ? Colors.red : event.textColor, // CAMBIO: Usa color precalculado
+                            favorite ? Icons.favorite : Icons.favorite_border,
+                            color: favorite ? Colors.red : event.textColor, // CAMBIO: Usa color precalculado
                           ),
                           onPressed: () { // CAMBIO: context.read para evitar dependencia del builder
                             context.read<FavoritesProvider>().toggleFavorite(event.id.toString());

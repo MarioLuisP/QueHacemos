@@ -20,7 +20,7 @@ class MockEvents {
       "websiteUrl": "https://990arteclub.com",
       "lat": -31.39636078064314,
       "lng": -64.17225774519973,
-      "isFavorite": false, // Campo agregado para cache
+      "favorite": false,
     },
     {
       "id": 7,
@@ -38,7 +38,7 @@ class MockEvents {
       "websiteUrl": "https://www.facebook.com/teatrociudadelasartes/",
       "lat": -31.435374665746004,
       "lng": -64.17537479549907,
-      "isFavorite": false,
+      "favorite": false,
     },
     {
       "id": 8,
@@ -56,7 +56,7 @@ class MockEvents {
       "websiteUrl": "https://990arteclub.com",
       "lat": -31.39636078064314,
       "lng": -64.17225774519973,
-      "isFavorite": true, // Uno favorito para testing
+      "favorite": false,
     },
     {
       "id": 9,
@@ -74,7 +74,7 @@ class MockEvents {
       "websiteUrl": "https://microteatrocordoba.com",
       "lat": -31.385042847094944,
       "lng": -64.16270631545386,
-      "isFavorite": false,
+      "favorite": false,
     },
     {
       "id": 10,
@@ -92,10 +92,23 @@ class MockEvents {
       "websiteUrl": "https://www.instagram.com/feriabrotes",
       "lat": -31.433500888596917,
       "lng": -64.1853650279955,
-      "isFavorite": false,
+      "favorite": false,
     },
-  ];
 
+  ];
+  /// Simulación de metadata de Firestore
+  static const Map<String, dynamic> mockMetadata = {
+    "estado": "OK",
+    "fecha_subida": "2025-07-25T01:49:11.071480",
+    "nombre_lote": "lote_2025_07_25_mock_1",
+    "total_eventos": 5  // Coincide con cantidad de eventos mock
+  };
+
+  /// Estructura completa como viene de Firestore
+  static Map<String, dynamic> get mockBatch => {
+    "eventos": cacheEvents,
+    "metadata": mockMetadata,
+  };
   /// Solo campos necesarios para cache (9 campos, 203 bytes por evento)
   static List<Map<String, dynamic>> get cacheEvents {
     return events.map((event) => {
@@ -107,7 +120,7 @@ class MockEvents {
       'price': event['price'],
       'district': event['district'],
       'rating': event['rating'],
-      'isFavorite': event['isFavorite'],
+      'favorite': event['favorite'],
     }).toList();
   }
 

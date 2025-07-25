@@ -8,7 +8,6 @@ import 'src/providers/favorites_provider.dart';
 import 'src/providers/simple_home_provider.dart';
 import 'src/themes/themes.dart';
 import 'src/navigation/bottom_nav.dart';
-import 'dart:ui' as ui;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

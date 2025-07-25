@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/simple_home_provider.dart';
 
 
 // ============ NUEVA ESTRUCTURA: COLORES PRECALCULADOS PARA TARJETAS ============
