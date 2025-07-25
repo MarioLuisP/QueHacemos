@@ -23,9 +23,9 @@ class _FilterChipsRowState extends State<FilterChipsRow> {
       builder: (context, provider, child) {
         // CAMBIO: Usar provider local en lugar de widget.prefs
         final currentActiveFilters = provider.activeFilterCategories; // CAMBIO
-        final currentCategories = provider.selectedCategories.isEmpty // CAMBIO
-            ? ['Música', 'Teatro', 'Cine', 'StandUp']
-            : provider.selectedCategories.toList(); // CAMBIO
+        final currentCategories = provider.selectedCategories.isEmpty
+            ? ['musica', 'teatro', 'cine', 'standup'] // ← RAW
+            : provider.selectedCategories.toList();
 
         final shouldRebuildChips = _cachedCategories == null ||
             !_listEquals(_cachedCategories!, currentCategories) ||

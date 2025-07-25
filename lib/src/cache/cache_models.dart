@@ -46,7 +46,7 @@ class EventCacheItem {
   });
 
   /// Crear desde Map (viene del JSON/SQLite)
-  factory EventCacheItem.fromMap(Map<String, dynamic> map) {
+  factory EventCacheItem.fromMap(Map<String, dynamic> map, {String theme = 'normal'}) {
     final String dateString = map['date'] as String? ?? '';
     final String typeString = map['type'] as String? ?? '';
     print('🔍 Type from map: "$typeString"');
@@ -57,8 +57,7 @@ class EventCacheItem {
     final String categoryEmoji = CategoryDisplayNames.getCategoryWithEmoji(typeString);
     final String premiumEmoji = _calculatePremiumEmoji(map['rating'] as int? ?? 0);
     // NUEVO: Precalcular colores (theme hardcodeado 'normal')
-    final normalizedType = AppColors.normalizeCategory(typeString);
-    final optimizedColors = EventCardColorPalette.getOptimizedColors('normal', normalizedType);
+    final optimizedColors = EventCardColorPalette.getOptimizedColors(theme, typeString);
     print('🎨 Assigned color: ${optimizedColors.base}');
     return EventCacheItem(
       id: map['id'] as int,
@@ -143,17 +142,18 @@ class EventCacheItem {
     String? district,
     int? rating,
     bool? isFavorite,
+    String? theme,
   }) {
     // CAMBIO: Si cambia type o date, recalcular campos dependientes
     final String newType = type ?? this.type;
     final String newDate = date ?? this.date;
-    final bool needsRecalculation = (type != null || date != null);
+    final bool needsRecalculation = (type != null || date != null || theme != null);
 
     if (needsRecalculation) {
       // NUEVO: Recalcular datos dependientes
       final String formattedDate = _formatDateForCard(newDate);
       final String categoryEmoji = CategoryDisplayNames.getCategoryWithEmoji(newType);
-      final optimizedColors = EventCardColorPalette.getOptimizedColors('normal', newType);
+      final optimizedColors = EventCardColorPalette.getOptimizedColors(theme ?? 'normal', newType);
 
       return EventCacheItem(
         id: id ?? this.id,

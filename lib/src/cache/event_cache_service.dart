@@ -24,7 +24,7 @@ class EventCacheService {
   DateTime? get lastLoadTime => _lastLoadTime;
 
   /// Cargar cache desde fuente de datos (UNA vez al startup)
-  Future<void> loadCache() async {
+  Future<void> loadCache({String theme = 'normal'}) async {
     if (_isLoaded) {
       print('🔄 Cache ya cargado, omitiendo...');
       return;
@@ -41,7 +41,7 @@ class EventCacheService {
       final mockData = MockEvents.cacheEvents;
 
       // Convertir a EventCacheItem
-      _cache = mockData.map((map) => EventCacheItem.fromMap(map)).toList();
+      _cache = mockData.map((map) => EventCacheItem.fromMap(map, theme: theme)).toList();
 
       // Ordenar por fecha (más recientes primero)
       _cache.sort((a, b) => a.date.compareTo(b.date));
@@ -226,7 +226,21 @@ class EventCacheService {
     _eventCountsByDate.clear(); // NUEVO: Limpiar lookup tables
     await loadCache();
   }
+  /// Recalcular colores de todos los eventos para nuevo tema
+  void recalculateColorsForTheme(String theme) {
+    if (!_isLoaded) {
+      print('⚠️ Cache no cargado, no se pueden recalcular colores');
+      return;
+    }
 
+    print('🎨 Recalculando colores para tema: $theme');
+
+    for (int i = 0; i < _cache.length; i++) {
+      _cache[i] = _cache[i].copyWith(theme: theme);
+    }
+
+    print('✅ Colores recalculados para ${_cache.length} eventos');
+  }
   /// Limpiar cache (para testing)
   void clearCache() {
     print('🧹 Limpiando cache...');

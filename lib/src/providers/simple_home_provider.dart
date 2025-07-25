@@ -22,11 +22,8 @@ class SimpleHomeProvider with ChangeNotifier {
   // NUEVO: Propiedades para filtros de categorías
   Set<String> _selectedCategories = {}; // NUEVO: categorías habilitadas en Settings
   Set<String> _activeFilterCategories = {};
+  String _theme = 'normal'; // NUEVO: Tema actual de la app
 
-  // NUEVO: Tema UI (3 líneas)
-  String _theme = 'normal'; // NUEVO
-  String get theme => _theme; // NUEVO
-  void setTheme(String theme) { _theme = theme; notifyListeners(); } // NUEVO
 
   // Getters públicos
   bool get isLoading => _isLoading;
@@ -40,11 +37,12 @@ class SimpleHomeProvider with ChangeNotifier {
   // NUEVO: Getters para filtros de categorías
   Set<String> get selectedCategories => _selectedCategories; // NUEVO
   Set<String> get activeFilterCategories => _activeFilterCategories; // NUEVO
+  String get theme => _theme;
 
   /// Inicializar provider (cargar cache + preferencias + aplicar filtros) // CAMBIO: comentario actualizado
   Future<void> initialize() async {
     // NUEVO: Cargar preferencias primero
-    await _loadCategoryPreferences(); // NUEVO
+    await _loadAllPreferences(); // NUEVO
 
     if (_cacheService.isLoaded) {
       print('✅ Cache ya cargado, aplicando filtros...');
@@ -56,7 +54,7 @@ class SimpleHomeProvider with ChangeNotifier {
 
     try {
       // Cargar cache desde mock data (después será SQLite)
-      await _cacheService.loadCache();
+      await _cacheService.loadCache(theme: _theme);
 
       // Aplicar filtros por defecto
       _applyCurrentFilters();
@@ -71,30 +69,30 @@ class SimpleHomeProvider with ChangeNotifier {
   }
 
   /// NUEVO: Cargar preferencias de categorías desde SharedPreferences
-  Future<void> _loadCategoryPreferences() async { // NUEVO
+  Future<void> _loadAllPreferences() async { // NUEVO
     final prefs = await SharedPreferences.getInstance(); // NUEVO
 
     // NUEVO: Cargar selectedCategories (default: todas)
-    final selectedList = prefs.getStringList('selectedCategories') ?? [ // NUEVO
-      'Música', 'Teatro', 'StandUp', 'Arte', 'Cine', 'Mic', // NUEVO
-      'Cursos', 'Ferias', 'Calle', 'Redes', 'Niños', 'Danza' // NUEVO
-    ]; // NUEVO
+    final selectedList = prefs.getStringList('selectedCategories') ?? [
+      'musica', 'teatro', 'standup', 'arte', 'cine', 'mic',
+      'cursos', 'ferias', 'calle', 'redes', 'ninos', 'danza'
+    ];
     _selectedCategories = selectedList.toSet(); // NUEVO
 
     // NUEVO: Cargar activeFilterCategories (default: vacío)
     final activeList = prefs.getStringList('activeFilterCategories') ?? []; // NUEVO
     _activeFilterCategories = activeList.toSet(); // NUEVO
-
-    print('📂 Categorías cargadas: selected=${_selectedCategories.length}, active=${_activeFilterCategories.length}'); // NUEVO
+    _theme = prefs.getString('app_theme') ?? 'normal';
+    print('📂 Preferencias cargadas: tema=$_theme, selected=${_selectedCategories.length}, active=${_activeFilterCategories.length}');
   }
 
   /// NUEVO: Guardar preferencias de categorías en SharedPreferences
-  Future<void> _saveCategoryPreferences() async { // NUEVO
+  Future<void> _saveAllPreferences() async { // NUEVO
     final prefs = await SharedPreferences.getInstance(); // NUEVO
     await prefs.setStringList('selectedCategories', _selectedCategories.toList()); // NUEVO
     await prefs.setStringList('activeFilterCategories', _activeFilterCategories.toList()); // NUEVO
-    print('💾 Preferencias guardadas: selected=${_selectedCategories.length}, active=${_activeFilterCategories.length}'); // NUEVO
-  } // NUEVO
+    await prefs.setString('app_theme', _theme); // NUEVO: Guardar tema
+    print('💾 Preferencias guardadas: tema=$_theme, selected=${_selectedCategories.length}, active=${_activeFilterCategories.length}');  } // NUEVO
 
   /// NUEVO: Toggle categoría seleccionada (para Settings)
   Future<void> toggleCategory(String category) async { // NUEVO
@@ -107,7 +105,7 @@ class SimpleHomeProvider with ChangeNotifier {
     } // NUEVO
 
     // NUEVO: Guardar en SharedPreferences
-    await _saveCategoryPreferences(); // NUEVO
+    await _saveAllPreferences(); // NUEVO
     notifyListeners(); // NUEVO
     print('🏷️ Toggle categoría: $category, activas: ${_selectedCategories.length}'); // NUEVO
   } // NUEVO
@@ -125,7 +123,7 @@ class SimpleHomeProvider with ChangeNotifier {
     _applyCurrentFilters(); // NUEVO
 
     // NUEVO: Guardar estado
-    await _saveCategoryPreferences(); // NUEVO
+    await _saveAllPreferences(); // NUEVO
     print('🔍 Toggle filtro: $category, filtros activos: ${_activeFilterCategories.length}'); // NUEVO
   } // NUEVO
 
@@ -134,20 +132,20 @@ class SimpleHomeProvider with ChangeNotifier {
     _activeFilterCategories.clear(); // NUEVO
     _currentFilters = _currentFilters.copyWith(categories: {}); // NUEVO
     _applyCurrentFilters(); // NUEVO
-    await _saveCategoryPreferences(); // NUEVO
+    await _saveAllPreferences(); // NUEVO
     print('🧹 Filtros de categoría limpiados'); // NUEVO
   } // NUEVO
 
   /// NUEVO: Resetear categorías seleccionadas (botón restablecer en Settings)
   Future<void> resetCategories() async { // NUEVO
-    _selectedCategories = { // NUEVO
-      'Música', 'Teatro', 'StandUp', 'Arte', 'Cine', 'Mic', // NUEVO
-      'Cursos', 'Ferias', 'Calle', 'Redes', 'Niños', 'Danza' // NUEVO
+    _selectedCategories = {
+      'musica', 'teatro', 'standup', 'arte', 'cine', 'mic',
+      'cursos', 'ferias', 'calle', 'redes', 'ninos', 'danza'
     }; // NUEVO
     _activeFilterCategories.clear(); // NUEVO
     _currentFilters = _currentFilters.copyWith(categories: {}); // NUEVO
     _applyCurrentFilters(); // NUEVO
-    await _saveCategoryPreferences(); // NUEVO
+    await _saveAllPreferences(); // NUEVO
     notifyListeners(); // NUEVO
     print('🔄 Categorías restablecidas a default'); // NUEVO
   } // NUEVO
@@ -159,7 +157,23 @@ class SimpleHomeProvider with ChangeNotifier {
     _currentFilters = _currentFilters.copyWith(searchQuery: query);
     _applyCurrentFilters();
   }
+  /// NUEVO: Cambiar tema y recalcular colores
+  Future<void> setTheme(String theme) async {
+    if (_theme != theme) {
+      _theme = theme;
 
+      // Recalcular colores del cache
+      _cacheService.recalculateColorsForTheme(theme);
+
+      // Re-aplicar filtros para actualizar UI
+      _applyCurrentFilters();
+
+      // Guardar preferencias
+      await _saveAllPreferences();
+
+      print('🎨 Tema cambiado a: $theme');
+    }
+  }
   /// Cambiar fecha seleccionada
   void setSelectedDate(DateTime? date) {
     print('📅 Cambiando fecha: $date');

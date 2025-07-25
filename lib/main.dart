@@ -6,8 +6,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 import 'src/providers/favorites_provider.dart';
 import 'src/providers/simple_home_provider.dart';
-import 'src/providers/preferences_provider.dart'; // NUEVO: import nuevo provider
-import 'src/pages/home_page.dart';
 import 'src/themes/themes.dart';
 import 'src/navigation/bottom_nav.dart';
 import 'dart:ui' as ui;
@@ -25,42 +23,73 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // NUEVO: PreferencesProvider para temas
-        ChangeNotifierProvider(
-          create: (context) => PreferencesProvider(),
-        ),
-
-        // Provider principal para cache/filtros
+        // Provider principal para cache/filtros/tema
         ChangeNotifierProvider(
           create: (context) => SimpleHomeProvider(),
         ),
-
         // Otros providers
-        ChangeNotifierProvider(create: (context) => FavoritesProvider()),
+        ChangeNotifierProvider(
+          create: (context) => FavoritesProvider(),
+        ),
       ],
-      child: Consumer<PreferencesProvider>( // CAMBIO: ahora usa PreferencesProvider
-        builder: (context, preferencesProvider, child) {
-          return FutureBuilder(
-            // NUEVO: Inicializar PreferencesProvider
-            future: preferencesProvider.initialize(),
-            builder: (context, snapshot) {
-              return MaterialApp(
-                localizationsDelegates: const [
-                  GlobalMaterialLocalizations.delegate,
-                  GlobalWidgetsLocalizations.delegate,
-                  GlobalCupertinoLocalizations.delegate,
-                ],
-                supportedLocales: const [Locale('es', ''), Locale('en', '')],
-                title: 'Eventos Córdoba - Cache Test',
-                // CAMBIO: usa preferencesProvider.theme en lugar de provider.theme
-                theme: AppThemes.themes[preferencesProvider.theme] ?? AppThemes.themes['normal']!,
-                home: const MainScreen(),
-                debugShowCheckedModeBanner: false,
-              );
-            },
-          );
-        },
-      ),
+      child: const _AppContent(),
+    );
+  }
+}
+
+/// Contenido de la app que maneja inicialización y tema
+class _AppContent extends StatefulWidget {
+  const _AppContent();
+
+  @override
+  State<_AppContent> createState() => _AppContentState();
+}
+
+class _AppContentState extends State<_AppContent> {
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    final provider = Provider.of<SimpleHomeProvider>(context, listen: false);
+    await provider.initialize();
+    setState(() {
+      _isInitialized = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        debugShowCheckedModeBanner: false,
+      );
+    }
+
+    return Consumer<SimpleHomeProvider>(
+      builder: (context, provider, child) {
+        return MaterialApp(
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [Locale('es', ''), Locale('en', '')],
+          title: 'Eventos Córdoba - Cache Test',
+          theme: AppThemes.themes[provider.theme] ?? AppThemes.themes['normal']!,
+          home: const MainScreen(),
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }

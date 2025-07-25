@@ -1,30 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quehacemos_cba/src/providers/simple_home_provider.dart';
-import 'package:quehacemos_cba/src/providers/preferences_provider.dart'; // NUEVO: import nuevo provider
 import './../utils/dimens.dart';
 import './../utils/colors.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
+  static const Map<String, Map<String, String>> _settingsUiDisplay = {
+    'musica': {'label': 'Música', 'emoji': '🎶'},
+    'teatro': {'label': 'Teatro', 'emoji': '🎭'},
+    'standup': {'label': 'StandUp', 'emoji': '😂'},
+    'arte': {'label': 'Arte', 'emoji': '🎨'},
+    'cine': {'label': 'Cine', 'emoji': '🎬'},
+    'mic': {'label': 'Mic', 'emoji': '🎤'},
+    'cursos': {'label': 'Cursos', 'emoji': '🛠️'},
+    'ferias': {'label': 'Ferias', 'emoji': '🏬'},
+    'calle': {'label': 'Calle', 'emoji': '🌆'},
+    'redes': {'label': 'Redes', 'emoji': '🤝'},
+    'ninos': {'label': 'Niños', 'emoji': '👧'},
+    'danza': {'label': 'Danza', 'emoji': '🩰'},
+  };
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<SimpleHomeProvider, PreferencesProvider>( // CAMBIO: Consumer2 para ambos providers
-      builder: (context, homeProvider, preferencesProvider, child) { // CAMBIO: ahora recibe ambos providers
-        final List<Map<String, dynamic>> categories = [
-          {'name': 'Música', 'emoji': '🎶', 'color': AppColors.musica},
-          {'name': 'Teatro', 'emoji': '🎭', 'color': AppColors.teatro},
-          {'name': 'StandUp', 'emoji': '😂', 'color': AppColors.standup},
-          {'name': 'Arte', 'emoji': '🎨', 'color': AppColors.arte},
-          {'name': 'Cine', 'emoji': '🎬', 'color': AppColors.cine},
-          {'name': 'Mic', 'emoji': '🎤', 'color': AppColors.mic},
-          {'name': 'Cursos', 'emoji': '🛠️', 'color': AppColors.cursos},
-          {'name': 'Ferias', 'emoji': '🏬', 'color': AppColors.ferias},
-          {'name': 'Calle', 'emoji': '🌆', 'color': AppColors.calle},
-          {'name': 'Redes', 'emoji': '🤝', 'color': AppColors.redes},
-          {'name': 'Niños', 'emoji': '👧', 'color': AppColors.ninos},
-          {'name': 'Danza', 'emoji': '🩰', 'color': AppColors.danza},
+    return Consumer<SimpleHomeProvider>(
+      builder: (context, provider, child) {//ahora recibe ambos providers
+        final List<String> rawCategories = [
+          'musica', 'teatro', 'standup', 'arte', 'cine', 'mic',
+          'cursos', 'ferias', 'calle', 'redes', 'ninos', 'danza'
         ];
 
         return Scaffold(
@@ -63,12 +66,12 @@ class SettingsPage extends StatelessWidget {
                         crossAxisSpacing: AppDimens.paddingSmall,
                         childAspectRatio: 2.5,
                         children: [
-                          _buildThemeButton(context, preferencesProvider, 'Normal', 'normal'), // CAMBIO: usa preferencesProvider
-                          _buildThemeButton(context, preferencesProvider, 'Oscuro', 'dark'),   // CAMBIO: usa preferencesProvider
-                          _buildThemeButton(context, preferencesProvider, 'Sepia', 'sepia'),   // CAMBIO: usa preferencesProvider
-                          _buildThemeButton(context, preferencesProvider, 'Pastel', 'pastel'), // CAMBIO: usa preferencesProvider
-                          _buildThemeButton(context, preferencesProvider, 'Harmony', 'harmony'), // CAMBIO: usa preferencesProvider
-                          _buildThemeButton(context, preferencesProvider, 'Fluor', 'fluor'),   // CAMBIO: usa preferencesProvider
+                          _buildThemeButton(context, provider, 'Normal', 'normal'),
+                          _buildThemeButton(context, provider, 'Oscuro', 'dark'),
+                          _buildThemeButton(context, provider, 'Sepia', 'sepia'),
+                          _buildThemeButton(context, provider, 'Pastel', 'pastel'),
+                          _buildThemeButton(context, provider, 'Harmony', 'harmony'),
+                          _buildThemeButton(context, provider, 'Fluor', 'fluor'),
                         ],
                       ),
                     ],
@@ -107,29 +110,28 @@ class SettingsPage extends StatelessWidget {
                         mainAxisSpacing: AppDimens.paddingSmall,
                         crossAxisSpacing: AppDimens.paddingSmall,
                         childAspectRatio: 4.5,
-                        children: categories.map((category) {
-                          final isSelected = homeProvider.selectedCategories // CAMBIO: sigue usando homeProvider para categorías
-                              .contains(category['name']);
-                          final color = AppColors.adjustForTheme(
-                            context,
-                            category['color'] as Color,
-                          );
-
+                        // NUEVO - AGREGAR:
+                        children: rawCategories.map((rawCategory) {
+                          final uiData = _settingsUiDisplay[rawCategory]!;
+                          final isSelected = provider.selectedCategories.contains(rawCategory);
+                          final color = EventCardColorPalette.getOptimizedColors(provider.theme, rawCategory).base;
                           return _buildCategoryButton(
                             context,
-                            homeProvider, // CAMBIO: sigue usando homeProvider para categorías
-                            category['name'] as String,
-                            category['emoji'] as String,
+                            provider,
+                            rawCategory,        // ← Lógica usa RAW
+                            uiData['label']!,   // ← Display usa mapeo
+                            uiData['emoji']!,   // ← Display usa mapeo
                             color,
                             isSelected,
                           );
                         }).toList(),
+
                       ),
                       const SizedBox(height: AppDimens.paddingMedium),
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: homeProvider.resetCategories, // CAMBIO: sigue usando homeProvider para categorías
+                          onPressed: provider.resetCategories, // CAMBIO: sigue usando homeProvider para categorías
                           child: const Text('Restablecer selección'),
                         ),
                       ),
@@ -147,11 +149,11 @@ class SettingsPage extends StatelessWidget {
   // ========== MÉTODOS ==========
   Widget _buildThemeButton(
       BuildContext context,
-      PreferencesProvider preferencesProvider, // CAMBIO: tipo específico PreferencesProvider
+      SimpleHomeProvider provider,
       String label,
       String theme,
       ) {
-    final isSelected = preferencesProvider.theme == theme; // CAMBIO: usa preferencesProvider.theme
+    final isSelected = provider.theme == theme;
 
     return Container(
       width: double.infinity,
@@ -163,7 +165,7 @@ class SettingsPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => preferencesProvider.setTheme(theme), // CAMBIO: usa preferencesProvider.setTheme
+          onTap: () => provider.setTheme(theme),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
@@ -194,11 +196,12 @@ class SettingsPage extends StatelessWidget {
 
   Widget _buildCategoryButton(
       BuildContext context,
-      SimpleHomeProvider homeProvider, // MANTIENE: SimpleHomeProvider para categorías
-      String name,
-      String emoji,
-      Color color,
-      bool isSelected,
+      SimpleHomeProvider provider,
+      String rawCategory,     // ← NUEVO: categoría para lógica
+      String displayName,     // ← NUEVO: nombre para UI
+      String emoji,           // ← Mismo
+      Color color,            // ← Mismo
+      bool isSelected,        // ← Mismo
       ) {
     bool isLightColor(Color color) {
       return color.computeLuminance() > 0.5;
@@ -213,7 +216,7 @@ class SettingsPage extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () async {
-            await homeProvider.toggleCategory(name); // MANTIENE: homeProvider para categorías
+            await provider.toggleCategory(rawCategory);  // ← Usa RAW para lógica
           },
           child: Container(
             decoration: BoxDecoration(
@@ -237,7 +240,7 @@ class SettingsPage extends StatelessWidget {
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        name,
+                        displayName,
                         style: TextStyle(
                           color: isSelected
                               ? (isLightColor(color)
