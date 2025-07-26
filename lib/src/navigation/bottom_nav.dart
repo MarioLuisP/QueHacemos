@@ -5,7 +5,8 @@ import 'package:quehacemos_cba/src/pages/favorites_page.dart';
 
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final int initialIndex;
+  const MainScreen({super.key, this.initialIndex = 0});
 
   @override
   _MainScreenState createState() => _MainScreenState();
@@ -17,6 +18,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
   }
   void _onItemTapped(int index) {
     setState(() {

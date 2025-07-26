@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:provider/provider.dart';
-import '../providers/simple_home_provider.dart'; // NUEVO: provider actualizado
-import '../widgets/cards/event_card_widget.dart'; // NUEVO: widget actualizado
-import '../cache/cache_models.dart'; // NUEVO: modelos de cache
-// ELIMINADO: home_viewmodel, fast_event_card, event_service, event_repository
+import '../providers/simple_home_provider.dart';
+import '../widgets/cards/event_card_widget.dart';
+import '../cache/cache_models.dart';
+import '../pages/date_events_page.dart';
 
 class CalendarPage extends StatefulWidget {
   final Function(DateTime)? onDateSelected;
@@ -18,49 +19,50 @@ class _CalendarPageState extends State<CalendarPage> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  late SimpleHomeProvider _homeProvider; // CAMBIO: nuevo provider
-  final Map<DateTime, int> _eventCountsCache = {}; // MANTENER: igual
-  // ELIMINADO: _eventRepository - ahora usamos cache directo
+
+  // LIMPIEZA: Cache local para counts (eficiencia)
+  final Map<DateTime, int> _eventCountsCache = {};
   final GlobalKey _calendarKey = GlobalKey();
-  double _calendarHeight = 0.0; // Altura por defecto
+  double _calendarHeight = 0.0;
+
+  // LIMPIEZA: Navegación con debounce para evitar crashes
+  Timer? _navigationTimer;
+
+  // LIMPIEZA: Provider getter - acceso lazy sin initialize()
+  SimpleHomeProvider get _provider => context.read<SimpleHomeProvider>();
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _homeProvider = context.read<SimpleHomeProvider>(); // CAMBIO: obtener provider del context
-    _initializeProvider(); // CAMBIO: nombre de método
+
+    // ELIMINADO: _homeProvider = context.read<SimpleHomeProvider>();
+    // ELIMINADO: _initializeProvider() - patrón peligroso del informe
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateCalendarHeight();
+      _loadEventCounts(); // CAMBIO: método simplificado
     });
-    print('Calendario inicializado: $_focusedDay');
+
+    print('📅 Calendario inicializado limpio: $_focusedDay');
   }
 
-  Future<void> _initializeProvider() async { // CAMBIO: nombre
-    await _homeProvider.initialize(); // CAMBIO: usar nuevo provider
-    await _preloadEventCounts();
-    // ELIMINADO: _eventRepository - no se usa más
-  }
-
-  Future<void> _preloadEventCounts() async {
-    // Calcular rango: mes anterior, actual, siguiente
+  // LIMPIEZA: Método simplificado sin initialize()
+  Future<void> _loadEventCounts() async {
     final now = _focusedDay;
     final startMonth = DateTime(now.year, now.month - 1, 1);
-    final endMonth = DateTime(now.year, now.month + 2, 0); // Último día del mes siguiente
+    final endMonth = DateTime(now.year, now.month + 2, 0);
 
-    // CAMBIO: Obtener counts desde cache O(1)
-    final counts = _homeProvider.getEventCountsForDateRange(startMonth, endMonth);
+    // SEGURO: Provider ya auto-inicializado, solo obtener counts
+    final counts = _provider.getEventCountsForDateRange(startMonth, endMonth);
 
-    // CAMBIO: Actualizar cache local directamente
     _eventCountsCache.clear();
     _eventCountsCache.addAll(counts);
 
     if (mounted) setState(() {});
   }
 
-  // ✅ NUEVO: Método para obtener altura real del calendario
   void _updateCalendarHeight() {
-    // ✅ Delay más largo para asegurar que TableCalendar terminó de renderizar
     Future.delayed(Duration(milliseconds: 150), () {
       final RenderBox? renderBox = _calendarKey.currentContext?.findRenderObject() as RenderBox?;
       if (renderBox != null) {
@@ -74,58 +76,74 @@ class _CalendarPageState extends State<CalendarPage> {
     });
   }
 
-  Future<List<EventCacheItem>> _getEventsForDay(DateTime day) async { // CAMBIO: retorna EventCacheItem
-    return await _homeProvider.getEventsForDate(day); // CAMBIO: usar nuevo provider
-  }
-
+  // LIMPIEZA: Navegación segura con debounce
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
-    print('Día seleccionado: $selectedDay');
-    setState(() {
-      _selectedDay = selectedDay;
-      _focusedDay = focusedDay;
-    });
+    final eventCount = _eventCountsCache[DateTime(selectedDay.year, selectedDay.month, selectedDay.day)] ?? 0;
 
-    if (widget.onDateSelected != null) {
-      widget.onDateSelected!(selectedDay);
+    if (eventCount > 0) {
+      // Navegación directa - NO actualizar UI local
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DateEventsPage(selectedDate: selectedDay),
+        ),
+      ).then((returnedDate) {
+        if (returnedDate != null && mounted) {  // ← Este check
+          setState(() {
+            _selectedDay = returnedDate;
+            _focusedDay = returnedDate;
+          });
+        }
+      });
+
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No hay eventos para ${_formatDate(selectedDay)}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
+
+    print('📅 Día seleccionado: $selectedDay');
   }
 
   @override
   void dispose() {
-    // ELIMINADO: _homeProvider.dispose() - se maneja automáticamente por Provider
+    _navigationTimer?.cancel(); // LIMPIEZA: Cancelar timer
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SimpleHomeProvider>( // CAMBIO: Consumer directo, sin ChangeNotifierProvider.value
-      builder: (context, provider, child) { // CAMBIO: provider en lugar de viewModel
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Elije el Día'),
-              centerTitle: true,
-              toolbarHeight: 40.0,
-              elevation: 2.0,
-              actions: [],
-            ),
-            body: Stack(
-              children: [
-                // ✅ CONTENIDO SCROLLEABLE (tarjetas) - va detrás
-                _buildScrollableContent(),
+    // LIMPIEZA: Consumer único y directo
+    return Consumer<SimpleHomeProvider>(
+      builder: (context, provider, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Elije el Día'),
+            centerTitle: true,
+            toolbarHeight: 40.0,
+            elevation: 2.0,
+          ),
+          body: Stack(
+            children: [
+              _buildScrollableContent(),
+              _buildFloatingCalendar(),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-                // ✅ CALENDAR FLOTANTE - va adelante
-                _buildFloatingCalendar(),
-              ],
-            ),
-          );
-      }  // CAMBIO: eliminar el ; después de }
-    );   // AGREGAR: cierra Consumer
-  }      // MANTENER: cierra método build
+  // LIMPIEZA: Contenido simplificado sin FutureBuilder anidado
+  Widget _buildScrollableContent() {
+    if (_selectedDay == null) return Container();
 
-  // ✅ CORREGIDO: FutureBuilder limpio sin duplicación
-  Widget _buildEventsForSelectedDay() {
-    return FutureBuilder<List<EventCacheItem>>( // CAMBIO: tipo de datos
-      future: _getEventsForDay(_selectedDay!),
+    // DIRECTO: Obtener eventos sincrónicamente del provider ya inicializado
+    return FutureBuilder<List<EventCacheItem>>(
+      future: _provider.getEventsForDate(_selectedDay!),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -145,31 +163,28 @@ class _CalendarPageState extends State<CalendarPage> {
           );
         }
 
-        // ✅ SOLUCIÓN: CustomScrollView con padding inicial como SliverToBoxAdapter
         return CustomScrollView(
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
           slivers: [
-            // ✅ Espacio inicial fijo que permite overscroll
             SliverToBoxAdapter(
               child: SizedBox(height: _calendarHeight + 24.0),
             ),
-
-            // ✅ Lista con solo padding horizontal
             SliverPadding(
               padding: const EdgeInsets.only(left: 0.0, right: 0.0),
-              sliver: SliverList(
+              sliver: SliverFixedExtentList(
+                itemExtent: 249.0,
                 delegate: SliverChildBuilderDelegate(
                       (context, index) {
-                        final event = eventsForDay[index];
-                        return SizedBox(
-                          height: 237.0, // CAMBIO: altura ajustada para EventCardWidget
-                          child: EventCardWidget( // CAMBIO: nuevo widget
-                            event: event, // CAMBIO: ya es EventCacheItem
-                            provider: _homeProvider, // CAMBIO: nuevo provider
-                            key: ValueKey(event.id), // CAMBIO: acceso directo a id
-                          ),
+                    final event = eventsForDay[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: EventCardWidget(
+                        event: event,
+                        provider: _provider,
+                        key: ValueKey(event.id),
+                      ),
                     );
                   },
                   childCount: eventsForDay.length,
@@ -181,30 +196,22 @@ class _CalendarPageState extends State<CalendarPage> {
       },
     );
   }
-  Widget _buildScrollableContent() {
-    if (_selectedDay == null) {
-      return Container();
-    }
-
-    // ✅ CustomScrollView directo sin padding del padre
-    return _buildEventsForSelectedDay();
-  }
 
   Widget _buildFloatingCalendar() {
     return Positioned(
       top: 8.0,
       left: 20.0,
       right: 20.0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Color.fromRGBO(255, 255, 255, 0.7),
-          borderRadius: BorderRadius.circular(16.0),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Color.fromRGBO(255, 255, 255, 0.7),
+            borderRadius: BorderRadius.circular(16.0),
+          ),
           child: TableCalendar(
             locale: 'es_ES',
-            key: _calendarKey, // ✅ AGREGAR esto
+            key: _calendarKey,
             firstDay: DateTime.utc(2020, 1, 1),
             lastDay: DateTime.utc(2030, 12, 31),
             focusedDay: _focusedDay,
@@ -220,13 +227,15 @@ class _CalendarPageState extends State<CalendarPage> {
               }
             },
             onPageChanged: (focusedDay) {
-              print('Mes cambiado: $focusedDay');
+              // LIMPIEZA: Sin múltiples setState
               setState(() => _focusedDay = focusedDay);
-              _preloadEventCounts(); // ✅ CORREGIDO
+              _loadEventCounts();
+
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 _updateCalendarHeight();
-                setState(() {}); // Fuerza rebuild completo
               });
+
+              print('📅 Mes cambiado: $focusedDay');
             },
             daysOfWeekHeight: 20,
             rowHeight: 30,
@@ -273,9 +282,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             calendarBuilders: CalendarBuilders(
-              // ✅ CORREGIDO: Today builder con eventCount
               todayBuilder: (context, day, focusedDay) {
                 final isSelected = isSameDay(_selectedDay, day);
                 final eventCount = _eventCountsCache[DateTime(day.year, day.month, day.day)] ?? 0;
@@ -288,7 +295,7 @@ class _CalendarPageState extends State<CalendarPage> {
                     decoration: BoxDecoration(
                       color: isSelected
                           ? Colors.blue[400]
-                          : (eventCount > 0 ? Colors.orange[300] : Colors.blue[200]), // ✅ CORREGIDO
+                          : (eventCount > 0 ? Colors.orange[300] : Colors.blue[200]),
                       borderRadius: BorderRadius.circular(8.0),
                       border: isSelected ? null : Border.all(color: Colors.blue[600]!, width: 2),
                     ),
@@ -303,11 +310,9 @@ class _CalendarPageState extends State<CalendarPage> {
                   ),
                 );
               },
-
-              // ✅ CORREGIDO: Selected builder con eventCount
               selectedBuilder: (context, day, focusedDay) {
                 if (isSameDay(day, DateTime.now())) {
-                  return null; // Dejar que todayBuilder maneje
+                  return null;
                 }
 
                 final eventCount = _eventCountsCache[DateTime(day.year, day.month, day.day)] ?? 0;
@@ -317,7 +322,7 @@ class _CalendarPageState extends State<CalendarPage> {
                     height: 28,
                     margin: const EdgeInsets.only(bottom: 1),
                     decoration: BoxDecoration(
-                      color: eventCount > 0 ? Colors.purple[300] : Colors.blue[400], // ✅ CORREGIDO
+                      color: eventCount > 0 ? Colors.purple[300] : Colors.blue[400],
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                     alignment: Alignment.center,
@@ -331,18 +336,16 @@ class _CalendarPageState extends State<CalendarPage> {
                   ),
                 );
               },
-
-              // ✅ CORREGIDO: Default builder con eventCount
               defaultBuilder: (context, day, focusedDay) {
                 final eventCount = _eventCountsCache[DateTime(day.year, day.month, day.day)] ?? 0;
-                if (eventCount > 0) { // ✅ CORREGIDO
+                if (eventCount > 0) {
                   return Center(
                     child: Container(
                       width: 28,
                       height: 28,
                       margin: const EdgeInsets.only(bottom: 1),
                       decoration: BoxDecoration(
-                        color: Colors.green[200], // Días con eventos
+                        color: Colors.green[200],
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                       alignment: Alignment.center,
@@ -358,11 +361,9 @@ class _CalendarPageState extends State<CalendarPage> {
                 }
                 return null;
               },
-
-              // ✅ CORREGIDO: Marker builder usando cache
               markerBuilder: (context, date, events) {
                 final eventCount = _eventCountsCache[DateTime(date.year, date.month, date.day)] ?? 0;
-                if (eventCount > 0) { // ✅ CORREGIDO
+                if (eventCount > 0) {
                   return Positioned(
                     left: 0,
                     bottom: 2,
@@ -375,8 +376,7 @@ class _CalendarPageState extends State<CalendarPage> {
                       height: 18,
                       child: Center(
                         child: Text(
-                          eventCount.toString(), // ✅ CORREGIDO
-                          //'${eventCount > 0 ? 68 : 0}',
+                          eventCount.toString(),
                           style: TextStyle(
                             color: Colors.deepPurple[700],
                             fontSize: 11,
@@ -390,9 +390,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 return null;
               },
             ),
-
             eventLoader: (day) {
-              // ✅ CORREGIDO: Simple loader para TableCalendar
               final eventCount = _eventCountsCache[DateTime(day.year, day.month, day.day)] ?? 0;
               return List.generate(eventCount, (index) => 'evento_$index');
             },
@@ -414,9 +412,22 @@ class _CalendarPageState extends State<CalendarPage> {
               CalendarFormat.twoWeeks: '2 Semanas',
               CalendarFormat.week: 'Semana',
             },
-          ),  // CAMBIO: cierra TableCalendar
-        ),    // MANTENER: cierra Padding
-      ),      // MANTENER: cierra Container
-    );        // MANTENER: cierra Positioned
-  }           // MANTENER: cierra método
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final today = DateTime.now();
+    final tomorrow = today.add(const Duration(days: 1));
+
+    if (date.year == today.year && date.month == today.month && date.day == today.day) {
+      return 'hoy';
+    } else if (date.year == tomorrow.year && date.month == tomorrow.month && date.day == tomorrow.day) {
+      return 'mañana';
+    } else {
+      return '${date.day}/${date.month}';
+    }
+  }
 }

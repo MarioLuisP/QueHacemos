@@ -112,9 +112,7 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  // CAMBIO: Método simplificado usando SimpleHomeProvider
   Widget _buildOptimizedEventsList(SimpleHomeProvider provider) {
-    // CAMBIO: Usar provider.events directamente (ya filtrado)
     final limitedEvents = provider.getEventsWithoutDateFilter().take(20).toList();
 
     return CustomScrollView(
@@ -122,29 +120,20 @@ class _ExplorePageState extends State<ExplorePage> {
         parent: AlwaysScrollableScrollPhysics(),
       ),
       slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                final event = limitedEvents[index];
-
-                // CAMBIO: EventCardWidget + altura 237.0
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0), // 👈 separación entre tarjetas
-                  child: SizedBox(
-                    height: 237.0,
-                    child: EventCardWidget(
-                      event: event,
-                      provider: provider,
-                      key: ValueKey(event.id),
-                    ),
-                  ),
-                );
-
-                  },
-              childCount: limitedEvents.length,
-            ),
+        SliverFixedExtentList( // CAMBIO: Directo sin SliverPadding
+          itemExtent: 253.0, // CAMBIO: 237px widget + 12px gap real
+          delegate: SliverChildBuilderDelegate(
+                (context, index) {
+              return Padding( // NUEVO: Gap con Padding
+                padding: const EdgeInsets.only(bottom: 16.0), // NUEVO: Gap real entre tarjetas
+                child: EventCardWidget( // CAMBIO: Sin SizedBox redundant
+                  event: limitedEvents[index],
+                  provider: provider,
+                  key: ValueKey(limitedEvents[index].id),
+                ),
+              );
+            },
+            childCount: limitedEvents.length,
           ),
         ),
       ],

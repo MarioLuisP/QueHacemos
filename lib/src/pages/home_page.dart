@@ -6,17 +6,7 @@ import '../providers/simple_home_provider.dart';
 
 import '../cache/cache_models.dart';
 import '../widgets/cards/event_card_widget.dart';
-/// HomePage LIMPIA que usa cache + filtros optimizados
-// NUEVO: Modelo para items planos
-class FlatItem {
-  final String type; // 'header' o 'event'
-  final String? title; // Para headers
-  final EventCacheItem? event; // Para eventos
 
-  FlatItem.header(this.title) : type = 'header', event = null;
-  FlatItem.event(this.event) : type = 'event', title = null;
-}
-/// Zero complejidad, solo mostrar eventos desde memoria
 class HomePage extends StatefulWidget { // CAMBIO: nombre correcto
   final DateTime? selectedDate;          // NUEVO: parámetro del calendario
   final VoidCallback? onReturnToCalendar; // NUEVO: callback para volver
@@ -114,9 +104,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-
-  /// Lista de eventos agrupados por fecha
-  /// Lista de eventos optimizada con alturas fijas
+  /// Lista de eventos optimizada con máxima eficiencia
   Widget _buildEventsList(SimpleHomeProvider provider) {
     if (provider.events.isEmpty) {
       return const Center(
@@ -139,60 +127,41 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    // ✅ NUEVO: Crear lista plana precalculada
-    final flatItems = _createFlatItems(provider);
+    final sortedDates = provider.getSortedDateKeys(); // NUEVO: Fechas ordenadas
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
       ),
       slivers: [
-        SliverList(
-          delegate: SliverChildBuilderDelegate(
-                (context, index) {
-              final item = flatItems[index];
-
-              if (item.type == 'header') {
-                return SizedBox(
-                  height: 60.0,  // ✅ Altura fija para headers
-                  child: _buildDateHeader(item.title!),
-                );
-              } else {
-                return SizedBox(
-                  height: 237.0,  // ✅ Altura fija para eventos
-                  child: EventCardWidget(
-                    event: item.event!,
+        for (final date in sortedDates) ...[  // NUEVO: Loop por cada fecha
+          // Header del día
+          SliverToBoxAdapter( // NUEVO: Header como sliver separado
+            child: _buildDateHeader(provider.getSectionTitle(date)),
+          ),
+          // Eventos de ese día con máxima eficiencia
+          SliverFixedExtentList( // NUEVO: Lista super eficiente para eventos
+            itemExtent: 249.0, // NUEVO: 237px tarjeta + 12px gap
+            delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                final eventsForDate = provider.groupedEvents[date]!; // NUEVO: Eventos de esta fecha
+                return Padding( // NUEVO: Gap real entre tarjetas
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: EventCardWidget( // CAMBIO: Sin SizedBox redundante
+                    event: eventsForDate[index],
                     provider: provider,
-                    key: ValueKey(item.event!.id),  // ✅ Key estable
+                    key: ValueKey(eventsForDate[index].id),
                   ),
                 );
-              }
-            },
-            childCount: flatItems.length,
+              },
+              childCount: provider.groupedEvents[date]?.length ?? 0, // NUEVO: Count específico por fecha
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
 
-  /// ✅ NUEVO: Crear lista plana precalculada (O(n) una sola vez)
-  List<FlatItem> _createFlatItems(SimpleHomeProvider provider) {
-    final flatItems = <FlatItem>[];
-    final sortedDates = provider.getSortedDateKeys();
-
-    for (final date in sortedDates) {
-      // Agregar header
-      flatItems.add(FlatItem.header(provider.getSectionTitle(date)));
-
-      // Agregar eventos de esta fecha
-      final eventsForDate = provider.groupedEvents[date] ?? [];
-      for (final event in eventsForDate) {
-        flatItems.add(FlatItem.event(event));
-      }
-    }
-
-    return flatItems;
-  }
 
   /// Header de fecha
   Widget _buildDateHeader(String title) {

@@ -19,7 +19,9 @@ class EventCardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
 
-    return Container( // NUEVO: Container directo, elimina Card
+    return ConstrainedBox( // NUEVO: Wrapper para altura fija
+        constraints: const BoxConstraints.tightFor(height: 237.0), // NUEVO: Altura fija 237px
+        child: Container( // CAMBIO: Ahora es child del ConstrainedBox
       margin: const EdgeInsets.symmetric( // CAMBIO: Movido de Card a Container
         horizontal: AppDimens.paddingMedium,
         vertical: AppDimens.paddingSmall,
@@ -183,6 +185,7 @@ class EventCardWidget extends StatelessWidget {
           ),
         ),
       ),
+        ),
     );
 
   }

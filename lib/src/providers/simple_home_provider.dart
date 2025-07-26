@@ -274,13 +274,12 @@ class SimpleHomeProvider with ChangeNotifier {
       return dateString;
     }
   }
-  /// NUEVO: Obtener eventos para una fecha específica (para calendario)
   Future<List<EventCacheItem>> getEventsForDate(DateTime date) async {
     if (!_cacheService.isLoaded) {
       await initialize();
     }
 
-    final dateString = "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}"; // NUEVO: Formato yyyy-MM-dd
+    final dateString = "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
     return _cacheService.getEventsForDate(dateString);
   }
 
