@@ -19,12 +19,10 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   void initState() {
     super.initState();
-    // CAMBIO: Obtener provider del context y inicializar
-    _provider = Provider.of<SimpleHomeProvider>(context, listen: false); // CAMBIO
-    //_provider.initialize();
+    _provider = Provider.of<SimpleHomeProvider>(context, listen: false);
 
     _searchController.addListener(() {
-      _provider.setSearchQuery(_searchController.text); // CAMBIO: método directo
+      _provider.setSearchQuery(_searchController.text);
     });
   }
 
@@ -103,7 +101,7 @@ class _ExplorePageState extends State<ExplorePage> {
                     ? Center(
                   child: Text('Error: ${provider.errorMessage}'),
                 )
-                    : provider.events.isEmpty
+                    : provider.getEventsWithoutDateFilter().isEmpty
                     ? const Center(child: Text('No hay eventos.'))
                     : _buildOptimizedEventsList(provider), // CAMBIO: pasar provider
               ),
@@ -117,7 +115,7 @@ class _ExplorePageState extends State<ExplorePage> {
   // CAMBIO: Método simplificado usando SimpleHomeProvider
   Widget _buildOptimizedEventsList(SimpleHomeProvider provider) {
     // CAMBIO: Usar provider.events directamente (ya filtrado)
-    final limitedEvents = provider.events.take(20).toList(); // CAMBIO
+    final limitedEvents = provider.getEventsWithoutDateFilter().take(20).toList();
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(
@@ -125,22 +123,26 @@ class _ExplorePageState extends State<ExplorePage> {
       ),
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.only(top: 8.0),
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
                   (context, index) {
                 final event = limitedEvents[index];
 
                 // CAMBIO: EventCardWidget + altura 237.0
-                return SizedBox(
-                  height: 237.0,
-                  child: EventCardWidget(
-                    event: event,
-                    provider: provider, // NUEVO: agregar parámetro provider
-                    key: ValueKey(event.id),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0), // 👈 separación entre tarjetas
+                  child: SizedBox(
+                    height: 237.0,
+                    child: EventCardWidget(
+                      event: event,
+                      provider: provider,
+                      key: ValueKey(event.id),
+                    ),
                   ),
                 );
-              },
+
+                  },
               childCount: limitedEvents.length,
             ),
           ),

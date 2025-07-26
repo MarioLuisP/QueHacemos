@@ -33,7 +33,7 @@ class HomePage extends StatefulWidget { // CAMBIO: nombre correcto
 
 class _HomePageState extends State<HomePage> {
   late SimpleHomeProvider _provider;
-  final TextEditingController _searchController = TextEditingController();
+
 
   @override
   void initState() {
@@ -41,19 +41,11 @@ class _HomePageState extends State<HomePage> {
     _provider = context.read<SimpleHomeProvider>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      //_provider.initialize();
-      // NUEVO: Si viene fecha del calendario, filtrar
-      if (widget.selectedDate != null) {
-        _provider.setSelectedDate(widget.selectedDate!);
-      }
+      // Siempre sincronizar selectedDate con provider
+      _provider.setSelectedDate(widget.selectedDate);
     });
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +98,7 @@ class _HomePageState extends State<HomePage> {
           return Column(
             children: [
               // Barra de búsqueda + filtros
-              _buildSearchAndFilters(provider),
+
 
               // Lista de eventos
               Expanded(
@@ -122,65 +114,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Barra de búsqueda y filtros básicos
-  Widget _buildSearchAndFilters(SimpleHomeProvider provider) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: Colors.grey[100],
-      child: Column(
-        children: [
-          // Búsqueda
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Buscar eventos...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  _searchController.clear();
-                  provider.setSearchQuery('');
-                },
-              )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onChanged: (query) => provider.setSearchQuery(query),
-          ),
-
-          const SizedBox(height: 12),
-
-
-
-          // Info de filtros aplicados
-          if (provider.appliedFiltersText != 'Sin filtros')
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Filtros: ${provider.appliedFiltersText}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.blue[700],
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Botón de filtro rápido
-  Widget _buildQuickFilter(String label, VoidCallback onTap) {
-    return ActionChip(
-      label: Text(label),
-      onPressed: onTap,
-      backgroundColor: Colors.blue[50],
-    );
-  }
 
   /// Lista de eventos agrupados por fecha
   /// Lista de eventos optimizada con alturas fijas

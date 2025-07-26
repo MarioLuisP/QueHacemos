@@ -82,6 +82,14 @@ class SimpleHomeProvider with ChangeNotifier {
       print('❌ Error en SimpleHomeProvider.initialize(): $e');
     }
   }
+  /// Obtener eventos con filtros de categoría y búsqueda, ignorando fecha
+  List<EventCacheItem> getEventsWithoutDateFilter() {
+    final filtersWithoutDate = _currentFilters.copyWith(
+      selectedDate: null,
+      clearDate: true,
+    );
+    return _filterService.applyFilters(filtersWithoutDate).events;
+  }
 
   /// NUEVO: Cargar preferencias de categorías desde SharedPreferences
   Future<void> _loadAllPreferences() async { // NUEVO
@@ -313,9 +321,13 @@ class SimpleHomeProvider with ChangeNotifier {
 
   // === MÉTODOS PRIVADOS ===
 
-  /// Aplicar filtros actuales
   void _applyCurrentFilters() {
-    _filteredEvents = _filterService.applyFilters(_currentFilters);
+    // Filtros para HomePage: categorías + fecha, SIN búsqueda
+    final homeFilters = _currentFilters.copyWith(
+      searchQuery: '',  // String vacío para ignorar búsqueda
+    );
+
+    _filteredEvents = _filterService.applyFilters(homeFilters);
     notifyListeners();
 
     print('🔄 Filtros aplicados: ${_filteredEvents.totalCount} eventos');
