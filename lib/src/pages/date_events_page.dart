@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/simple_home_provider.dart';
-import 'package:quehacemos_cba/src/utils/colors.dart';
 import '../widgets/cards/event_card_widget.dart';
+import '../widgets/chips/filter_chips_widget.dart';
 import '../cache/cache_models.dart';
 import '../navigation/bottom_nav.dart';
 
@@ -21,7 +21,7 @@ class DateEventsPage extends StatefulWidget {
 class _DateEventsPageState extends State<DateEventsPage> {
   late SimpleHomeProvider _provider;
 
-  // NUEVO: Filtros locales independientes del provider global
+  // NUEVO: Filtros locales independientes (reemplaza todo el sistema anterior)
   Set<String> _localActiveCategories = {};
 
   @override
@@ -38,6 +38,24 @@ class _DateEventsPageState extends State<DateEventsPage> {
   // NUEVO: Limpiar filtros globales para mostrar TODOS los eventos del día
   Future<void> _clearGlobalFilters() async {
     await _provider.clearActiveFilterCategories();
+  }
+
+  // NUEVO: Toggle filtro local
+  void _toggleLocalCategory(String category) {
+    setState(() {
+      if (_localActiveCategories.contains(category)) {
+        _localActiveCategories.remove(category);
+      } else {
+        _localActiveCategories.add(category);
+      }
+    });
+  }
+
+  // NUEVO: Limpiar filtros locales
+  void _clearLocalCategories() {
+    setState(() {
+      _localActiveCategories.clear();
+    });
   }
 
   @override
@@ -63,10 +81,16 @@ class _DateEventsPageState extends State<DateEventsPage> {
             ),
             body: Column(
               children: [
-                // MODIFICADO: FilterChips que manejan filtros locales
+                // NUEVO: Usar FilterChipsRow genérico (reemplaza _buildLocalFilterChips)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-                  child: _buildLocalFilterChips(provider),
+                  child: FilterChipsRow(
+                    availableCategories: provider.selectedCategories.toList(),
+                    activeCategories: _localActiveCategories,
+                    onToggleCategory: _toggleLocalCategory,
+                    onClearAll: _clearLocalCategories,
+                    currentTheme: provider.theme,
+                  ),
                 ),
                 const SizedBox(height: 8.0),
                 Expanded(
@@ -85,148 +109,7 @@ class _DateEventsPageState extends State<DateEventsPage> {
     );
   }
 
-  // NUEVO: FilterChips locales que replican exactamente el estilo de explore
-  Widget _buildLocalFilterChips(SimpleHomeProvider provider) {
-    final currentCategories = provider.selectedCategories.isEmpty
-        ? ['musica', 'teatro', 'cine', 'standup'] // Default como en explore
-        : provider.selectedCategories.toList();
-
-    return Row(
-      children: [
-        // Botón Refresh / Limpiar Filtros (idéntico al de explore)
-        Padding(
-          padding: const EdgeInsets.only(right: 8.0),
-          child: SizedBox(
-            height: 30,
-            width: 40,
-            child: Material(
-              color: Theme.of(context).colorScheme.surfaceVariant,
-              borderRadius: BorderRadius.circular(24),
-              elevation: 2,
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _localActiveCategories.clear();
-                  });
-                },
-                borderRadius: BorderRadius.circular(24),
-                child: Icon(
-                  Icons.refresh,
-                  size: 20,
-                  color: Theme.of(context).iconTheme.color,
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // Chips scrolleables (idéntico al de explore)
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: currentCategories.map((category) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 4.0),
-                  child: _buildLocalEventChip(category),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // NUEVO: EventChip local que replica el comportamiento exacto
-  Widget _buildLocalEventChip(String category) {
-    final provider = Provider.of<SimpleHomeProvider>(context);
-    final isSelected = _localActiveCategories.contains(category);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final theme = Theme.of(context).brightness == Brightness.dark ? 'dark' : 'normal';
-
-    final colors = EventCardColorPalette.getOptimizedColors(theme, category);
-    final adjustedColor = colors.base;
-    final inactiveBackground = isDark ? Colors.black : Colors.white;
-    final inactiveTextColor = isDark ? Colors.white : Colors.black;
-    final inactiveBorderColor = inactiveTextColor;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
-      height: 28.0, //
-      decoration: BoxDecoration(
-        color: isSelected ? colors.base : inactiveBackground,
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(
-          color: isSelected ? colors.base : inactiveBackground,
-          width: 1.0,
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12.0),
-        onTap: () {
-          setState(() {
-            if (isSelected) {
-              _localActiveCategories.remove(category);
-            } else {
-              _localActiveCategories.add(category);
-            }
-          });
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isSelected)
-                const Padding(
-                  padding: EdgeInsets.only(right: 4.0),
-                  child: Icon(
-                    Icons.check,
-                    size: 16,
-                    color: Colors.black,
-                  ),
-                ),
-              Text(
-                _getChipLabel(category),
-                style: TextStyle(
-                  color: isSelected ? Colors.black : inactiveTextColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-
-
-  // NUEVO: Labels para chips (mismo mapeo que explore)
-  String _getChipLabel(String category) {
-    const chipLabels = {
-      'musica': 'Música',
-      'teatro': 'Teatro',
-      'standup': 'StandUp',
-      'arte': 'Arte',
-      'cine': 'Cine',
-      'mic': 'Mic',
-      'cursos': 'Cursos',
-      'ferias': 'Ferias',
-      'calle': 'Calle',
-      'redes': 'Redes',
-      'ninos': 'Niños',
-      'danza': 'Danza',
-    };
-    return chipLabels[category] ?? category;
-  }
-
-  // MODIFICADO: Aplicar filtros locales en lugar de globales
+  // MODIFICADO: Simplificado - aplicar filtros locales
   Future<List<EventCacheItem>> _getFilteredEventsForDate(SimpleHomeProvider provider) async {
     // SIEMPRE obtener TODOS los eventos del día
     final allEventsForDate = await provider.getEventsForDate(widget.selectedDate);
@@ -267,11 +150,7 @@ class _DateEventsPageState extends State<DateEventsPage> {
                 if (hasLocalFilters) ...[
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _localActiveCategories.clear();
-                      });
-                    },
+                    onPressed: _clearLocalCategories,
                     child: const Text('Ver todos los eventos'),
                   ),
                 ],
@@ -283,7 +162,7 @@ class _DateEventsPageState extends State<DateEventsPage> {
         return CustomScrollView(
           physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
           slivers: [
-            // NUEVO: Header con información de filtros
+            // Header con información de filtros (mantenido igual)
             if (_localActiveCategories.isNotEmpty)
               SliverToBoxAdapter(
                 child: Container(
@@ -371,5 +250,4 @@ class _DateEventsPageState extends State<DateEventsPage> {
       return '${weekdays[date.weekday]} ${date.day} ${months[date.month]}';
     }
   }
-
 }

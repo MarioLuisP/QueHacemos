@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/simple_home_provider.dart';
-
+import '../widgets/chips/filter_chips_widget.dart';
 import '../cache/cache_models.dart';
 import '../widgets/cards/event_card_widget.dart';
 
@@ -87,7 +87,29 @@ class _HomePageState extends State<HomePage> {
           // Success state - mostrar eventos
           return Column(
             children: [
-              // Barra de búsqueda + filtros
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.grey.shade300,
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: FilterChipsRow(
+                  availableCategories: provider.selectedCategories.toList(),
+                  activeCategories: provider.activeFilterCategories,
+                  onToggleCategory: (category) async {
+                    await provider.toggleFilterCategory(category);
+                  },
+                  onClearAll: () async {
+                    await provider.clearActiveFilterCategories();
+                  },
+                  currentTheme: provider.theme,
+                ),
+              ),
 
 
               // Lista de eventos

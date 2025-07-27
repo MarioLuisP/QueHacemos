@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quehacemos_cba/src/providers/simple_home_provider.dart'; // CAMBIO: nuevo provider
+import 'package:quehacemos_cba/src/providers/simple_home_provider.dart';
 import 'package:quehacemos_cba/src/widgets/chips/filter_chips_widget.dart';
-import 'package:quehacemos_cba/src/widgets/cards/event_card_widget.dart'; // CAMBIO: nueva tarjeta
-import '../widgets/cards/event_card_widget.dart'; // NUEVO: widget actualizado
+import 'package:quehacemos_cba/src/widgets/cards/event_card_widget.dart';
+import 'package:quehacemos_cba/src/cache/cache_models.dart';
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -13,8 +13,11 @@ class ExplorePage extends StatefulWidget {
 }
 
 class _ExplorePageState extends State<ExplorePage> {
-  late SimpleHomeProvider _provider; // CAMBIO: SimpleHomeProvider
+  late SimpleHomeProvider _provider;
   final TextEditingController _searchController = TextEditingController();
+
+  // NUEVO: Estado local para filtros (temporal, no persiste)
+  Set<String> _localActiveCategories = {};
 
   @override
   void initState() {
@@ -22,20 +25,68 @@ class _ExplorePageState extends State<ExplorePage> {
     _provider = Provider.of<SimpleHomeProvider>(context, listen: false);
 
     _searchController.addListener(() {
-      _provider.setSearchQuery(_searchController.text);
+      // CAMBIO: No afectar provider global, solo rebuild local
+      setState(() {});
     });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    // CAMBIO: No dispose del provider (es singleton)
     super.dispose();
+  }
+
+  // NUEVO: Aplicar filtros localmente sin afectar provider
+  List<EventCacheItem> _getFilteredEvents() {
+    final allEvents = _provider.getEventsWithoutDateFilter();
+
+    if (_searchController.text.isEmpty && _localActiveCategories.isEmpty) {
+      return allEvents.take(20).toList();
+    }
+
+    // Filtrar manualmente por búsqueda y categorías
+    var filtered = allEvents;
+
+    // Filtro por búsqueda
+    if (_searchController.text.isNotEmpty) {
+      final query = _searchController.text.toLowerCase();
+      filtered = filtered.where((event) =>
+      event.title.toLowerCase().contains(query) ||
+          event.location.toLowerCase().contains(query) ||
+          event.district.toLowerCase().contains(query)
+      ).toList();
+    }
+
+    // Filtro por categorías
+    if (_localActiveCategories.isNotEmpty) {
+      filtered = filtered.where((event) =>
+          _localActiveCategories.contains(event.type.toLowerCase())
+      ).toList();
+    }
+
+    return filtered.take(20).toList();
+  }
+
+  // NUEVO: Toggle filtro local
+  void _toggleLocalCategory(String category) {
+    setState(() {
+      if (_localActiveCategories.contains(category)) {
+        _localActiveCategories.remove(category);
+      } else {
+        _localActiveCategories.add(category);
+      }
+    });
+  }
+
+  // NUEVO: Limpiar filtros locales
+  void _clearLocalCategories() {
+    setState(() {
+      _localActiveCategories.clear();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    // CAMBIO: Consumer simple en lugar de MultiProvider
     return Consumer<SimpleHomeProvider>(
       builder: (context, provider, _) {
         return Scaffold(
@@ -55,12 +106,12 @@ class _ExplorePageState extends State<ExplorePage> {
                   decoration: InputDecoration(
                     hintText: 'Busca eventos (ej. payasos)',
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty // NUEVO: botón clear
+                    suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
                       icon: const Icon(Icons.clear),
                       onPressed: () {
                         _searchController.clear();
-                        provider.setSearchQuery(''); // NUEVO: limpiar búsqueda
+                        setState(() {}); // CAMBIO: Solo rebuild local
                       },
                     )
                         : null,
@@ -85,15 +136,21 @@ class _ExplorePageState extends State<ExplorePage> {
                 ),
               ),
 
-              // CAMBIO: FilterChipsRow sin parámetros (ya migrado)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0),
-                child: FilterChipsRow(), // CAMBIO: sin parámetros
+              // CAMBIO: FilterChipsRow con estado local
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: FilterChipsRow(
+                  availableCategories: provider.selectedCategories.toList(),
+                  activeCategories: _localActiveCategories,
+                  onToggleCategory: _toggleLocalCategory,
+                  onClearAll: _clearLocalCategories,
+                  currentTheme: provider.theme,
+                ),
               ),
 
               const SizedBox(height: 8.0),
 
-              // CAMBIO: Lista simplificada usando SimpleHomeProvider
+              // Lista con filtros locales aplicados
               Expanded(
                 child: provider.isLoading
                     ? const Center(child: CircularProgressIndicator())
@@ -101,9 +158,7 @@ class _ExplorePageState extends State<ExplorePage> {
                     ? Center(
                   child: Text('Error: ${provider.errorMessage}'),
                 )
-                    : provider.getEventsWithoutDateFilter().isEmpty
-                    ? const Center(child: Text('No hay eventos.'))
-                    : _buildOptimizedEventsList(provider), // CAMBIO: pasar provider
+                    : _buildOptimizedEventsList(),
               ),
             ],
           ),
@@ -112,28 +167,32 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  Widget _buildOptimizedEventsList(SimpleHomeProvider provider) {
-    final limitedEvents = provider.getEventsWithoutDateFilter().take(20).toList();
+  Widget _buildOptimizedEventsList() {
+    final filteredEvents = _getFilteredEvents(); // CAMBIO: Usar filtros locales
+
+    if (filteredEvents.isEmpty) {
+      return const Center(child: Text('No hay eventos.'));
+    }
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
       ),
       slivers: [
-        SliverFixedExtentList( // CAMBIO: Directo sin SliverPadding
-          itemExtent: 253.0, // CAMBIO: 237px widget + 12px gap real
+        SliverFixedExtentList(
+          itemExtent: 253.0,
           delegate: SliverChildBuilderDelegate(
                 (context, index) {
-              return Padding( // NUEVO: Gap con Padding
-                padding: const EdgeInsets.only(bottom: 16.0), // NUEVO: Gap real entre tarjetas
-                child: EventCardWidget( // CAMBIO: Sin SizedBox redundant
-                  event: limitedEvents[index],
-                  provider: provider,
-                  key: ValueKey(limitedEvents[index].id),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: EventCardWidget(
+                  event: filteredEvents[index],
+                  provider: _provider, // CAMBIO: Usar _provider directo
+                  key: ValueKey(filteredEvents[index].id),
                 ),
               );
             },
-            childCount: limitedEvents.length,
+            childCount: filteredEvents.length,
           ),
         ),
       ],
