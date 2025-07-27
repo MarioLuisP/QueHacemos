@@ -21,23 +21,13 @@ class DateEventsPage extends StatefulWidget {
 class _DateEventsPageState extends State<DateEventsPage> {
   late SimpleHomeProvider _provider;
 
-  // NUEVO: Filtros locales independientes (reemplaza todo el sistema anterior)
+  // NUEVO: Filtros locales independientes
   Set<String> _localActiveCategories = {};
 
   @override
   void initState() {
     super.initState();
     _provider = Provider.of<SimpleHomeProvider>(context, listen: false);
-
-    // NUEVO: Limpiar filtros globales al entrar
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _clearGlobalFilters();
-    });
-  }
-
-  // NUEVO: Limpiar filtros globales para mostrar TODOS los eventos del día
-  Future<void> _clearGlobalFilters() async {
-    await _provider.clearActiveFilterCategories();
   }
 
   // NUEVO: Toggle filtro local
@@ -81,7 +71,7 @@ class _DateEventsPageState extends State<DateEventsPage> {
             ),
             body: Column(
               children: [
-                // NUEVO: Usar FilterChipsRow genérico (reemplaza _buildLocalFilterChips)
+                // FilterChipsRow genérico
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                   child: FilterChipsRow(
@@ -109,10 +99,13 @@ class _DateEventsPageState extends State<DateEventsPage> {
     );
   }
 
-  // MODIFICADO: Simplificado - aplicar filtros locales
-  Future<List<EventCacheItem>> _getFilteredEventsForDate(SimpleHomeProvider provider) async {
-    // SIEMPRE obtener TODOS los eventos del día
-    final allEventsForDate = await provider.getEventsForDate(widget.selectedDate);
+  // Filtrar eventos por fecha y categorías locales
+  List<EventCacheItem> _getFilteredEventsForDate(SimpleHomeProvider provider) {
+    // CAMBIO: Usar provider.events con themes dinámicos
+    final dateString = "${widget.selectedDate.year.toString().padLeft(4, '0')}-${widget.selectedDate.month.toString().padLeft(2, '0')}-${widget.selectedDate.day.toString().padLeft(2, '0')}";
+    final allEventsForDate = provider.events.where((event) =>
+        event.date.startsWith(dateString)
+    ).toList();
 
     // Aplicar filtros LOCALES (no globales)
     if (_localActiveCategories.isEmpty) {
@@ -125,84 +118,77 @@ class _DateEventsPageState extends State<DateEventsPage> {
   }
 
   Widget _buildDateEventsList(SimpleHomeProvider provider) {
-    return FutureBuilder<List<EventCacheItem>>(
-      future: _getFilteredEventsForDate(provider),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    // CAMBIO: Llamada directa sincrónica
+    final eventsForDate = _getFilteredEventsForDate(provider);
 
-        final eventsForDate = snapshot.data ?? [];
-
-        if (eventsForDate.isEmpty) {
-          final hasLocalFilters = _localActiveCategories.isNotEmpty;
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  hasLocalFilters
-                      ? 'No hay eventos de las categorías seleccionadas para esta fecha.'
-                      : 'No hay eventos para esta fecha.',
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
-                  textAlign: TextAlign.center,
-                ),
-                if (hasLocalFilters) ...[
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _clearLocalCategories,
-                    child: const Text('Ver todos los eventos'),
-                  ),
-                ],
-              ],
+    if (eventsForDate.isEmpty) {
+      final hasLocalFilters = _localActiveCategories.isNotEmpty;
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              hasLocalFilters
+                  ? 'No hay eventos de las categorías seleccionadas para esta fecha.'
+                  : 'No hay eventos para esta fecha.',
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              textAlign: TextAlign.center,
             ),
-          );
-        }
-
-        return CustomScrollView(
-          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-          slivers: [
-            // Header con información de filtros (mantenido igual)
-            if (_localActiveCategories.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  padding: const EdgeInsets.all(12.0),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(8.0),
-                    border: Border.all(color: Colors.blue[200]!),
-                  ),
-                  child: Text(
-                    'Mostrando ${eventsForDate.length} eventos de ${_localActiveCategories.length} categoría${_localActiveCategories.length > 1 ? 's' : ''} seleccionada${_localActiveCategories.length > 1 ? 's' : ''}',
-                    style: TextStyle(
-                      color: Colors.blue[800],
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+            if (hasLocalFilters) ...[
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _clearLocalCategories,
+                child: const Text('Ver todos los eventos'),
               ),
-
-            SliverFixedExtentList(
-              itemExtent: 253.0,
-              delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: EventCardWidget(
-                      event: eventsForDate[index],
-                      provider: provider,
-                      key: ValueKey(eventsForDate[index].id),
-                    ),
-                  );
-                },
-                childCount: eventsForDate.length,
-              ),
-            ),
+            ],
           ],
-        );
-      },
+        ),
+      );
+    }
+
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        // Header con información de filtros
+        if (_localActiveCategories.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Text(
+                'Mostrando ${eventsForDate.length} eventos de ${_localActiveCategories.length} categoría${_localActiveCategories.length > 1 ? 's' : ''} seleccionada${_localActiveCategories.length > 1 ? 's' : ''}',
+                style: TextStyle(
+                  color: Colors.blue[800],
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+
+        // Lista de eventos
+        SliverFixedExtentList(
+          itemExtent: 253.0,
+          delegate: SliverChildBuilderDelegate(
+                (context, index) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: EventCardWidget(
+                  event: eventsForDate[index],
+                  provider: provider,
+                  key: ValueKey(eventsForDate[index].id),
+                ),
+              );
+            },
+            childCount: eventsForDate.length,
+          ),
+        ),
+      ],
     );
   }
 

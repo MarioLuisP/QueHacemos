@@ -81,21 +81,20 @@ class _CalendarPageState extends State<CalendarPage> {
     final eventCount = _eventCountsCache[DateTime(selectedDay.year, selectedDay.month, selectedDay.day)] ?? 0;
 
     if (eventCount > 0) {
-      // Navegación directa - NO actualizar UI local
+      // REMOVIDO: setState antes de navegación
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => DateEventsPage(selectedDate: selectedDay),
         ),
       ).then((returnedDate) {
-        if (returnedDate != null && mounted) {  // ← Este check
+        if (returnedDate != null && mounted) {
           setState(() {
             _selectedDay = returnedDate;
             _focusedDay = returnedDate;
           });
         }
       });
-
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -128,7 +127,7 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
           body: Stack(
             children: [
-              _buildScrollableContent(),
+              _buildScrollableContent(provider), // CAMBIO: Pasar provider como parámetro
               _buildFloatingCalendar(),
             ],
           ),
@@ -138,62 +137,62 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   // LIMPIEZA: Contenido simplificado sin FutureBuilder anidado
-  Widget _buildScrollableContent() {
+  Widget _buildScrollableContent(SimpleHomeProvider provider) { // CAMBIO: Recibir provider como parámetro
     if (_selectedDay == null) return Container();
 
-    // DIRECTO: Obtener eventos sincrónicamente del provider ya inicializado
-    return FutureBuilder<List<EventCacheItem>>(
-      future: _provider.getEventsForDate(_selectedDay!),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    // REMOVIDO: Consumer anidado innecesario
+    final dateString = "${_selectedDay!.year.toString().padLeft(4, '0')}-${_selectedDay!.month.toString().padLeft(2, '0')}-${_selectedDay!.day.toString().padLeft(2, '0')}";
+    final eventsForDay = provider.events.where((event) =>
+        event.date.startsWith(dateString)
+    ).toList();
 
-        final eventsForDay = snapshot.data ?? [];
+    // NUEVO DEBUG
+    print('📅 Calendar - dateString: $dateString');
+    print('📅 Calendar - provider.events.length: ${provider.events.length}');
+    print('📅 Calendar - fechas disponibles: ${provider.events.map((e) => e.date).toList()}');
+    print('📅 Calendar - eventsForDay.length: ${eventsForDay.length}');
 
-        if (eventsForDay.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                'No hay eventos para esta fecha.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-            ),
-          );
-        }
-
-        return CustomScrollView(
-          physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
+    if (eventsForDay.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'No hay eventos para esta fecha.',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
-          slivers: [
-            SliverToBoxAdapter(
-              child: SizedBox(height: _calendarHeight + 24.0),
+        ),
+      );
+    }
+
+    return CustomScrollView( // REMOVIDO: Consumer wrapper
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      slivers: [
+        SliverToBoxAdapter(
+          child: SizedBox(height: _calendarHeight + 24.0),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.only(left: 0.0, right: 0.0),
+          sliver: SliverFixedExtentList(
+            itemExtent: 249.0,
+            delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                final event = eventsForDay[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: EventCardWidget(
+                    event: event,
+                    provider: provider, // CAMBIO: usar provider del parámetro
+                    key: ValueKey(event.id),
+                  ),
+                );
+              },
+              childCount: eventsForDay.length,
             ),
-            SliverPadding(
-              padding: const EdgeInsets.only(left: 0.0, right: 0.0),
-              sliver: SliverFixedExtentList(
-                itemExtent: 249.0,
-                delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                    final event = eventsForDay[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12.0),
-                      child: EventCardWidget(
-                        event: event,
-                        provider: _provider,
-                        key: ValueKey(event.id),
-                      ),
-                    );
-                  },
-                  childCount: eventsForDay.length,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 

@@ -87,6 +87,7 @@ class _HomePageState extends State<HomePage> {
           // Success state - mostrar eventos
           return Column(
             children: [
+              /*
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
@@ -110,7 +111,7 @@ class _HomePageState extends State<HomePage> {
                   currentTheme: provider.theme,
                 ),
               ),
-
+*/
 
               // Lista de eventos
               Expanded(
