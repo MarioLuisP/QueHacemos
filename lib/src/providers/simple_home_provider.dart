@@ -23,6 +23,7 @@ class SimpleHomeProvider with ChangeNotifier {
   // NUEVO: Propiedades para filtros de categorías
   Set<String> _selectedCategories = {}; // NUEVO: categorías habilitadas en Settings
   String _theme = 'normal'; // NUEVO: Tema actual de la app
+  DateTime? _lastSelectedDate; // NUEVO: Para persistencia de Calendar
 
   // NUEVO: Constructor aquí
   SimpleHomeProvider() {
@@ -47,6 +48,7 @@ class SimpleHomeProvider with ChangeNotifier {
   // NUEVO: Getters para filtros de categorías
   Set<String> get selectedCategories => _selectedCategories; // NUEVO
   String get theme => _theme;
+  DateTime? get lastSelectedDate => _lastSelectedDate;
 
   /// Inicializar provider (cargar cache + preferencias + aplicar filtros) // CAMBIO: comentario actualizado
   Future<void> initialize() async {
@@ -172,6 +174,11 @@ class SimpleHomeProvider with ChangeNotifier {
       print('🎨 Tema cambiado a: $theme');
     }
   }
+  /// NUEVO: Persistir día seleccionado para Calendar
+  void setLastSelectedDate(DateTime date) {
+    _lastSelectedDate = date;
+  }
+
   /// Cambiar fecha seleccionada
   void setSelectedDate(DateTime? date) {
     print('📅 Cambiando fecha: $date');

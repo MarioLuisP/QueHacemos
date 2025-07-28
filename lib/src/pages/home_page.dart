@@ -202,21 +202,4 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Tarjeta de evento usando FastEventCard
-  Widget _buildEventTile(EventCacheItem event, SimpleHomeProvider provider) {
-    return EventCardWidget(
-      event: event,
-      provider: provider,
-    );
-  }
-
-  /// Formatear hora del evento
-  String _formatEventTime(String dateString) {
-    try {
-      final date = DateTime.parse(dateString);
-      return '${date.hour}:${date.minute.toString().padLeft(2, '0')} hs';
-    } catch (e) {
-      return dateString;
-    }
-  }
 }
