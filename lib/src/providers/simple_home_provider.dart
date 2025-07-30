@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../cache/event_cache_service.dart';
-import '../cache/memory_filter_service.dart';
 import '../cache/cache_models.dart';
 import '../utils/colors.dart';
 import '../sync/sync_service.dart';
@@ -12,7 +11,6 @@ import '../sync/sync_service.dart';
 /// Responsabilidad única: manejar estado UI + filtros sobre cache
 class SimpleHomeProvider with ChangeNotifier {
   final EventCacheService _cacheService = EventCacheService();
-  final MemoryFilterService _filterService = MemoryFilterService();
 
   // Estado simple
   bool _isLoading = false;
@@ -92,7 +90,7 @@ class SimpleHomeProvider with ChangeNotifier {
       clearDate: true,
     );
 
-    final result = _filterService.applyFilters(filtersWithoutDate).events;
+    final result = _cacheService.applyFilters(filtersWithoutDate).events;
     print('🐛 DEBUG - Eventos devueltos: ${result.length}');
 
     return result;
@@ -229,12 +227,12 @@ class SimpleHomeProvider with ChangeNotifier {
 
   /// Obtener título de sección para fecha
   String getSectionTitle(String dateKey) {
-    return _filterService.getSectionTitle(dateKey);
+    return _cacheService.getSectionTitle(dateKey);
   }
 
   /// Obtener fechas ordenadas (hoy primero)
   List<String> getSortedDateKeys() {
-    return _filterService.getSortedDateKeys(_filteredEvents.groupedByDate);
+    return _cacheService.getSortedDateKeys(_filteredEvents.groupedByDate);
   }
 
   /// Obtener categoría con emoji (para FastEventCard)
@@ -315,7 +313,7 @@ class SimpleHomeProvider with ChangeNotifier {
 
     print('🐛 ANTES FILTER - globalFilters: ${globalFilters.description}');
 
-    _filteredEvents = _filterService.applyFilters(globalFilters);
+    _filteredEvents = _cacheService.applyFilters(globalFilters);
 
     print('🐛 DESPUÉS FILTER - _filteredEvents.totalCount: ${_filteredEvents.totalCount}');
 

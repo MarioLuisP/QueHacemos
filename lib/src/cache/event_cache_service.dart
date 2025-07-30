@@ -6,6 +6,7 @@ import '../data/repositories/event_repository.dart';
 
 /// Servicio de cache en memoria - Corazón del sistema
 /// Maneja 203KB de eventos para scroll 90Hz
+/// CONSOLIDADO: Incluye funcionalidades migradas desde MemoryFilterService
 class EventCacheService {
   static final EventCacheService _instance = EventCacheService._internal();
   factory EventCacheService() => _instance;
@@ -15,9 +16,11 @@ class EventCacheService {
   List<EventCacheItem> _cache = [];
   bool _isLoaded = false;
   DateTime? _lastLoadTime;
-  // NUEVO: Estructuras auxiliares para lookup O(1)
+
+  // Estructuras auxiliares para lookup O(1)
   Map<String, List<EventCacheItem>> _eventsByDate = {};  // "2025-07-23" → [events]
   Map<String, int> _eventCountsByDate = {};              // "2025-07-23" → count
+
   // Getters públicos
   List<EventCacheItem> get allEvents => List.unmodifiable(_cache);
   bool get isLoaded => _isLoaded;
@@ -61,38 +64,39 @@ class EventCacheService {
     }
   }
 
-  /// NUEVO: Precalcular agrupaciones para lookup O(1)
+  /// Precalcular agrupaciones para lookup O(1)
   void _precalculateGroups() {
     print('🔢 Precalculando agrupaciones...');
 
-    // NUEVO: Limpiar estructuras anteriores
+    // Limpiar estructuras anteriores
     _eventsByDate.clear();
     _eventCountsByDate.clear();
 
-    // NUEVO: Agrupar eventos por fecha
+    // Agrupar eventos por fecha
     for (final event in _cache) {
       final dateKey = event.date.length >= 10
-          ? event.date.substring(0, 10)  // NUEVO: Extraer yyyy-MM-dd
+          ? event.date.substring(0, 10)  // Extraer yyyy-MM-dd
           : event.date;
 
-      _eventsByDate.putIfAbsent(dateKey, () => []).add(event); // NUEVO: Agregar a grupo
+      _eventsByDate.putIfAbsent(dateKey, () => []).add(event);
     }
 
-    // NUEVO: Precalcular counts
+    // Precalcular counts
     _eventCountsByDate = _eventsByDate.map((date, events) =>
         MapEntry(date, events.length));
 
     print('✅ Agrupaciones precalculadas: ${_eventsByDate.keys.length} fechas');
   }
-  /// Filtrar eventos en memoria pura (microsegundos)
-  List<EventCacheItem> filter({
+
+  /// Aplicar filtros y retornar resultado estructurado (CONSOLIDADO desde MemoryFilterService)
+  FilteredEvents filter({
     Set<String>? categories,
     String? searchQuery,
     DateTime? selectedDate,
   }) {
     if (!_isLoaded) {
-      print('⚠️ Cache no cargado, retornando lista vacía');
-      return [];
+      print('⚠️ Cache no cargado, retornando resultado vacío');
+      return FilteredEvents.empty;
     }
 
     List<EventCacheItem> filtered = _cache;
@@ -122,7 +126,37 @@ class EventCacheService {
       }).toList();
     }
 
-    return filtered;
+    // Agrupar por fecha
+    final groupedByDate = getGroupedByDate(filtered);
+
+    // Crear descripción de filtros
+    final filterParts = <String>[];
+    if (categories != null && categories.isNotEmpty) {
+      filterParts.add('${categories.length} categorías');
+    }
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      filterParts.add('Búsqueda: "$searchQuery"');
+    }
+    if (selectedDate != null) {
+      filterParts.add('Fecha específica');
+    }
+    final description = filterParts.isEmpty ? 'Sin filtros' : filterParts.join(', ');
+
+    return FilteredEvents(
+      events: filtered,
+      groupedByDate: groupedByDate,
+      totalCount: filtered.length,
+      appliedFilters: description,
+    );
+  }
+
+  /// Aplicar filtros con modelo MemoryFilters (compatibilidad con provider)
+  FilteredEvents applyFilters(MemoryFilters filters) {
+    return filter(
+      categories: filters.categories.isEmpty ? null : filters.categories,
+      searchQuery: filters.searchQuery.isEmpty ? null : filters.searchQuery,
+      selectedDate: filters.selectedDate,
+    );
   }
 
   /// Obtener evento por ID (para verificar existencia)
@@ -135,25 +169,25 @@ class EventCacheService {
       return null;
     }
   }
-  /// NUEVO: Obtener eventos para fecha específica - O(1)
+
+  /// Obtener eventos para fecha específica - O(1)
   List<EventCacheItem> getEventsForDate(String dateString) {
     if (!_isLoaded) {
       print('⚠️ Cache no cargado para getEventsForDate');
       return [];
     }
 
-    return _eventsByDate[dateString] ?? []; // NUEVO: Lookup O(1)
+    return _eventsByDate[dateString] ?? []; // Lookup O(1)
   }
 
-  /// NUEVO: Obtener count de eventos para fecha específica - O(1)
+  /// Obtener count de eventos para fecha específica - O(1)
   int getEventCountForDate(String dateString) {
     if (!_isLoaded) {
       return 0;
     }
 
-    return _eventCountsByDate[dateString] ?? 0; // NUEVO: Lookup O(1)
+    return _eventCountsByDate[dateString] ?? 0; // Lookup O(1)
   }
-
 
   /// Toggle favorito en cache (update inmediato)
   bool toggleFavorite(int eventId) {
@@ -217,15 +251,45 @@ class EventCacheService {
     return dates;
   }
 
+  /// Obtener títulos de sección formateados (para UI) - MIGRADO desde MemoryFilterService
+  String getSectionTitle(String dateKey) {
+    final today = DateTime.now();
+    final todayString = today.toIso8601String().substring(0, 10);
+    final tomorrowString = today.add(Duration(days: 1)).toIso8601String().substring(0, 10);
+
+    if (dateKey == todayString) {
+      return 'Hoy';
+    } else if (dateKey == tomorrowString) {
+      return 'Mañana';
+    } else {
+      // Convertir yyyy-MM-dd a formato legible
+      try {
+        final date = DateTime.parse(dateKey);
+        final weekdays = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        final months = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+        final weekday = weekdays[date.weekday];
+        final day = date.day;
+        final month = months[date.month];
+
+        return '$weekday, $day de $month';
+      } catch (e) {
+        return dateKey; // Fallback
+      }
+    }
+  }
+
   /// Recargar cache (para testing o refresh manual)
   Future<void> reloadCache() async {
     print('🔄 Forzando recarga de cache...');
     _isLoaded = false;
     _cache.clear();
-    _eventsByDate.clear();      // NUEVO: Limpiar lookup tables
-    _eventCountsByDate.clear(); // NUEVO: Limpiar lookup tables
+    _eventsByDate.clear();      // Limpiar lookup tables
+    _eventCountsByDate.clear(); // Limpiar lookup tables
     await loadCache();
   }
+
   /// Recalcular colores de todos los eventos para nuevo tema
   void recalculateColorsForTheme(String theme) {
     if (!_isLoaded) {
@@ -241,6 +305,7 @@ class EventCacheService {
 
     print('✅ Colores recalculados para ${_cache.length} eventos');
   }
+
   /// Limpiar cache (para testing)
   void clearCache() {
     print('🧹 Limpiando cache...');
