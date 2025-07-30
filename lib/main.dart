@@ -54,11 +54,21 @@ class _AppContentState extends State<_AppContent> {
   }
 
   Future<void> _initializeApp() async {
-    final provider = Provider.of<SimpleHomeProvider>(context, listen: false);
-    await provider.initialize();
+    final simpleHomeProvider = Provider.of<SimpleHomeProvider>(context, listen: false);
+    final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
+
+    // Inicializar providers
+    await simpleHomeProvider.initialize();
+    await favoritesProvider.init();
+
+    // Conectar sync entre providers
+    simpleHomeProvider.setupFavoritesSync(favoritesProvider);
+
     setState(() {
       _isInitialized = true;
     });
+
+    print('🎉 App completamente inicializada con sync de favoritos');
   }
 
   @override

@@ -162,13 +162,15 @@ class EventRepository {
   Future<bool> favorite(int eventoId) async {
     final db = await DatabaseHelper.database;
     final results = await db.query(
-      'eventos',                                        // CAMBIO: misma tabla
-      where: 'id = ?',                                 // CAMBIO: buscar por id directamente
+      'eventos',
+      where: 'id = ?',
       whereArgs: [eventoId],
       limit: 1,
     );
-    if (results.isEmpty) return false;                 // NUEVO: validar que existe
-    return results.first['favorite'] as bool;
+    if (results.isEmpty) return false;
+    // CORREGIR: SQLite guarda como int, convertir a bool
+    final int rawValue = results.first['favorite'] as int;
+    return rawValue == 1;
   }
   /// Agregar evento a favoritos
   Future<void> addToFavorites(int eventoId) async {      // CAMBIO: solo necesita ID

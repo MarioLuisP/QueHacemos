@@ -1,21 +1,153 @@
 import 'package:flutter/foundation.dart';
+import '../data/repositories/event_repository.dart';
 
 class FavoritesProvider with ChangeNotifier {
+  final EventRepository _repository = EventRepository();
   Set<String> _favoriteIds = {};
+  bool _isInitialized = false;
+  Function(int eventId, bool isFavorite)? _onFavoriteChanged;
 
-  bool favorite(String eventId) => _favoriteIds.contains(eventId);
+  FavoritesProvider() {
+    _initializeAsync();
+  }
 
-  void toggleFavorite(String eventId) {
-    if (_favoriteIds.contains(eventId)) {
-      _favoriteIds.remove(eventId);
-      print('💔 Favorito removido: $eventId');
-    } else {
-      _favoriteIds.add(eventId);
-      print('❤️ Favorito agregado: $eventId');
-    }
+  bool get isInitialized => _isInitialized;
 
+  void _initializeAsync() {
+    init();
+  }
+
+  Future<void> init() async {
+    await _loadFavoritesFromRepository();
+    _isInitialized = true;
     notifyListeners();
   }
 
+  /// Cargar favoritos desde SQLite al startup
+  Future<void> _loadFavoritesFromRepository() async {
+    try {
+      final favorites = await _repository.getAllFavorites();
+      _favoriteIds = favorites.map((e) => e['id'].toString()).toSet();
+      print('📋 Cargados ${_favoriteIds.length} favoritos desde SQLite');
+    } catch (e) {
+      print('❌ Error cargando favoritos: $e');
+      _favoriteIds = {};
+    }
+  }
+
   Set<String> get favoriteIds => Set.unmodifiable(_favoriteIds);
+
+  bool isFavorite(String eventId) => _favoriteIds.contains(eventId);
+
+  Future<void> toggleFavorite(String eventId) async {
+    try {
+      final numericId = int.parse(eventId);
+      final wasAdded = await _repository.toggleFavorite(numericId);
+
+      if (wasAdded) {
+        _favoriteIds.add(eventId);
+        print('❤️ Favorito agregado: $eventId');
+      } else {
+        _favoriteIds.remove(eventId);
+        print('💔 Favorito removido: $eventId');
+      }
+
+      // Sync con SimpleHomeProvider
+      _syncWithSimpleHomeProvider(numericId, wasAdded);
+
+      // TODO: Notificaciones futuras aquí
+
+      notifyListeners();
+
+    } catch (e) {
+      print('❌ Error toggle favorito $eventId: $e');
+    }
+  }
+
+  Future<void> addFavorite(String eventId) async {
+    if (!_favoriteIds.contains(eventId)) {
+      await toggleFavorite(eventId);
+    }
+  }
+
+  Future<void> removeFavorite(String eventId) async {
+    if (_favoriteIds.contains(eventId)) {
+      await toggleFavorite(eventId);
+    }
+  }
+
+  Future<void> clearFavorites() async {
+    try {
+      for (final eventId in _favoriteIds.toList()) {
+        await _repository.removeFromFavorites(int.parse(eventId));
+      }
+
+      _favoriteIds.clear();
+      notifyListeners();
+      print('🧹 Todos los favoritos eliminados');
+    } catch (e) {
+      print('❌ Error limpiando favoritos: $e');
+    }
+  }
+  /// Registrar callback para sync con SimpleHomeProvider
+  void setOnFavoriteChangedCallback(Function(int eventId, bool isFavorite) callback) {
+    _onFavoriteChanged = callback;
+  }
+
+  /// Sincronizar cambio con SimpleHomeProvider
+  void _syncWithSimpleHomeProvider(int eventId, bool isFavorite) {
+    // Usar un callback o método estático para evitar dependencia circular
+    // El SimpleHomeProvider se registrará a este callback
+    _onFavoriteChanged?.call(eventId, isFavorite);
+    print('🔄 Sync ejecutado: evento $eventId = $isFavorite');
+  }
+
+
+// ========== NOTIFICACIONES DE FAVORITOS ========== // NUEVO
+/*
+  /// NUEVO: Enviar notificaciones relacionadas con favoritos
+  Future<void> _sendFavoriteNotification(String eventId, bool isAdded) async {
+    try {
+      final notificationsProvider = NotificationsProvider.instance; // CAMBIO: usar singleton
+
+      if (isAdded) {
+        // NUEVO: Obtener detalles del evento para notificación personalizada
+        final eventDetails = await _getEventDetails(eventId);
+
+        if (eventDetails != null) {
+          notificationsProvider.addNotification(
+            title: '❤️ Evento guardado en favoritos',
+            message: '${eventDetails['title']} - ${eventDetails['date']}',
+            type: 'favorite_added',
+            icon: '⭐',
+          );
+        } else {
+          // NUEVO: Notificación al remover favorito
+          notificationsProvider.addNotification(
+            title: '💔 Favorito removido',
+            message: '${eventDetails?['title'] ?? 'Evento'} removido de favoritos',
+            type: 'favorite_removed',
+            icon: '🗑️',
+          );
+        }
+      }
+
+    } catch (e) {
+      print('⚠️ Error enviando notificación de favorito: $e');
+    }
+  }
+
+  /// NUEVO: Obtener detalles de un evento específico
+  Future<Map<String, dynamic>?> _getEventDetails(String eventId) async {
+    try {
+      final numericId = int.parse(eventId);
+      return await _repository.getEventById(numericId);
+    } catch (e) {
+      print('⚠️ Error obteniendo detalles del evento $eventId: $e');
+      return null;
+    }
+  }*/
+  List<Map<String, dynamic>> filterFavoriteEvents(List<Map<String, dynamic>> allEvents) { // MANTENER: sin cambios
+    return allEvents.where((event) => isFavorite(event['id']?.toString() ?? '')).toList();
+  }
 }

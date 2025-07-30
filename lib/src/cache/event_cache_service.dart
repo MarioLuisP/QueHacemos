@@ -189,7 +189,21 @@ class EventCacheService {
     return _eventCountsByDate[dateString] ?? 0; // Lookup O(1)
   }
 
-  /// Toggle favorito en cache (update inmediato)
+  /// Actualizar favorito en cache (llamado por FavoritesProvider)
+  bool updateFavoriteInCache(int eventId, bool isFavorite) {
+    if (!_isLoaded) return false;
+
+    final index = _cache.indexWhere((event) => event.id == eventId);
+    if (index == -1) return false;
+
+    // Update inmediato en cache
+    _cache[index] = _cache[index].copyWith(favorite: isFavorite);
+
+    print('💖 Favorito actualizado en cache: $eventId = $isFavorite');
+
+    return true;
+  }
+  /// Toggle favorito en cache (mantener por compatibilidad)
   bool toggleFavorite(int eventId) {
     if (!_isLoaded) return false;
 
@@ -203,9 +217,6 @@ class EventCacheService {
     _cache[index] = currentEvent.copyWith(favorite: newFavoriteState);
 
     print('💖 Favorito toggled en cache: $eventId = $newFavoriteState');
-
-    // TODO: Async update a SQLite
-    // _updateFavoriteInDatabase(eventId, newFavoriteState);
 
     return newFavoriteState;
   }
@@ -223,6 +234,11 @@ class EventCacheService {
       grouped.putIfAbsent(dateKey, () => []);
       grouped[dateKey]!.add(event);
     }
+
+    // NUEVO: Ordenar por rating dentro de cada fecha (mayor rating primero)
+    grouped.forEach((date, events) {
+      events.sort((a, b) => b.rating.compareTo(a.rating));
+    });
 
     return grouped;
   }

@@ -6,6 +6,7 @@ import '../cache/event_cache_service.dart';
 import '../cache/cache_models.dart';
 import '../utils/colors.dart';
 import '../sync/sync_service.dart';
+import 'favorites_provider.dart';  // AGREGAR ESTE IMPORT
 import '../data/repositories/event_repository.dart';
 
 /// Provider SIMPLE que reemplaza HomeViewModel de 300 líneas
@@ -84,6 +85,14 @@ class SimpleHomeProvider with ChangeNotifier {
       _setError('Error cargando eventos: $e');
       print('❌ Error en SimpleHomeProvider.initialize(): $e');
     }
+  }
+
+  /// NUEVO: Registrar callback con FavoritesProvider (llamar después de initialize)
+  void setupFavoritesSync(FavoritesProvider favoritesProvider) {
+    favoritesProvider.setOnFavoriteChangedCallback((eventId, isFavorite) {
+      syncFavoriteInCache(eventId, isFavorite);
+    });
+    print('🔗 Sync configurado entre FavoritesProvider y SimpleHomeProvider');
   }
   /// Obtener eventos con filtros de categoría y búsqueda, ignorando fecha
   List<EventCacheItem> getEventsWithoutDateFilter() {
@@ -206,18 +215,27 @@ class SimpleHomeProvider with ChangeNotifier {
     _applyCurrentFilters();
   }
 
-  /// Toggle favorito (update cache + UI)
+  /// Toggle favorito (delegado a FavoritesProvider)
   void toggleFavorite(int eventId) {
-    print('💖 Toggle favorito: $eventId');
-
-    final newState = _cacheService.toggleFavorite(eventId);
-
-    // Re-aplicar filtros para actualizar UI
-    _applyCurrentFilters();
-
-    print('✅ Favorito cambiado: $eventId = $newState');
+    print('💖 Toggle favorito delegado a FavoritesProvider: $eventId');
+    // TODO: Llamar a FavoritesProvider en siguiente paso
   }
 
+
+  /// NUEVO: Sincronizar favorito en cache (llamado por FavoritesProvider)
+  void syncFavoriteInCache(int eventId, bool isFavorite) {
+    final updated = _cacheService.updateFavoriteInCache(eventId, isFavorite);
+    if (updated) {
+      _applyCurrentFilters(); // Refresh UI para consistencia
+      print('🔄 Cache sincronizado: evento $eventId = $isFavorite');
+    }
+  }
+
+  /// NUEVO: Para Selector eficiente (evitar rebuilds masivos)
+  bool isEventFavorite(int eventId) {
+    final event = _cacheService.getEventById(eventId);
+    return event?.favorite ?? false;
+  }
   /// Recargar datos (para pull-to-refresh)
   Future<void> refresh() async {
     print('🔄 Refrescando datos...');
@@ -234,7 +252,26 @@ class SimpleHomeProvider with ChangeNotifier {
       _setError('Error refrescando: $e');
     }
   }
+  /// NUEVO: Obtener eventos favoritos desde cache (para FavoritePage)
+  List<EventCacheItem> getFavoriteEvents() {
+    if (!_cacheService.isLoaded) {
+      return [];
+    }
 
+    // Filtrar solo eventos marcados como favoritos en cache
+    final favoriteEvents = _cacheService.allEvents
+        .where((event) => event.favorite)
+        .toList();
+
+    // Ordenar por fecha (más recientes primero) y luego por rating
+    favoriteEvents.sort((a, b) {
+      final dateComparison = a.date.compareTo(b.date);
+      if (dateComparison != 0) return dateComparison;
+      return b.rating.compareTo(a.rating); // Mayor rating primero
+    });
+
+    return favoriteEvents;
+  }
   /// Obtener título de sección para fecha
   String getSectionTitle(String dateKey) {
     return _cacheService.getSectionTitle(dateKey);

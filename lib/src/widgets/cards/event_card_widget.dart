@@ -105,18 +105,18 @@ class EventCardWidget extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Selector<FavoritesProvider, bool>( // CAMBIO: Selector específico
-                      selector: (context, favProvider) => favProvider.favorite(event.id.toString()), // CAMBIO: Solo escucha cambios de ESTE evento
-                      builder: (context, favorite, child) { // CAMBIO: Solo rebuilda si cambia favorite de este evento
+                    Selector<FavoritesProvider, bool>(
+                      selector: (context, favProvider) => favProvider.isFavorite(event.id.toString()),
+                      builder: (context, isFavorite, child) {
                         return IconButton(
                           iconSize: 24,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           icon: Icon(
-                            favorite ? Icons.favorite : Icons.favorite_border,
-                            color: favorite ? Colors.red : event.textColor, // CAMBIO: Usa color precalculado
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: isFavorite ? Colors.red : event.textColor,
                           ),
-                          onPressed: () { // CAMBIO: context.read para evitar dependencia del builder
+                          onPressed: () {
                             context.read<FavoritesProvider>().toggleFavorite(event.id.toString());
                           },
                         );
