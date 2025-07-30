@@ -6,6 +6,7 @@ import '../cache/event_cache_service.dart';
 import '../cache/cache_models.dart';
 import '../utils/colors.dart';
 import '../sync/sync_service.dart';
+import '../data/repositories/event_repository.dart';
 
 /// Provider SIMPLE que reemplaza HomeViewModel de 300 líneas
 /// Responsabilidad única: manejar estado UI + filtros sobre cache
@@ -22,7 +23,9 @@ class SimpleHomeProvider with ChangeNotifier {
   Set<String> _selectedCategories = {}; // NUEVO: categorías habilitadas en Settings
   String _theme = 'normal'; // NUEVO: Tema actual de la app
   DateTime? _lastSelectedDate; // NUEVO: Para persistencia de Calendar
-
+// NUEVO: Propiedades para limpieza automática
+  int _eventCleanupDays = 3;
+  int _favoriteCleanupDays = 7;
   // NUEVO: Constructor aquí
   SimpleHomeProvider() {
     _initializeAsync();
@@ -47,6 +50,9 @@ class SimpleHomeProvider with ChangeNotifier {
   Set<String> get selectedCategories => _selectedCategories; // NUEVO
   String get theme => _theme;
   DateTime? get lastSelectedDate => _lastSelectedDate;
+  // NUEVO: Getters para limpieza automática
+  int get eventCleanupDays => _eventCleanupDays;
+  int get favoriteCleanupDays => _favoriteCleanupDays;
 
   /// Inicializar provider (cargar cache + preferencias + aplicar filtros) // CAMBIO: comentario actualizado
   Future<void> initialize() async {
@@ -110,6 +116,10 @@ class SimpleHomeProvider with ChangeNotifier {
     // ELIMINADO: Cargar activeFilterCategories - ya no filtros globales
     _theme = prefs.getString('app_theme') ?? 'normal';
     print('📂 Preferencias cargadas: tema=$_theme, selected=${_selectedCategories.length}'); // CAMBIO: removido active
+// NUEVO: Cargar configuración de limpieza desde EventRepository
+    final repository = EventRepository();
+    _eventCleanupDays = await repository.getCleanupDays('cleanup_events_days');
+    _favoriteCleanupDays = await repository.getCleanupDays('cleanup_favorites_days');
   }
 
   /// NUEVO: Guardar preferencias de categorías en SharedPreferences
@@ -368,5 +378,30 @@ class SimpleHomeProvider with ChangeNotifier {
     // NUEVO: Debug de categorías
     print('  Categorías seleccionadas: ${stats['selectedCategoriesCount']} ${stats['selectedCategories']}'); // NUEVO
     // ELIMINADO: Filtros activos - ya no hay filtros globales
+  }
+  /// NUEVO: Cambiar días de limpieza para eventos
+  Future<void> setEventCleanupDays(int days) async {
+  if (_eventCleanupDays != days) {
+  _eventCleanupDays = days;
+
+  final repository = EventRepository();
+  await repository.updateSetting('cleanup_events_days', days.toString());
+
+  notifyListeners();
+  print('🗑️ Días limpieza eventos: $days');
+  }
+  }
+
+  /// NUEVO: Cambiar días de limpieza para favoritos
+  Future<void> setFavoriteCleanupDays(int days) async {
+  if (_favoriteCleanupDays != days) {
+  _favoriteCleanupDays = days;
+
+  final repository = EventRepository();
+  await repository.updateSetting('cleanup_favorites_days', days.toString());
+
+  notifyListeners();
+  print('🗑️ Días limpieza favoritos: $days');
+  }
   }
 }

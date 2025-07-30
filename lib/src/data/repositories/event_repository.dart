@@ -97,9 +97,8 @@ class EventRepository {
   Future<Map<String, int>> cleanOldEvents() async {              // CAMBIO: retorna stats detalladas
     final db = await DatabaseHelper.database;
 
-    // Obtener configuración
-    final eventsDays = await _getCleanupDays('cleanup_events_days');    // CAMBIO: nombre más claro
-    final favoritesDays = await _getCleanupDays('cleanup_favorites_days');
+    final eventsDays = await getCleanupDays('cleanup_events_days');
+    final favoritesDays = await getCleanupDays('cleanup_favorites_days');
 
     final events_cutoff = DateTime.now().subtract(Duration(days: eventsDays));
     final favorites_cutoff = DateTime.now().subtract(Duration(days: favoritesDays));
@@ -236,7 +235,7 @@ class EventRepository {
   }
 
   /// Obtener días de limpieza desde configuración
-  Future<int> _getCleanupDays(String settingKey) async {
+  Future<int> getCleanupDays(String settingKey) async {
     final value = await getSetting(settingKey);
     return value != null ? int.parse(value) : (settingKey.contains('events') ? 3 : 7);
   }
