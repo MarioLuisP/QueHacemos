@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../../providers/simple_home_provider.dart';
 import '../../cache/cache_models.dart';
 import '../../utils/dimens.dart';
+import '../../data/repositories/event_repository.dart';  // NUEVO: Import para acceso directo a DB
 import '../../providers/favorites_provider.dart';  // ✅ AGREGAR
+import 'event_detail_modal.dart';  // CAMBIO: Misma carpeta widgets/cards/
 
 class EventCardWidget extends StatelessWidget {
   final EventCacheItem event;
@@ -26,10 +28,14 @@ class EventCardWidget extends StatelessWidget {
         horizontal: AppDimens.paddingMedium,
         vertical: AppDimens.paddingSmall,
       ),
-      child: GestureDetector( // CAMBIO: GestureDetector ahora dentro del Container
-        onTap: () {
-          //EventDetailModal.show(context, event, provider);
-        },
+          child: GestureDetector(
+            onTap: () async {
+              final repository = EventRepository();                             // NUEVO: Instancia directa
+              final fullEvent = await repository.getEventById(event.id);        // NUEVO: Query directo a SQLite
+              if (fullEvent != null) {
+                EventDetailModal.show(context, event, fullEvent);               // CAMBIO: cache + full (ambos!)
+              }
+            },
         child: Container( // CAMBIO: Este Container ahora maneja decoración Y contenido
           decoration: BoxDecoration(
             gradient: LinearGradient( // NUEVO: Restaurado tu gradiente querido
