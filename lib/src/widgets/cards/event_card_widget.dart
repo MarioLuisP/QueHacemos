@@ -34,10 +34,6 @@ class EventCardWidget extends StatelessWidget {
               final repository = EventRepository();
               final fullEvent = await repository.getEventById(event.id);
               if (fullEvent != null) {
-                print('🔍 Evento encontrado con ID: ${fullEvent['id']}');  // ← AQUÍ (línea nueva)
-                print('🔍 fullEvent keys: ${fullEvent.keys}');
-                print('🔍 imageUrl: ${fullEvent['imageUrl']}');
-                print('🔍 description: ${fullEvent['description']}');
                 EventDetailModal.show(context, event, fullEvent);
               }
             },

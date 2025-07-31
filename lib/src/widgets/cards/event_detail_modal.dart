@@ -1,26 +1,115 @@
-/// Modal expandible para mostrar detalle del evento.
+/// Modal expandible para mostrar detalle del evento - REFACTORIZADO
 library;
-import 'package:url_launcher/url_launcher.dart';                // NUEVO: Para links
-import 'package:share_plus/share_plus.dart';                    // NUEVO: Para compartir
-import 'package:cached_network_image/cached_network_image.dart'; // NUEVO: Para imágenes
+import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quehacemos_cba/src/providers/favorites_provider.dart';
-import '../../cache/cache_models.dart';                               // NUEVO: Para EventCacheItem
+import '../../cache/cache_models.dart';
+
+/// Modelo inmutable con todos los datos pre-calculados para el modal
+class EventDetailData {
+  // Datos del cache (ya pre-calculados)
+  final String id;
+  final String title;
+  final Color baseColor;
+  final Color darkColor;
+  final Color textColor;
+  final String categoryWithEmoji;
+  final String formattedDate;
+  final String location;
+  final String district;
+  final String price;
+
+  // Datos adicionales de SQLite (pre-procesados)
+  final String imageUrl;
+  final String fullDescription;
+  final String truncatedDescription;
+  final String address;
+  final String websiteUrl;
+  final double lat;
+  final double lng;
+  final String shareMessage;
+
+  const EventDetailData({
+    required this.id,
+    required this.title,
+    required this.baseColor,
+    required this.darkColor,
+    required this.textColor,
+    required this.categoryWithEmoji,
+    required this.formattedDate,
+    required this.location,
+    required this.district,
+    required this.price,
+    required this.imageUrl,
+    required this.fullDescription,
+    required this.truncatedDescription,
+    required this.address,
+    required this.websiteUrl,
+    required this.lat,
+    required this.lng,
+    required this.shareMessage,
+  });
+
+  /// Factory para crear desde cache + datos SQLite
+  factory EventDetailData.fromCacheAndDb(
+      EventCacheItem cacheEvent,
+      Map<String, dynamic> fullEvent,
+      ) {
+    // Pre-calcular descripción truncada
+    final fullDesc = fullEvent['description'] ?? '';
+    const maxLength = 150;
+    final truncatedDesc = fullDesc.length > maxLength
+        ? '${fullDesc.substring(0, maxLength)}...'
+        : fullDesc;
+
+    // Pre-calcular mensaje de compartir
+    final shareMsg = 'Te comparto este evento que vi en la app QuehaCeMos Cba:\n\n'
+        '📌 ${cacheEvent.title}\n'
+        '🗓 ${cacheEvent.formattedDateForCard}\n'
+        '📍 ${cacheEvent.location}\n\n'
+        '¡No te lo pierdas!\n'
+        '¡📲 Descargá la app desde playstore!';
+
+    return EventDetailData(
+      id: cacheEvent.id.toString(),
+      title: cacheEvent.title,
+      baseColor: cacheEvent.baseColor,
+      darkColor: cacheEvent.darkColor,
+      textColor: cacheEvent.textColor,
+      categoryWithEmoji: cacheEvent.categoryWithEmoji,
+      formattedDate: cacheEvent.formattedDateForCard,
+      location: cacheEvent.location,
+      district: cacheEvent.district,
+      price: cacheEvent.price.isNotEmpty ? cacheEvent.price : 'Consultar',
+      imageUrl: fullEvent['imageUrl'] ?? '',
+      fullDescription: fullDesc,
+      truncatedDescription: truncatedDesc,
+      address: fullEvent['address'] ?? '',
+      websiteUrl: fullEvent['websiteUrl'] ?? '',
+      lat: (fullEvent['lat'] as num?)?.toDouble() ?? 0.0,
+      lng: (fullEvent['lng'] as num?)?.toDouble() ?? 0.0,
+      shareMessage: shareMsg,
+    );
+  }
+}
 
 class EventDetailModal {
   static void show(
       BuildContext context,
-      EventCacheItem cacheEvent,                                       // NUEVO: Para colores pre-calculados
-      Map<String, dynamic> fullEvent,                                  // NUEVO: Para datos completos SQLite
+      EventCacheItem cacheEvent,
+      Map<String, dynamic> fullEvent,
       ) {
-    // CAMBIO: String → dynamic
+    // Pre-calcular TODOS los datos antes de abrir el modal
+    final detailData = EventDetailData.fromCacheAndDb(cacheEvent, fullEvent);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        final cardColor = cacheEvent.baseColor;                        // NUEVO: Color pre-calculado del cache
         return DraggableScrollableSheet(
           initialChildSize: 0.6,
           minChildSize: 0.3,
@@ -28,14 +117,13 @@ class EventDetailModal {
           builder: (context, scrollController) {
             return Container(
               decoration: BoxDecoration(
-                color: Color.lerp(cardColor, Colors.white, 0.7)!,
+                color: Color.lerp(detailData.baseColor, Colors.white, 0.7)!,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(20),
                 ),
               ),
               child: EventDetailContent(
-                cacheEvent: cacheEvent,                                          // NUEVO: Cache con colores
-                fullEvent: fullEvent,                                            // NUEVO: Datos completos SQLite
+                data: detailData,
                 scrollController: scrollController,
               ),
             );
@@ -46,162 +134,16 @@ class EventDetailModal {
   }
 }
 
-class EventDetailContent extends StatefulWidget {
-  final EventCacheItem cacheEvent;                                 // NUEVO: Cache con colores
-  final Map<String, dynamic> fullEvent;                            // NUEVO: Datos completos SQLite
+/// StatelessWidget optimizado - ZERO rebuilds internos
+class EventDetailContent extends StatelessWidget {
+  final EventDetailData data;
   final ScrollController scrollController;
 
   const EventDetailContent({
     super.key,
-    required this.cacheEvent,                                      // NUEVO: Cache
-    required this.fullEvent,                                       // NUEVO: Full data
+    required this.data,
     required this.scrollController,
   });
-
-  @override
-  State<EventDetailContent> createState() => _EventDetailContentState();
-}
-
-class _EventDetailContentState extends State<EventDetailContent> {
-  bool _isDescriptionExpanded = false;
-
-  // Variables memoizadas (calculadas una sola vez)
-// Variables memoizadas (pre-calculadas del cache)               // CAMBIO: Comentario actualizado
-  late Color cardColor;
-  late Color darkColor;                                            // CAMBIO: Renombrado para consistencia
-  late String truncatedDescription;
-
-  // Variables dinámicas del JSON
-  String get _imageUrl => widget.fullEvent['imageUrl'] ?? '';        // CAMBIO: fullEvent en lugar de event
-  String get _description => widget.fullEvent['description'] ?? '';  // CAMBIO: fullEvent + null safety
-  String get _address => widget.fullEvent['address'] ?? '';          // CAMBIO: fullEvent + null safety
-  String get _district => widget.fullEvent['district'] ?? '';        // CAMBIO: fullEvent + null safety
-  String get _websiteUrl => widget.fullEvent['websiteUrl'] ?? '';    // CAMBIO: fullEvent + null safety
-  double get _lat => (widget.fullEvent['lat'] as num?)?.toDouble() ?? 0.0;  // CAMBIO: fullEvent + null safety
-  double get _lng => (widget.fullEvent['lng'] as num?)?.toDouble() ?? 0.0;  // CAMBIO: fullEvent + null safety
-
-  @override
-  void initState() {
-    super.initState();
-    // NUEVO: Usar colores pre-calculados del cache
-    cardColor = widget.cacheEvent.baseColor;                        // NUEVO: Color directo del cache
-    darkColor = widget.cacheEvent.darkColor;     // CORREGIR: usar darkColor consistente
-    // Pre-calculamos la descripción truncada
-    const maxLength = 150;
-    truncatedDescription =
-    _description.length > maxLength
-        ? '${_description.substring(0, maxLength)}...'
-        : _description;
-  }
-  Color _darkenColor(Color color, [double amount = 0.2]) {
-    final hsl = HSLColor.fromColor(color);
-    final hslDark = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
-    return hslDark.toColor();
-  }
-// NUEVO: Método local para formatear fechas (reemplaza viewModel.formatEventDate)
-  String _formatEventDate(String dateString) {
-    try {
-      final date = DateTime.parse(dateString);
-      const months = ['', 'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-        'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-      final month = months[date.month] ?? 'mes';
-      final timeString = (date.hour != 0 || date.minute != 0)
-          ? " - ${date.hour}:${date.minute.toString().padLeft(2, '0')} hs"
-          : "";
-      return "${date.day} $month$timeString";
-    } catch (e) {
-      return dateString;
-    }
-  }
-  //desde aca
-  Future<void> _openMaps() async {
-    final uri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$_lat,$_lng',
-    );
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      // Fallback si no puede abrir
-      print('Error opening maps: $e');
-    }
-  }
-
-  Future<void> _openUber() async {
-    final uri = Uri.parse(
-      'uber://?action=setPickup&pickup=my_location&dropoff[latitude]=$_lat&dropoff[longitude]=$_lng&dropoff[nickname]=${widget.fullEvent['title']}',
-    );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      // Fallback a URL web de Uber
-      final webUri = Uri.parse(
-        'https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[latitude]=$_lat&dropoff[longitude]=$_lng',
-      );
-      await launchUrl(webUri);
-    }
-  }
-  Future<void> _shareEvent() async {
-    final formattedDate = _formatEventDate(widget.fullEvent['date']!);         // NUEVO: Método local
-    final message =
-        'Te comparto este evento que vi en la app QuehaCeMos Cba:\n\n'
-        '📌 ${widget.fullEvent['title']}\n'                                    // CAMBIO: fullEvent
-        '🗓 $formattedDate\n'
-        '📍 ${widget.fullEvent['location']}\n\n'                               // CAMBIO: fullEvent
-        '¡No te lo pierdas!\n'
-        '¡📲 Descargá la app desde playstore!';
-
-    try {
-      Share.share(message); // esto abre el menú de compartir del sistema
-    } catch (e) {
-      print('Error sharing: $e');
-    }
-  }
-
-  Future<void> _openWebsite() async {
-    try {
-      final uri = Uri.parse(_websiteUrl);
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      print('Error opening website: $e');
-    }
-  }
-
-  void _openImageFullscreen(BuildContext context) {
-    if (_imageUrl == null || _imageUrl.isEmpty) return;
-    showDialog(
-      context: context,
-      builder:
-          (context) => Dialog.fullscreen(
-            backgroundColor: Colors.black,
-            child: Stack(
-              children: [
-                InteractiveViewer(
-                  child: CachedNetworkImage(
-                    imageUrl: _imageUrl,
-                    fit: BoxFit.contain,
-                    width: double.infinity,
-                    height: double.infinity,
-                    placeholder:
-                        (context, url) =>
-                            Center(child: CircularProgressIndicator()),
-                    errorWidget:
-                        (context, url, error) =>
-                            Icon(Icons.error, color: Colors.white70, size: 64),
-                  ),
-                ),
-                Positioned(
-                  right: 16,
-                  top: 16,
-                  child: IconButton(
-                    icon: Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -220,101 +162,12 @@ class _EventDetailContentState extends State<EventDetailContent> {
 
         Expanded(
           child: SingleChildScrollView(
-            controller: widget.scrollController,
+            controller: scrollController,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Hero Image con botón de favorito
-                Stack(
-                  children: [
-                    //*********************** */
-                    Container(
-                      height: 250,
-                      width: double.infinity,
-                      margin: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [cardColor, darkColor],              // CORREGIR: usar darkColor
-                        ),
-                      ),
-                      child: GestureDetector(
-                        onTap: () => _openImageFullscreen(context),
-                        child: ClipRect(
-                          child: Align(
-                            alignment: Alignment(
-                              0.0,
-                              -0.4,
-                            ), // Centra el recorte entre 15% y 70%
-                            heightFactor:
-                                0.55, // Muestra el 55% de la altura (70% - 15%)
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: CachedNetworkImage(
-                                imageUrl: _imageUrl,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                errorWidget:
-                                    (context, url, error) => Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [cardColor, darkColor],              // CORREGIR: usar darkColor
-                                        ),
-                                      ),
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.event,
-                                          size: 64,
-                                          color: Colors.white70,
-                                        ),
-                                      ),
-                                    ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-// Botón de favorito*******************
-                    Positioned(
-                      top: 24,
-                      right: 24,
-                      child: Consumer<FavoritesProvider>(
-                        builder: (context, favoritesProvider, child) {
-                          final isFavorite = favoritesProvider.isFavorite(
-                            widget.fullEvent['id']!.toString(),                         // CAMBIO: fullEvent
-                          );
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withAlpha(77),
-                              shape: BoxShape.circle,
-                            ),
-                            child: IconButton(
-                              icon: Icon(
-                                isFavorite
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: isFavorite ? Colors.red : Colors.white,
-                                size: 28,
-                              ),
-                              onPressed:
-                                  () => favoritesProvider.toggleFavorite(
-                                widget.fullEvent['id']!.toString(),                  // CAMBIO: fullEvent
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-
-
-                  ],
-                ),
+                _buildHeroImageSection(context),
 
                 // Información principal
                 Padding(
@@ -322,99 +175,13 @@ class _EventDetailContentState extends State<EventDetailContent> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Título
-                      Text(
-                        widget.fullEvent['title']!,                                       // CAMBIO: fullEvent
-                        style: Theme.of(
-                          context,
-                        ).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Categoría
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: cardColor.withAlpha(51),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: cardColor.withAlpha(128)),
-                        ),
-                        child: Text(
-                          widget.cacheEvent.categoryWithEmoji,                              // NUEVO: Pre-calculado del cache
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ),
-
+                      _buildTitleSection(context),
                       const SizedBox(height: 16),
-
-                      // Descripción
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color:
-                              Theme.of(
-                                context,
-                              ).colorScheme.surface, // NUEVO: Respeta theme
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _isDescriptionExpanded
-                                  ? _description
-                                  : truncatedDescription,
-                              style: Theme.of(
-                                context,
-                              ).textTheme.bodyLarge?.copyWith(
-                                height: 1.5,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                              textAlign: TextAlign.justify,
-                            ),
-                            const SizedBox(height: 8),
-                            GestureDetector(
-                              onTap:
-                                  () => setState(
-                                    () =>
-                                        _isDescriptionExpanded =
-                                            !_isDescriptionExpanded,
-                                  ),
-                              child: Text(
-                                _isDescriptionExpanded
-                                    ? 'Ver menos'
-                                    : 'Ver más...',
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
+                      _buildDescriptionSection(),
                       const SizedBox(height: 24),
-
-                      // Información del evento
                       _buildInfoSection(context),
-
                       const SizedBox(height: 24),
-
-                      // Botones de acción
                       _buildActionButtons(context),
-
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -427,78 +194,146 @@ class _EventDetailContentState extends State<EventDetailContent> {
     );
   }
 
-  Widget _buildInfoSection(BuildContext context) {
-    final formattedDate = _formatEventDate(widget.fullEvent['date']!);   // CAMBIO: método local + fullEvent
+  Widget _buildHeroImageSection(BuildContext context) {
+    return Stack(
+      children: [
+        Container(
+          height: 250,
+          width: double.infinity,
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [data.baseColor, data.darkColor],
+            ),
+          ),
+          child: GestureDetector(
+            onTap: () => _openImageFullscreen(context),
+            child: ClipRect(
+              child: Align(
+                alignment: const Alignment(0.0, -0.4),
+                heightFactor: 0.55, // Muestra 15%-70%
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: CachedNetworkImage(
+                    imageUrl: data.imageUrl,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    errorWidget: (context, url, error) => Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [data.baseColor, data.darkColor],
+                        ),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.event,
+                          size: 64,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
 
+        // Botón de favorito con Selector optimizado
+        Positioned(
+          top: 24,
+          right: 24,
+          child: Selector<FavoritesProvider, bool>(
+            selector: (context, favProvider) => favProvider.isFavorite(data.id),
+            builder: (context, isFavorite, child) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withAlpha(77),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: isFavorite ? Colors.red : Colors.white,
+                    size: 28,
+                  ),
+                  onPressed: () => context.read<FavoritesProvider>().toggleFavorite(data.id),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTitleSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Título
+        Text(
+          data.title,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Categoría
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: data.baseColor.withAlpha(51),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: data.baseColor.withAlpha(128)),
+          ),
+          child: Text(
+            data.categoryWithEmoji,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionSection() {
+    return ExpandableDescription(
+      fullDescription: data.fullDescription,
+      truncatedDescription: data.truncatedDescription,
+      baseColor: data.baseColor,
+    );
+  }
+
+  Widget _buildInfoSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface, // NUEVO: Respeta theme
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline,
-        ), // NUEVO: Border temático
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         children: [
-          _buildInfoRow(context, '🗓 ', 'Fecha y Hora', formattedDate),
+          _buildInfoRow(context, '🗓 ', 'Fecha y Hora', data.formattedDate),
           const Divider(height: 24),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('📍', style: TextStyle(fontSize: 20)),
-              SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Ubicación'),
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: widget.fullEvent['location'] ?? 'Sin ubicación',        // CAMBIO: fullEvent
-                          style: TextStyle(
-                            fontSize: 16,
-                            color:
-                            Theme.of(
-                              context,
-                            ).colorScheme.onSurface,
-                          ),
-                        ),
-                        TextSpan(
-                          text: '\n${widget.fullEvent['district']}',                   // CAMBIO: fullEvent
-                          style: TextStyle(
-                            fontSize: 18,
-                            color:
-                            Theme.of(
-                              context,
-                            ).colorScheme.onSurface,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                ],
-              ),
-            ],
-          ),
-
+          _buildLocationRow(context),
           const Divider(height: 24),
-          _buildInfoRow(context, '📫', 'Dirección', _address),
-          // _buildInfoRow(context, '📫', 'Dirección', widget.event['address'] ?? _address), // Usar cuando esté disponible
+          _buildInfoRow(context, '📫', 'Dirección', data.address),
           const Divider(height: 24),
-          _buildInfoRow(
-            context,
-            '🎟',
-            'Entrada',
-            widget.fullEvent['price']?.isNotEmpty == true                      // CAMBIO: fullEvent
-                ? widget.fullEvent['price']!                                   // CAMBIO: fullEvent
-                : 'Consultar',
-          ),
+          _buildInfoRow(context, '🎟', 'Entrada', data.price),
           const Divider(height: 24),
           GestureDetector(
-            onTap: _openWebsite,
+            onTap: () => _openWebsite(data.websiteUrl),
             child: _buildInfoRow(
               context,
               '🌐',
@@ -513,14 +348,50 @@ class _EventDetailContentState extends State<EventDetailContent> {
     );
   }
 
+  Widget _buildLocationRow(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('📍', style: TextStyle(fontSize: 20)),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Ubicación'),
+            RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: data.location,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  TextSpan(
+                    text: '\n${data.district}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildInfoRow(
-    BuildContext context,
-    String emoji,
-    String label,
-    String value, {
-    bool isLink = false,
-    Color? linkColor,
-  }) {
+      BuildContext context,
+      String emoji,
+      String label,
+      String value, {
+        bool isLink = false,
+        Color? linkColor,
+      }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -541,10 +412,7 @@ class _EventDetailContentState extends State<EventDetailContent> {
               Text(
                 value,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color:
-                      isLink
-                          ? linkColor
-                          : Theme.of(context).colorScheme.onSurface,
+                  color: isLink ? linkColor : Theme.of(context).colorScheme.onSurface,
                   decoration: isLink ? TextDecoration.underline : null,
                 ),
               ),
@@ -563,34 +431,34 @@ class _EventDetailContentState extends State<EventDetailContent> {
           context,
           icon: Icons.map_outlined,
           label: 'Maps',
-          onTap: _openMaps,
-          color: cardColor,
+          onTap: () => _openMaps(data.lat, data.lng),
+          color: data.baseColor,
         ),
         _buildActionButton(
           context,
           icon: Icons.local_taxi_outlined,
           label: 'Uber',
-          onTap: _openUber,
-          color: cardColor,
+          onTap: () => _openUber(data.lat, data.lng, data.title),
+          color: data.baseColor,
         ),
         _buildActionButton(
           context,
           icon: Icons.share_outlined,
           label: 'Compartir',
-          onTap: _shareEvent,
-          color: cardColor,
+          onTap: () => _shareEvent(data.shareMessage),
+          color: data.baseColor,
         ),
       ],
     );
   }
 
   Widget _buildActionButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    required Color color,
-  }) {
+      BuildContext context, {
+        required IconData icon,
+        required String label,
+        required VoidCallback onTap,
+        required Color color,
+      }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -607,14 +475,153 @@ class _EventDetailContentState extends State<EventDetailContent> {
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(
-                color: Colors.grey[600], // gris medio
+              style: const TextStyle(
+                color: Colors.grey,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // Métodos de acción - Todos estáticos con parámetros pre-calculados
+  void _openImageFullscreen(BuildContext context) {
+    if (data.imageUrl.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog.fullscreen(
+        backgroundColor: Colors.black,
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              child: CachedNetworkImage(
+                imageUrl: data.imageUrl,
+                fit: BoxFit.contain,
+                width: double.infinity,
+                height: double.infinity,
+                placeholder: (context, url) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+                errorWidget: (context, url, error) => const Icon(
+                  Icons.error,
+                  color: Colors.white70,
+                  size: 64,
+                ),
+              ),
+            ),
+            Positioned(
+              right: 16,
+              top: 16,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openMaps(double lat, double lng) async {
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      print('Error opening maps: $e');
+    }
+  }
+
+  Future<void> _openUber(double lat, double lng, String title) async {
+    final uri = Uri.parse(
+      'uber://?action=setPickup&pickup=my_location&dropoff[latitude]=$lat&dropoff[longitude]=$lng&dropoff[nickname]=$title',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      final webUri = Uri.parse(
+        'https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[latitude]=$lat&dropoff[longitude]=$lng',
+      );
+      await launchUrl(webUri);
+    }
+  }
+
+  Future<void> _shareEvent(String message) async {
+    try {
+      Share.share(message);
+    } catch (e) {
+      print('Error sharing: $e');
+    }
+  }
+
+  Future<void> _openWebsite(String websiteUrl) async {
+    if (websiteUrl.isEmpty) return;
+    try {
+      final uri = Uri.parse(websiteUrl);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      print('Error opening website: $e');
+    }
+  }
+}
+
+/// Widget separado para descripción expandible - Maneja su propio estado
+class ExpandableDescription extends StatefulWidget {
+  final String fullDescription;
+  final String truncatedDescription;
+  final Color baseColor;
+
+  const ExpandableDescription({
+    super.key,
+    required this.fullDescription,
+    required this.truncatedDescription,
+    required this.baseColor,
+  });
+
+  @override
+  State<ExpandableDescription> createState() => _ExpandableDescriptionState();
+}
+
+class _ExpandableDescriptionState extends State<ExpandableDescription> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _isExpanded ? widget.fullDescription : widget.truncatedDescription,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              height: 1.5,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            textAlign: TextAlign.justify,
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            child: Text(
+              _isExpanded ? 'Ver menos' : 'Ver más...',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
