@@ -6,6 +6,7 @@ import '../providers/simple_home_provider.dart';
 import '../widgets/chips/filter_chips_widget.dart';
 import '../cache/cache_models.dart';
 import '../widgets/cards/event_card_widget.dart';
+import '../widgets/app_bars/main_app_bar.dart';
 
 class HomePage extends StatefulWidget {
   final DateTime? selectedDate;
@@ -81,11 +82,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Eventos Córdoba'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-      ),
+      appBar: const MainAppBar.home(),
       body: Selector<SimpleHomeProvider, ({
       bool isLoading,
       String? errorMessage,

@@ -8,6 +8,7 @@ import 'src/providers/favorites_provider.dart';
 import 'src/providers/simple_home_provider.dart';
 import 'src/themes/themes.dart';
 import 'src/navigation/bottom_nav.dart';
+import 'src/providers/notifications_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +31,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => FavoritesProvider(),
         ),
+        ChangeNotifierProvider(create: (_) => NotificationsProvider()),
       ],
       child: const _AppContent(),
     );

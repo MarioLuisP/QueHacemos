@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../data/repositories/event_repository.dart';
+import 'notifications_provider.dart';
 
 class FavoritesProvider with ChangeNotifier {
   final EventRepository _repository = EventRepository();
@@ -55,7 +56,8 @@ class FavoritesProvider with ChangeNotifier {
       // Sync con SimpleHomeProvider
       _syncWithSimpleHomeProvider(numericId, wasAdded);
 
-      // TODO: Notificaciones futuras aquí
+      // Enviar notificación de favorito
+      await _sendFavoriteNotification(eventId, wasAdded);
 
       notifyListeners();
 
@@ -104,34 +106,31 @@ class FavoritesProvider with ChangeNotifier {
 
 
 // ========== NOTIFICACIONES DE FAVORITOS ========== // NUEVO
-/*
+
   /// NUEVO: Enviar notificaciones relacionadas con favoritos
   Future<void> _sendFavoriteNotification(String eventId, bool isAdded) async {
     try {
       final notificationsProvider = NotificationsProvider.instance; // CAMBIO: usar singleton
 
       if (isAdded) {
-        // NUEVO: Obtener detalles del evento para notificación personalizada
         final eventDetails = await _getEventDetails(eventId);
-
-        if (eventDetails != null) {
-          notificationsProvider.addNotification(
-            title: '❤️ Evento guardado en favoritos',
-            message: '${eventDetails['title']} - ${eventDetails['date']}',
-            type: 'favorite_added',
-            icon: '⭐',
-          );
-        } else {
-          // NUEVO: Notificación al remover favorito
-          notificationsProvider.addNotification(
-            title: '💔 Favorito removido',
-            message: '${eventDetails?['title'] ?? 'Evento'} removido de favoritos',
-            type: 'favorite_removed',
-            icon: '🗑️',
-          );
-        }
+        await notificationsProvider.addNotification(
+          title: '❤️ Evento guardado en favoritos',
+          message: '${eventDetails?['title'] ?? 'Evento'} - ${eventDetails?['date'] ?? 'Sin fecha'}',
+          type: 'favorite_added',
+          icon: '⭐',
+          eventCode: eventId,
+        );
+      } else {
+        final eventDetails = await _getEventDetails(eventId);
+        await notificationsProvider.addNotification(
+          title: '💔 Favorito removido',
+          message: '${eventDetails?['title'] ?? 'Evento'} removido de favoritos',
+          type: 'favorite_removed',
+          icon: '🗑️',
+          eventCode: eventId,
+        );
       }
-
     } catch (e) {
       print('⚠️ Error enviando notificación de favorito: $e');
     }
@@ -146,7 +145,7 @@ class FavoritesProvider with ChangeNotifier {
       print('⚠️ Error obteniendo detalles del evento $eventId: $e');
       return null;
     }
-  }*/
+  }
   List<Map<String, dynamic>> filterFavoriteEvents(List<Map<String, dynamic>> allEvents) { // MANTENER: sin cambios
     return allEvents.where((event) => isFavorite(event['id']?.toString() ?? '')).toList();
   }
