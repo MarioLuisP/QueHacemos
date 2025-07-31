@@ -71,19 +71,19 @@ class SyncService {
       print('📥 Descargando lote desde mok(luego firestore...');
 
       /*final querySnapshot = await FirebaseFirestore.instance
-          .collection('eventos_lotes')
-          .orderBy('metadata.fecha_subida', descending: true)
-          .limit(1)
-          .get();
+       .collection('eventos_lotes')
+       .orderBy('metadata.fecha_subida', descending: true)
+       .limit(1)
+       .get();
 
-      if (querySnapshot.docs.isEmpty) {
-        print('📭 No hay lotes disponibles en Firestore');
-        return [];
-      }
+   if (querySnapshot.docs.isEmpty) {
+     print('📭 No hay lotes disponibles en Firestore');
+     return [];
+   }
 
-      final latestBatch = querySnapshot.docs.first;
-      final batchData = latestBatch.data();
-      */
+   final latestBatch = querySnapshot.docs.first;
+   final batchData = latestBatch.data();
+   */
       final batchData = MockEvents.mockBatch;
       print('🔍 Campos disponibles en batchData: ${batchData.keys.toList()}');
       print('🔍 Total eventos en metadata: ${batchData['metadata']?['total_eventos']}');
@@ -94,13 +94,6 @@ class SyncService {
       final totalEventsInDB = await _eventRepository.getTotalEvents();
       final isFirstTime = totalEventsInDB == 0;
 
-// Para mock: simular 10 lotes💥💥
-      if (isFirstTime) {
-        print('📥 Primera descarga: simulando 10 lotes');
-        return List.generate(10, (i) => MockEvents.cacheEvents).expand((x) => x).toList();
-      } else {
-        return MockEvents.cacheEvents;
-      }
       if (currentBatchVersion == newBatchVersion && totalEventsInDB > 0) {
         print('📄 Mismo lote, no hay actualizaciones');
         // NUEVO: Notificar que la app está actualizada
@@ -113,10 +106,21 @@ class SyncService {
         return [];
       }
 
-      // Extraer eventos del lote
-      final events = (batchData['eventos'] as List<dynamic>?)
+      // Extraer eventos del lote (datos completos)
+      final baseEvents = (batchData['eventos'] as List<dynamic>?)
           ?.map((e) => Map<String, dynamic>.from(e as Map))
-          .toList() ?? [];      print('📦 Descargados ${events.length} eventos - Versión: $newBatchVersion');
+          .toList() ?? [];
+
+      // Para mock: simular múltiples lotes si es primera vez
+      final events = isFirstTime
+          ? List.generate(10, (i) => baseEvents).expand((x) => x).toList()
+          : baseEvents;
+
+      if (isFirstTime) {
+        print('📥 Primera descarga: simulando 10 lotes');
+      }
+
+      print('📦 Descargados ${events.length} eventos - Versión: $newBatchVersion');
 
       // Actualizar versión del lote
       await _eventRepository.updateSyncInfo(

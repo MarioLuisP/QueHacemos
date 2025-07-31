@@ -20,7 +20,7 @@ class MockEvents {
       "websiteUrl": "https://990arteclub.com",
       "lat": -31.39636078064314,
       "lng": -64.17225774519973,
-      "favorite": false,
+      "favorite": 0,
     },
     {
       "id": 7,
@@ -38,7 +38,7 @@ class MockEvents {
       "websiteUrl": "https://www.facebook.com/teatrociudadelasartes/",
       "lat": -31.435374665746004,
       "lng": -64.17537479549907,
-      "favorite": false,
+      "favorite": 0,
     },
     {
       "id": 8,
@@ -56,7 +56,7 @@ class MockEvents {
       "websiteUrl": "https://990arteclub.com",
       "lat": -31.39636078064314,
       "lng": -64.17225774519973,
-      "favorite": false,
+      "favorite": 0,
     },
     {
       "id": 9,
@@ -74,7 +74,7 @@ class MockEvents {
       "websiteUrl": "https://microteatrocordoba.com",
       "lat": -31.385042847094944,
       "lng": -64.16270631545386,
-      "favorite": false,
+      "favorite": 0,
     },
     {
       "id": 10,
@@ -92,7 +92,7 @@ class MockEvents {
       "websiteUrl": "https://www.instagram.com/feriabrotes",
       "lat": -31.433500888596917,
       "lng": -64.1853650279955,
-      "favorite": false,
+      "favorite": 0,
     },
 
   ];
@@ -106,7 +106,7 @@ class MockEvents {
 
   /// Estructura completa como viene de Firestore
   static Map<String, dynamic> get mockBatch => {
-    "eventos": cacheEvents,
+    "eventos": events,
     "metadata": mockMetadata,
   };
   /// Solo campos necesarios para cache (9 campos, 203 bytes por evento)

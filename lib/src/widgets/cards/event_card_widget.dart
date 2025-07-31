@@ -30,10 +30,15 @@ class EventCardWidget extends StatelessWidget {
       ),
           child: GestureDetector(
             onTap: () async {
-              final repository = EventRepository();                             // NUEVO: Instancia directa
-              final fullEvent = await repository.getEventById(event.id);        // NUEVO: Query directo a SQLite
+              print('🔍 Buscando evento con ID: ${event.id}');
+              final repository = EventRepository();
+              final fullEvent = await repository.getEventById(event.id);
               if (fullEvent != null) {
-                EventDetailModal.show(context, event, fullEvent);               // CAMBIO: cache + full (ambos!)
+                print('🔍 Evento encontrado con ID: ${fullEvent['id']}');  // ← AQUÍ (línea nueva)
+                print('🔍 fullEvent keys: ${fullEvent.keys}');
+                print('🔍 imageUrl: ${fullEvent['imageUrl']}');
+                print('🔍 description: ${fullEvent['description']}');
+                EventDetailModal.show(context, event, fullEvent);
               }
             },
         child: Container( // CAMBIO: Este Container ahora maneja decoración Y contenido
