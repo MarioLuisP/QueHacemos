@@ -279,8 +279,7 @@ class SimpleHomeProvider with ChangeNotifier {
 
   /// Obtener fechas ordenadas (hoy primero)
   List<String> getSortedDateKeys() {
-    return _cacheService.getSortedDateKeys(_filteredEvents.groupedByDate);
-  }
+    return _cacheService.getSortedDateKeys(_filteredEvents.groupedByDate);  }
 
   /// Obtener categoría con emoji (para FastEventCard)
   String getCategoryWithEmoji(String type) {
@@ -344,7 +343,20 @@ class SimpleHomeProvider with ChangeNotifier {
     }
     return "";
   }
+  /// Obtener eventos para fecha específica - O(1) lookup sin re-procesamiento
+  List<EventCacheItem> getEventsForDateDirect(String dateKey) {
+    if (!_cacheService.isLoaded) {
+      return [];
+    }
 
+    return _filteredEvents.groupedByDate[dateKey] ?? [];
+  }
+
+  /// Verificar si hay eventos para una fecha específica - O(1)
+  bool hasEventsForDate(String dateKey) {
+    return _filteredEvents.groupedByDate.containsKey(dateKey) &&
+        _filteredEvents.groupedByDate[dateKey]!.isNotEmpty;
+  }
   // === MÉTODOS PRIVADOS ===
 
   void _applyCurrentFilters() {

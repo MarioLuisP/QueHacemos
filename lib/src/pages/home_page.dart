@@ -1,4 +1,4 @@
-// lib/src/pages/clean_home_page.dart
+// lib/src/pages/home_page.dart - OPTIMIZADO
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,14 +7,14 @@ import '../widgets/chips/filter_chips_widget.dart';
 import '../cache/cache_models.dart';
 import '../widgets/cards/event_card_widget.dart';
 
-class HomePage extends StatefulWidget { // CAMBIO: nombre correcto
-  final DateTime? selectedDate;          // NUEVO: parámetro del calendario
-  final VoidCallback? onReturnToCalendar; // NUEVO: callback para volver
+class HomePage extends StatefulWidget {
+  final DateTime? selectedDate;
+  final VoidCallback? onReturnToCalendar;
 
-  const HomePage({                       // CAMBIO: nombre correcto
+  const HomePage({
     super.key,
-    this.selectedDate,                   // NUEVO: parámetro opcional
-    this.onReturnToCalendar,            // NUEVO: callback opcional
+    this.selectedDate,
+    this.onReturnToCalendar,
   });
 
   @override
@@ -24,6 +24,8 @@ class HomePage extends StatefulWidget { // CAMBIO: nombre correcto
 class _HomePageState extends State<HomePage> {
   late SimpleHomeProvider _provider;
 
+  // NUEVO: Estado local para filtros (no afecta provider)
+  Set<String> _localActiveCategories = {};
 
   @override
   void initState() {
@@ -31,63 +33,117 @@ class _HomePageState extends State<HomePage> {
     _provider = context.read<SimpleHomeProvider>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Siempre sincronizar selectedDate con provider
       _provider.setSelectedDate(widget.selectedDate);
     });
   }
 
+  // NUEVO: Filtrado local sin afectar provider
+  Map<String, List<EventCacheItem>> _getFilteredGroupedEvents(
+      Map<String, List<EventCacheItem>> allGroupedEvents,
+      ) {
+    if (_localActiveCategories.isEmpty) {
+      return allGroupedEvents;
+    }
+
+    final filtered = <String, List<EventCacheItem>>{};
+
+    allGroupedEvents.forEach((date, events) {
+      final filteredEvents = events.where((event) {
+        return _localActiveCategories.contains(event.type.toLowerCase());
+      }).toList();
+
+      if (filteredEvents.isNotEmpty) {
+        filtered[date] = filteredEvents;
+      }
+    });
+
+    return filtered;
+  }
+
+  // NUEVO: Toggle filtro local
+  void _toggleLocalCategory(String category) {
+    setState(() {
+      if (_localActiveCategories.contains(category)) {
+        _localActiveCategories.remove(category);
+      } else {
+        _localActiveCategories.add(category);
+      }
+    });
+  }
+
+  // NUEVO: Limpiar filtros locales
+  void _clearLocalCategories() {
+    setState(() {
+      _localActiveCategories.clear();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Eventos Córdoba - Cache Test'),
+        title: const Text('Eventos Córdoba'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
-      body: Consumer<SimpleHomeProvider>(
-        builder: (context, provider, child) {
+      body: Selector<SimpleHomeProvider, ({
+      bool isLoading,
+      String? errorMessage,
+      Map<String, List<EventCacheItem>> groupedEvents,
+      Set<String> availableCategories,
+      String theme,
+      })>(
+        selector: (context, provider) => (
+        isLoading: provider.isLoading,
+        errorMessage: provider.errorMessage,
+        groupedEvents: provider.groupedEvents,
+        availableCategories: provider.selectedCategories,
+        theme: provider.theme,
+        ),
+        builder: (context, data, child) {
           // Loading state
-          if (provider.isLoading) {
+          if (data.isLoading) {
             return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('Cargando cache en memoria...'),
+                  Text('Cargando eventos...'),
                 ],
               ),
             );
           }
 
           // Error state
-          if (provider.errorMessage != null) {
+          if (data.errorMessage != null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error, size: 64, color: Colors.red),
-                  SizedBox(height: 16),
+                  const Icon(Icons.error, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
                   Text(
-                    'Error: ${provider.errorMessage}',
+                    'Error: ${data.errorMessage}',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.red),
+                    style: const TextStyle(color: Colors.red),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => provider.refresh(),
-                    child: Text('Reintentar'),
+                    onPressed: () => _provider.refresh(),
+                    child: const Text('Reintentar'),
                   ),
                 ],
               ),
             );
           }
 
-          // Success state - mostrar eventos
+          // Success state - aplicar filtros locales
+          final filteredGroupedEvents = _getFilteredGroupedEvents(data.groupedEvents);
+
           return Column(
             children: [
-              /*
+              // NUEVO: Filter chips con estado local
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
@@ -100,26 +156,18 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 child: FilterChipsRow(
-                  availableCategories: provider.selectedCategories.toList(),
-                  activeCategories: provider.activeFilterCategories,
-                  onToggleCategory: (category) async {
-                    await provider.toggleFilterCategory(category);
-                  },
-                  onClearAll: () async {
-                    await provider.clearActiveFilterCategories();
-                  },
-                  currentTheme: provider.theme,
+                  availableCategories: data.availableCategories.toList(),
+                  activeCategories: _localActiveCategories,
+                  onToggleCategory: _toggleLocalCategory,
+                  onClearAll: _clearLocalCategories,
+                  currentTheme: data.theme,
                 ),
               ),
-*/
 
-              // Lista de eventos
+              // Lista de eventos optimizada
               Expanded(
-                child: _buildEventsList(provider),
+                child: _buildEventsList(filteredGroupedEvents),
               ),
-
-              // Stats bar (para debug)
-
             ],
           );
         },
@@ -128,8 +176,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Lista de eventos optimizada con máxima eficiencia
-  Widget _buildEventsList(SimpleHomeProvider provider) {
-    if (provider.events.isEmpty) {
+  Widget _buildEventsList(Map<String, List<EventCacheItem>> groupedEvents) {
+    if (groupedEvents.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -150,34 +198,37 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    final sortedDates = provider.getSortedDateKeys(); // NUEVO: Fechas ordenadas
+    final sortedDates = _provider.getSortedDateKeys()
+        .where((date) => groupedEvents.containsKey(date))
+        .toList();
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
       ),
       slivers: [
-        for (final date in sortedDates) ...[  // NUEVO: Loop por cada fecha
-          // Header del día
-          SliverToBoxAdapter( // NUEVO: Header como sliver separado
-            child: _buildDateHeader(provider.getSectionTitle(date)),
+        for (final date in sortedDates) ...[
+          // Header del día - Widget estático
+          SliverToBoxAdapter(
+            child: _buildDateHeader(_provider.getSectionTitle(date)),
           ),
+
           // Eventos de ese día con máxima eficiencia
-          SliverFixedExtentList( // NUEVO: Lista super eficiente para eventos
-            itemExtent: 249.0, // NUEVO: 237px tarjeta + 12px gap
+          SliverFixedExtentList(
+            itemExtent: 249.0, // 237px tarjeta + 12px gap
             delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                final eventsForDate = provider.groupedEvents[date]!; // NUEVO: Eventos de esta fecha
-                return Padding( // NUEVO: Gap real entre tarjetas
+                final eventsForDate = groupedEvents[date]!;
+                return Padding(
                   padding: const EdgeInsets.only(bottom: 12.0),
-                  child: EventCardWidget( // CAMBIO: Sin SizedBox redundante
+                  child: EventCardWidget(
                     event: eventsForDate[index],
-                    provider: provider,
+                    provider: _provider,
                     key: ValueKey(eventsForDate[index].id),
                   ),
                 );
               },
-              childCount: provider.groupedEvents[date]?.length ?? 0, // NUEVO: Count específico por fecha
+              childCount: groupedEvents[date]?.length ?? 0,
             ),
           ),
         ],
@@ -185,8 +236,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-
-  /// Header de fecha
+  /// Header de fecha - Widget estático
   Widget _buildDateHeader(String title) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -201,5 +251,4 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
 }

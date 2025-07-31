@@ -235,14 +235,24 @@ class EventCacheService {
       grouped[dateKey]!.add(event);
     }
 
-    // NUEVO: Ordenar por rating dentro de cada fecha (mayor rating primero)
+// OPTIMIZADO: Triple ordenamiento dentro de cada fecha
     grouped.forEach((date, events) {
-      events.sort((a, b) => b.rating.compareTo(a.rating));
+      events.sort((a, b) {
+        // 1. Rating primero (mayor rating = sponsors primero)
+        final ratingComparison = b.rating.compareTo(a.rating);
+        if (ratingComparison != 0) return ratingComparison;
+
+        // 2. Categoría alfabéticamente (organización visual)
+        final categoryComparison = a.type.compareTo(b.type);
+        if (categoryComparison != 0) return categoryComparison;
+
+        // 3. Hora más temprana primero (practicidad del usuario)
+        return a.date.compareTo(b.date); // date incluye hora completa
+      });
     });
 
     return grouped;
   }
-
   /// Obtener fechas ordenadas (hoy primero, luego futuras)
   List<String> getSortedDateKeys(Map<String, List<EventCacheItem>> grouped) {
     final today = DateTime.now();
