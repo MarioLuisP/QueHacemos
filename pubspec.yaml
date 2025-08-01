@@ -12,16 +12,17 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  table_calendar: ^3.0.9
-
-
 
   # UI y Estado
+  table_calendar: ^3.0.9
   cupertino_icons: ^1.0.8
   provider: ^6.1.2
   url_launcher: ^6.3.2
   share_plus: ^11.0.0
   cached_network_image: ^3.4.1
+  flutter_local_notifications: ^17.0.0
+  app_badge_plus: ^1.2.3
+  timezone: ^0.9.0
 
   # Dates y localización
   intl: ^0.20.2

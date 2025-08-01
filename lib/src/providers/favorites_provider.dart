@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../data/repositories/event_repository.dart';
 import 'notifications_provider.dart';
+import '../services/notification_service.dart';
 
 class FavoritesProvider with ChangeNotifier {
   final EventRepository _repository = EventRepository();
@@ -107,13 +108,14 @@ class FavoritesProvider with ChangeNotifier {
 
 // ========== NOTIFICACIONES DE FAVORITOS ========== // NUEVO
 
-  /// NUEVO: Enviar notificaciones relacionadas con favoritos
+  /// NUEVO: Enviar notificaciones relacionadas con favoritos + scheduling
   Future<void> _sendFavoriteNotification(String eventId, bool isAdded) async {
     try {
-      final notificationsProvider = NotificationsProvider.instance; // CAMBIO: usar singleton
+      final notificationsProvider = NotificationsProvider.instance;
+      final eventDetails = await _getEventDetails(eventId);
 
       if (isAdded) {
-        final eventDetails = await _getEventDetails(eventId);
+        // Notificación en el badge
         await notificationsProvider.addNotification(
           title: '❤️ Evento guardado en favoritos',
           message: '${eventDetails?['title'] ?? 'Evento'} - ${eventDetails?['date'] ?? 'Sin fecha'}',
@@ -121,8 +123,16 @@ class FavoritesProvider with ChangeNotifier {
           icon: '⭐',
           eventCode: eventId,
         );
+
+        // Programar recordatorios automáticos
+        if (eventDetails != null) {
+          await NotificationService.scheduleFavoriteReminders(
+            eventId: eventId,
+            eventDetails: eventDetails,
+          );
+        }
       } else {
-        final eventDetails = await _getEventDetails(eventId);
+        // Notificación en el badge
         await notificationsProvider.addNotification(
           title: '💔 Favorito removido',
           message: '${eventDetails?['title'] ?? 'Evento'} removido de favoritos',
@@ -130,12 +140,14 @@ class FavoritesProvider with ChangeNotifier {
           icon: '🗑️',
           eventCode: eventId,
         );
+
+        // Cancelar recordatorios programados
+        await NotificationService.cancelFavoriteReminders(eventId);
       }
     } catch (e) {
       print('⚠️ Error enviando notificación de favorito: $e');
     }
   }
-
   /// NUEVO: Obtener detalles de un evento específico
   Future<Map<String, dynamic>?> _getEventDetails(String eventId) async {
     try {

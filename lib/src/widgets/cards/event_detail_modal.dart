@@ -130,6 +130,9 @@ class EventDetailModal {
           },
         );
       },
+    ).then((_) {
+      FocusScope.of(context).unfocus();  // ← AQUÍ va la solución🔥
+    }
     );
   }
 }

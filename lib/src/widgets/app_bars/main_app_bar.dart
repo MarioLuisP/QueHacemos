@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../contact_modal.dart';
 import '../../providers/notifications_provider.dart';
-import 'components/notifications_bell_mock.dart';
+import 'components/notifications_bell.dart';
 
 class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? title;

@@ -9,10 +9,19 @@ import 'src/providers/simple_home_provider.dart';
 import 'src/themes/themes.dart';
 import 'src/navigation/bottom_nav.dart';
 import 'src/providers/notifications_provider.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'src/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'es_ES';
+
+  // Inicializar timezone
+  tz.initializeTimeZones();
+
+  // Inicializar notificaciones
+  await NotificationService.initialize();
+
   runApp(const MyApp());
 }
 
