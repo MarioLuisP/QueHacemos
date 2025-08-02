@@ -4,6 +4,8 @@ import 'package:quehacemos_cba/src/providers/simple_home_provider.dart';
 import 'package:quehacemos_cba/src/widgets/chips/filter_chips_widget.dart';
 import 'package:quehacemos_cba/src/widgets/cards/event_card_widget.dart';
 import 'package:quehacemos_cba/src/cache/cache_models.dart';
+import '../widgets/app_bars/main_app_bar.dart';
+
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -90,12 +92,7 @@ class _ExplorePageState extends State<ExplorePage> {
     return Consumer<SimpleHomeProvider>(
       builder: (context, provider, _) {
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Explorar Eventos'),
-            centerTitle: true,
-            toolbarHeight: 40.0,
-            elevation: 2.0,
-          ),
+          appBar: ExploreAppBar(),
           body: Column(
             children: [
               // Campo de búsqueda

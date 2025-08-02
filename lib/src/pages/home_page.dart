@@ -237,13 +237,13 @@ class _HomePageState extends State<HomePage> {
   Widget _buildDateHeader(String title) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: Colors.blue[50],
+      color: Theme.of(context).colorScheme.primary.withAlpha(30),  // ← Respeta theme
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 18,
+        style: TextStyle(
+          fontSize: 19,
           fontWeight: FontWeight.bold,
-          color: Colors.blue,
+          color: Theme.of(context).primaryColor,  // ← Respeta theme
         ),
       ),
     );

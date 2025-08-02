@@ -9,7 +9,7 @@ class AppThemes {
 
     return ThemeData(
       brightness: Brightness.light,
-      primaryColor: Colors.blue,
+      primaryColor: Color(0xFF5E3011),
       colorScheme: ColorScheme.light(
         primary: const Color(0xFFF7F2DB),
         secondary: secondaryLerped,

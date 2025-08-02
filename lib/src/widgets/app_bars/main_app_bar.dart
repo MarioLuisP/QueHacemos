@@ -17,6 +17,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? foregroundColor;
   final double elevation;
   final bool centerTitle;
+  final double toolbarHeight;
 
   const MainAppBar({
     super.key,
@@ -29,6 +30,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.foregroundColor,
     this.elevation = 2.0,
     this.centerTitle = true,
+    this.toolbarHeight = kToolbarHeight,
   });
 
   /// Constructor para HomePage (configuración optimizada)
@@ -39,10 +41,11 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.showUserAvatar = true,
     this.showNotifications = true,
     this.showContactButton = true,
-    this.backgroundColor = Colors.blue,
-    this.foregroundColor = Colors.white,
+    this.backgroundColor,
+    this.foregroundColor,
     this.elevation = 2.0,
     this.centerTitle = true,
+    this.toolbarHeight = kToolbarHeight,
   });
 
   /// Constructor para páginas internas (minimalista)
@@ -57,18 +60,23 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.foregroundColor,
     this.elevation = 2.0,
     this.centerTitle = true,
+    this.toolbarHeight = 40.0,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Extraer colores del theme UNA VEZ
+    final appBarBgColor = backgroundColor ?? Theme.of(context).appBarTheme.backgroundColor;
+    final appBarFgColor = foregroundColor ?? Theme.of(context).appBarTheme.foregroundColor;
+
     return AppBar(
       title: _buildTitle(context),
       centerTitle: centerTitle,
       toolbarHeight: preferredSize.height,
       elevation: elevation,
-      backgroundColor: backgroundColor ?? Theme.of(context).appBarTheme.backgroundColor,
-      foregroundColor: foregroundColor ?? Theme.of(context).appBarTheme.foregroundColor,
-      actions: _buildActions(context),
+      backgroundColor: appBarBgColor,
+      foregroundColor: appBarFgColor,
+      actions: _buildActions(context, appBarFgColor),
     );
   }
 
@@ -82,20 +90,20 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
         fontFamily: 'Nunito',
         fontWeight: FontWeight.bold,
         fontSize: _getTitleFontSize(title!),
-        color: foregroundColor ?? Colors.white,
+        color: foregroundColor ?? Theme.of(context).appBarTheme.foregroundColor,
       ),
     );
   }
 
   /// Calcular tamaño de fuente eficientemente
   double _getTitleFontSize(String title) {
-    if (title.length > 20) return 18.0;
-    if (title.length > 15) return 18.0;
-    return 20.0;
+    if (title.length > 20) return 20.0;
+    if (title.length > 15) return 21.0;
+    return 22.0;
   }
 
   /// Construir acciones - VERSIÓN EFICIENTE
-  List<Widget> _buildActions(BuildContext context) {
+  List<Widget> _buildActions(BuildContext context, Color? foregroundColor) {
     final List<Widget> actions = [];
 
     // Acciones personalizadas primero
@@ -107,8 +115,8 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     if (showContactButton) {
       actions.add(
         Transform.translate(
-          offset: const Offset(-4.0, 0), // Acercar al centro
-          child: _ContactButtonSimple(),
+          offset: const Offset(0.0, 0), // Acercar al centro
+          child: _ContactButtonSimple(iconColor: foregroundColor),
         ),
       );
     }
@@ -117,17 +125,17 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     if (showNotifications) {
       actions.add(
         Transform.translate(
-          offset: const Offset(-8.0, 0),
-          child: NotificationsBell(),
+          offset: const Offset(-6.0, 0),
+          child: _NotificationsBellReal(iconColor: foregroundColor),
         ),
       );
     }
-    // UserAvatar - Mock eficiente (sin auth complejo)
+// UserAvatar - Mock eficiente (sin auth complejo)
     if (showUserAvatar) {
       actions.add(
         Transform.translate(
           offset: const Offset(-2.0, 0), // Acercar desde el borde
-          child: _UserAvatarMock(),
+          child: _UserAvatarMock(iconColor: foregroundColor),
         ),
       );
     }
@@ -136,15 +144,21 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => Size.fromHeight(toolbarHeight);
 }
 
 /// COMPONENTES MOCK EFICIENTES - Integrados para evitar imports
 
 /// ContactButton simple - Ultra eficiente con modal funcional
 class _ContactButtonSimple extends StatelessWidget {
+  final Color? iconColor;
+
+  const _ContactButtonSimple({this.iconColor});
+
   @override
   Widget build(BuildContext context) {
+    final color = iconColor ?? Colors.white;
+
     return IconButton(
       onPressed: () {
         FocusScope.of(context).unfocus(); // 👈 Cierra el teclado
@@ -154,13 +168,13 @@ class _ContactButtonSimple extends StatelessWidget {
         width: 28,
         height: 28,
         decoration: BoxDecoration(
-          color: Colors.white.withAlpha(38),
+          color: color.withAlpha(38),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withAlpha(77), width: 1),
+          border: Border.all(color: color.withAlpha(77), width: 1),
         ),
-        child: const Icon(
+        child: Icon(
           Icons.add_circle_outline,
-          color: Colors.white,
+          color: color,
           size: 18,
         ),
       ),
@@ -169,11 +183,16 @@ class _ContactButtonSimple extends StatelessWidget {
   }
 }
 
-
 /// UserAvatar mock - Ultra eficiente
 class _UserAvatarMock extends StatelessWidget {
+  final Color? iconColor;
+
+  const _UserAvatarMock({this.iconColor});
+
   @override
   Widget build(BuildContext context) {
+    final color = iconColor ?? Colors.white;
+
     return IconButton(
       onPressed: () {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -186,13 +205,13 @@ class _UserAvatarMock extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.grey[600],
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withAlpha(77), width: 2),
+          border: Border.all(color: color.withAlpha(77), width: 2),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
             '?',
             style: TextStyle(
-              color: Colors.white,
+              color: color,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -205,6 +224,10 @@ class _UserAvatarMock extends StatelessWidget {
 }
 /// NotificationsBell real - Optimizado con Selector granular
 class _NotificationsBellReal extends StatelessWidget {
+  final Color? iconColor;
+
+  const _NotificationsBellReal({this.iconColor});
+
   @override
   Widget build(BuildContext context) {
     return Selector<NotificationsProvider, ({int unreadCount, bool hasUnread})>(
@@ -218,9 +241,9 @@ class _NotificationsBellReal extends StatelessWidget {
           icon: Stack(
             clipBehavior: Clip.none,
             children: [
-              const Icon(
+              Icon(
                 Icons.notifications_outlined,
-                color: Colors.white,
+                color: iconColor ?? Colors.white,
                 size: 24,
               ),
               if (data.hasUnread)
@@ -232,7 +255,7 @@ class _NotificationsBellReal extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white, width: 1),
+                      border: Border.all(color: iconColor ?? Colors.white, width: 1),
                     ),
                     constraints: const BoxConstraints(
                       minWidth: 18,
@@ -296,7 +319,7 @@ class _NotificationsPanel extends StatelessWidget {
                   width: 50,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey[300],
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -340,15 +363,27 @@ class _NotificationsPanel extends StatelessWidget {
 class CalendarAppBar extends MainAppBar {
   const CalendarAppBar({super.key, String? title, List<Widget>? customActions})
       : super(
-    title: title ?? 'Calendario',
+    title: title ?? 'Elije el Día',
     customActions: customActions,
     showUserAvatar: true,
     showNotifications: true,
     showContactButton: false,
     centerTitle: true,
+    toolbarHeight: 40.0,
   );
 }
-
+class ExploreAppBar extends MainAppBar {
+  const ExploreAppBar({super.key, String? title, List<Widget>? customActions})
+      : super(
+    title: title ?? 'Explorar Eventos',
+    customActions: customActions,
+    showUserAvatar: true,
+    showNotifications: true,
+    showContactButton: false,
+    centerTitle: true,
+    toolbarHeight: 40.0,
+  );
+}
 class FavoritesAppBar extends MainAppBar {
   const FavoritesAppBar({super.key, String? title, List<Widget>? customActions})
       : super(
@@ -358,5 +393,6 @@ class FavoritesAppBar extends MainAppBar {
     showNotifications: false,
     showContactButton: false,
     centerTitle: true,
+    toolbarHeight: 40.0,
   );
 }

@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/simple_home_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../widgets/cards/event_card_widget.dart';
+import '../widgets/app_bars/main_app_bar.dart';
+
 
 class FavoritesPage extends StatelessWidget {
   const FavoritesPage({super.key});
@@ -10,12 +12,7 @@ class FavoritesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis Favoritos'),
-        centerTitle: true,
-        toolbarHeight: 40.0,
-        elevation: 2.0,
-      ),
+      appBar: FavoritesAppBar(),
       body: Consumer2<SimpleHomeProvider, FavoritesProvider>(
         builder: (context, simpleProvider, favProvider, child) {
           // Loading state

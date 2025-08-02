@@ -6,6 +6,8 @@ import '../providers/simple_home_provider.dart';
 import '../widgets/cards/event_card_widget.dart';
 import '../widgets/chips/filter_chips_widget.dart';
 import '../cache/cache_models.dart';
+import '../widgets/app_bars/main_app_bar.dart';
+
 
 class CalendarPage extends StatefulWidget {
   final Function(DateTime)? onDateSelected;
@@ -177,12 +179,7 @@ class _CalendarPageState extends State<CalendarPage>
     return Consumer<SimpleHomeProvider>(
       builder: (context, provider, _) {
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Elije el Día'),
-            centerTitle: true,
-            toolbarHeight: 40.0,
-            elevation: 2.0,
-          ),
+          appBar: CalendarAppBar(title: 'Elije el Día'),
           body: Column(
             children: [
               // CHIPS FIJOS
