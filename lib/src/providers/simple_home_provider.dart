@@ -17,13 +17,22 @@ class SimpleHomeProvider with ChangeNotifier {
   // Estado simple
   bool _isLoading = false;
   String? _errorMessage;
-  MemoryFilters _currentFilters = MemoryFilters.empty;
-  FilteredEvents _filteredEvents = FilteredEvents.empty;
-
+// ✅ SIMPLIFICADO: Solo filtros que realmente se usan globalmente
+  String _currentSearchQuery = '';
+  DateTime? _currentSelectedDate;
   // NUEVO: Propiedades para filtros de categorías
   Set<String> _selectedCategories = {}; // NUEVO: categorías habilitadas en Settings
   String _theme = 'normal'; // NUEVO: Tema actual de la app
   DateTime? _lastSelectedDate; // NUEVO: Para persistencia de Calendar
+
+  // Getters para filtros actuales
+  String get currentSearchQuery => _currentSearchQuery;
+  DateTime? get currentSelectedDate => _currentSelectedDate;
+
+// Getters para datos del cache
+  List<EventCacheItem> get events => _cacheService.allEvents;
+  Map<String, List<EventCacheItem>> get groupedEvents => _cacheService.getGroupedByDate(_cacheService.allEvents);
+  int get eventCount => _cacheService.eventCount;
 // NUEVO: Propiedades para limpieza automática
   int _eventCleanupDays = 3;
   int _favoriteCleanupDays = 7;
@@ -41,11 +50,6 @@ class SimpleHomeProvider with ChangeNotifier {
   // Getters públicos
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  MemoryFilters get currentFilters => _currentFilters;
-  List<EventCacheItem> get events => _filteredEvents.events;
-  Map<String, List<EventCacheItem>> get groupedEvents => _filteredEvents.groupedByDate;
-  int get eventCount => _filteredEvents.totalCount;
-  String get appliedFiltersText => _filteredEvents.appliedFilters;
 
   // NUEVO: Getters para filtros de categorías
   Set<String> get selectedCategories => _selectedCategories; // NUEVO
@@ -55,31 +59,24 @@ class SimpleHomeProvider with ChangeNotifier {
   int get eventCleanupDays => _eventCleanupDays;
   int get favoriteCleanupDays => _favoriteCleanupDays;
 
-  /// Inicializar provider (cargar cache + preferencias + aplicar filtros) // CAMBIO: comentario actualizado
+  /// Inicializar provider (cargar cache + preferencias)
   Future<void> initialize() async {
-    // NUEVO: Sync automático al startup (pobla la DB)
-    //await SyncService().syncOnAppStart();
-
-    // NUEVO: Cargar preferencias primero
-    await _loadAllPreferences(); // NUEVO
+    // Cargar preferencias primero
+    await _loadAllPreferences();
 
     if (_cacheService.isLoaded) {
-      print('✅ Cache ya cargado, aplicando filtros...');
-      _applyCurrentFilters();
+      print('✅ Cache ya cargado');
       return;
     }
 
     _setLoading(true);
 
     try {
-      // Cargar cache desde mock data (después será SQLite)
+      // Cargar cache desde SQLite
       await _cacheService.loadCache(theme: _theme);
 
-      // Aplicar filtros por defecto
-      _applyCurrentFilters();
-
       _setLoading(false);
-      print('✅ SimpleHomeProvider inicializado: ${_filteredEvents.totalCount} eventos');
+      print('✅ SimpleHomeProvider inicializado: ${_cacheService.eventCount} eventos');
 
     } catch (e) {
       _setError('Error cargando eventos: $e');
@@ -95,20 +92,11 @@ class SimpleHomeProvider with ChangeNotifier {
     print('🔗 Sync configurado entre FavoritesProvider y SimpleHomeProvider');
   }
   /// Obtener eventos con filtros de categoría y búsqueda, ignorando fecha
+  /// Obtener eventos con filtros de búsqueda, ignorando fecha
   List<EventCacheItem> getEventsWithoutDateFilter() {
-    print('🐛 DEBUG - _currentFilters: ${_currentFilters.description}');
-    print('🐛 DEBUG - _currentFilters.categories: ${_currentFilters.categories}');
-    print('🐛 DEBUG - _currentFilters.searchQuery: "${_currentFilters.searchQuery}"');
-
-    final filtersWithoutDate = _currentFilters.copyWith(
-      selectedDate: null,
-      clearDate: true,
-    );
-
-    final result = _cacheService.applyFilters(filtersWithoutDate).events;
-    print('🐛 DEBUG - Eventos devueltos: ${result.length}');
-
-    return result;
+    return _cacheService.filter(
+      searchQuery: _currentSearchQuery.isEmpty ? null : _currentSearchQuery,
+    ).events;
   }
 
   /// NUEVO: Cargar preferencias de categorías desde SharedPreferences
@@ -168,11 +156,12 @@ class SimpleHomeProvider with ChangeNotifier {
     print('🔄 Categorías restablecidas a default'); // NUEVO
   } // NUEVO
   /// Cambiar búsqueda
+  /// Cambiar búsqueda
   void setSearchQuery(String query) {
     print('🔍 Cambiando búsqueda: "$query"');
 
-    _currentFilters = _currentFilters.copyWith(searchQuery: query);
-    _applyCurrentFilters();
+    _currentSearchQuery = query;
+    notifyListeners();
   }
   /// NUEVO: Cambiar tema y recalcular colores
   Future<void> setTheme(String theme) async {
@@ -182,11 +171,10 @@ class SimpleHomeProvider with ChangeNotifier {
       // Recalcular colores del cache
       _cacheService.recalculateColorsForTheme(theme);
 
-      // Re-aplicar filtros para actualizar UI
-      _applyCurrentFilters();
-
       // Guardar preferencias
       await _saveAllPreferences();
+
+      notifyListeners();
 
       print('🎨 Tema cambiado a: $theme');
     }
@@ -200,19 +188,17 @@ class SimpleHomeProvider with ChangeNotifier {
   void setSelectedDate(DateTime? date) {
     print('📅 Cambiando fecha: $date');
 
-    _currentFilters = _currentFilters.copyWith(
-      selectedDate: date,
-      clearDate: date == null,
-    );
-    _applyCurrentFilters();
+    _currentSelectedDate = date;
+    notifyListeners();
   }
 
   /// Limpiar todos los filtros
   void clearAllFilters() {
     print('🧹 Limpiando todos los filtros');
 
-    _currentFilters = MemoryFilters.empty;
-    _applyCurrentFilters();
+    _currentSearchQuery = '';
+    _currentSelectedDate = null;
+    notifyListeners();
   }
 
   /// Toggle favorito (delegado a FavoritesProvider)
@@ -226,7 +212,7 @@ class SimpleHomeProvider with ChangeNotifier {
   void syncFavoriteInCache(int eventId, bool isFavorite) {
     final updated = _cacheService.updateFavoriteInCache(eventId, isFavorite);
     if (updated) {
-      _applyCurrentFilters(); // Refresh UI para consistencia
+      notifyListeners(); // Refresh UI para consistencia
       print('🔄 Cache sincronizado: evento $eventId = $isFavorite');
     }
   }
@@ -244,7 +230,6 @@ class SimpleHomeProvider with ChangeNotifier {
 
     try {
       await _cacheService.reloadCache();
-      _applyCurrentFilters();
       _setLoading(false);
 
       print('✅ Refresh completado');
@@ -279,8 +264,9 @@ class SimpleHomeProvider with ChangeNotifier {
 
   /// Obtener fechas ordenadas (hoy primero)
   List<String> getSortedDateKeys() {
-    return _cacheService.getSortedDateKeys(_filteredEvents.groupedByDate);  }
-
+    final grouped = _cacheService.getGroupedByDate(_cacheService.allEvents);
+    return _cacheService.getSortedDateKeys(grouped);
+  }
   /// Obtener categoría con emoji (para FastEventCard)
   String getCategoryWithEmoji(String type) {
     return CategoryDisplayNames.getCategoryWithEmoji(type);
@@ -349,37 +335,16 @@ class SimpleHomeProvider with ChangeNotifier {
       return [];
     }
 
-    return _filteredEvents.groupedByDate[dateKey] ?? [];
+    return _cacheService.getEventsForDate(dateKey);
   }
 
   /// Verificar si hay eventos para una fecha específica - O(1)
   bool hasEventsForDate(String dateKey) {
-    return _filteredEvents.groupedByDate.containsKey(dateKey) &&
-        _filteredEvents.groupedByDate[dateKey]!.isNotEmpty;
+    return _cacheService.getEventCountForDate(dateKey) > 0;
   }
   // === MÉTODOS PRIVADOS ===
 
-  void _applyCurrentFilters() {
-    print('🐛 ANTES - Cache loaded: ${_cacheService.isLoaded}');
-    print('🐛 ANTES - Cache events: ${_cacheService.allEvents.length}');
 
-    if (!_cacheService.isLoaded) {
-      print('⚠️ Cache no cargado, saltando filtros');
-      return;
-    }
-
-    final globalFilters = MemoryFilters.empty;
-
-    print('🐛 ANTES FILTER - globalFilters: ${globalFilters.description}');
-
-    _filteredEvents = _cacheService.applyFilters(globalFilters);
-
-    print('🐛 DESPUÉS FILTER - _filteredEvents.totalCount: ${_filteredEvents.totalCount}');
-
-    notifyListeners();
-
-    print('🔄 Filtros aplicados: ${_filteredEvents.totalCount} eventos');
-  }
   /// Cambiar estado de loading
   void _setLoading(bool loading) {
     _isLoading = loading;
@@ -391,10 +356,8 @@ class SimpleHomeProvider with ChangeNotifier {
   void _setError(String error) {
     _isLoading = false;
     _errorMessage = error;
-    _filteredEvents = FilteredEvents.empty;
     notifyListeners();
   }
-
   // === DEBUG ===
 
   /// Estadísticas para debug
@@ -402,31 +365,23 @@ class SimpleHomeProvider with ChangeNotifier {
     return {
       'cacheLoaded': _cacheService.isLoaded,
       'cacheEventCount': _cacheService.eventCount,
-      'filteredEventCount': _filteredEvents.totalCount,
-      'currentFilters': _currentFilters.description,
-      'groupedDates': _filteredEvents.groupedByDate.keys.length,
+      'currentSearchQuery': _currentSearchQuery,
+      'currentSelectedDate': _currentSelectedDate?.toString(),
       'isLoading': _isLoading,
       'hasError': _errorMessage != null,
-      // NUEVO: Estadísticas de categorías
-      'selectedCategoriesCount': _selectedCategories.length, // NUEVO
-      // ELIMINADO: activeCategoriesCount - ya no filtros globales
-      'selectedCategories': _selectedCategories.toList(), // NUEVO
-      // ELIMINADO: activeCategories - ya no filtros globales
+      'selectedCategoriesCount': _selectedCategories.length,
+      'selectedCategories': _selectedCategories.toList(),
     };
   }
-
   /// Imprimir debug
   void debugPrint() {
     final stats = getDebugStats();
     print('🏠 SimpleHomeProvider Debug:');
     print('  Cache cargado: ${stats['cacheLoaded']}');
     print('  Eventos en cache: ${stats['cacheEventCount']}');
-    print('  Eventos filtrados: ${stats['filteredEventCount']}');
-    print('  Filtros actuales: ${stats['currentFilters']}');
-    print('  Fechas agrupadas: ${stats['groupedDates']}');
-    // NUEVO: Debug de categorías
-    print('  Categorías seleccionadas: ${stats['selectedCategoriesCount']} ${stats['selectedCategories']}'); // NUEVO
-    // ELIMINADO: Filtros activos - ya no hay filtros globales
+    print('  Búsqueda actual: "${stats['currentSearchQuery']}"');
+    print('  Fecha seleccionada: ${stats['currentSelectedDate']}');
+    print('  Categorías seleccionadas: ${stats['selectedCategoriesCount']} ${stats['selectedCategories']}');
   }
   /// NUEVO: Cambiar días de limpieza para eventos
   Future<void> setEventCleanupDays(int days) async {
