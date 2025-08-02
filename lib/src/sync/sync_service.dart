@@ -137,7 +137,8 @@ class SyncService {
       await _firestoreClient.updateSyncTimestamp();
 
       // Notifications y maintenance
-      await _sendSyncNotifications(events.length, cleanupResults);
+      final realNewEvents = events.length - cleanupResults.duplicatesRemoved;
+      await _sendSyncNotifications(realNewEvents, cleanupResults);
       await _maintainNotificationSchedules();
 
       print('✅ Sincronización automática completada');
@@ -197,7 +198,9 @@ class SyncService {
 
       // Maintenance
       await _maintainNotificationSchedules();
-
+      print('🎇 DEBUG: Enviando notificaciones para ${events.length} eventos');
+      final realNewEvents = events.length - cleanupResults.duplicatesRemoved;
+      await _sendSyncNotifications(realNewEvents, cleanupResults);
       print('✅ Sincronización FORZADA completada');
       final result = SyncResult.success(
         eventsAdded: events.length,
@@ -237,6 +240,7 @@ class SyncService {
     return CleanupResult(
       eventsRemoved: cleanupStats['normalEvents']! + duplicatesRemoved,
       favoritesRemoved: cleanupStats['favoriteEvents']!,
+      duplicatesRemoved: duplicatesRemoved, // ← AGREGAR
     );
   }
 
@@ -440,9 +444,11 @@ enum SyncResultType { success, notNeeded, noNewData, error }
 class CleanupResult {
   final int eventsRemoved;
   final int favoritesRemoved;
+  final int duplicatesRemoved; // ← AGREGAR
 
   CleanupResult({
     required this.eventsRemoved,
     required this.favoritesRemoved,
+    required this.duplicatesRemoved, // ← AGREGAR
   });
 }

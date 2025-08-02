@@ -74,10 +74,10 @@ class FavoritesProvider with ChangeNotifier {
   Timer? _dailyTimer;
 
   void _startDailyNotificationTimer() {
-    _dailyTimer = Timer.periodic(Duration(minutes: 1), (timer) async {
+    _dailyTimer = Timer.periodic(Duration(minutes: 10), (timer) async {
       final now = DateTime.now();
-      if (now.hour == 10 && now.minute == 50) {
-        await _scheduleNotificationsForTodayAndTomorrow(); // ← agregar await
+      if (now.hour == 10 && now.minute >= 50) { // Entre 10:50 y 10:59
+        await _scheduleNotificationsForTodayAndTomorrow();
       }
     });
   }
