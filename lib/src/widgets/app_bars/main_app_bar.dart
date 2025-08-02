@@ -121,12 +121,12 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
       );
     }
 
-// NotificationsBell - Versión real optimizada
+/// NotificationsBell - Versión real optimizada
     if (showNotifications) {
       actions.add(
         Transform.translate(
           offset: const Offset(-6.0, 0),
-          child: _NotificationsBellReal(iconColor: foregroundColor),
+          child: NotificationsBell(),
         ),
       );
     }
@@ -222,142 +222,7 @@ class _UserAvatarMock extends StatelessWidget {
     );
   }
 }
-/// NotificationsBell real - Optimizado con Selector granular
-class _NotificationsBellReal extends StatelessWidget {
-  final Color? iconColor;
 
-  const _NotificationsBellReal({this.iconColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Selector<NotificationsProvider, ({int unreadCount, bool hasUnread})>(
-      selector: (context, provider) => (
-      unreadCount: provider.unreadCount,
-      hasUnread: provider.hasUnreadNotifications,
-      ),
-      builder: (context, data, child) {
-        return IconButton(
-          onPressed: () => _showNotificationsPanel(context),
-          icon: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Icon(
-                Icons.notifications_outlined,
-                color: iconColor ?? Colors.white,
-                size: 24,
-              ),
-              if (data.hasUnread)
-                Positioned(
-                  right: -2,
-                  top: -2,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: iconColor ?? Colors.white, width: 1),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 18,
-                      minHeight: 18,
-                    ),
-                    child: Text(
-                      '${data.unreadCount}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          tooltip: 'Notificaciones',
-        );
-      },
-    );
-  }
-
-  void _showNotificationsPanel(BuildContext context) {
-    final provider = context.read<NotificationsProvider>();
-    FocusScope.of(context).unfocus();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _NotificationsPanel(provider: provider),
-    );
-  }
-}
-
-/// Panel básico de notificaciones - Versión simplificada
-class _NotificationsPanel extends StatelessWidget {
-  final NotificationsProvider provider;
-
-  const _NotificationsPanel({required this.provider});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Container(
-                  width: 50,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Notificaciones',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: provider.notifications.isEmpty
-                ? const Center(child: Text('No hay notificaciones'))
-                : ListView.builder(
-              itemCount: provider.notifications.length,
-              itemBuilder: (context, index) {
-                final notification = provider.notifications[index];
-                return ListTile(
-                  leading: Text(notification['icon'] ?? '🔔'),
-                  title: Text(notification['title']),
-                  subtitle: Text(notification['message']),
-                  onTap: () {
-                    if (!notification['isRead']) {
-                      provider.markAsRead(notification['id']);
-                    }
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 /// AppBars especializadas (conservadas de versión original)
 
 class CalendarAppBar extends MainAppBar {

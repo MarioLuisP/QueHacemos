@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../data/repositories/event_repository.dart';
 import 'notifications_provider.dart';
 import '../services/notification_service.dart';
+import 'dart:async'; // Para Timer
 
 class FavoritesProvider with ChangeNotifier {
   final EventRepository _repository = EventRepository();
@@ -23,8 +24,63 @@ class FavoritesProvider with ChangeNotifier {
     await _loadFavoritesFromRepository();
     _isInitialized = true;
     notifyListeners();
+
+    // AGREGAR ESTE BLOQUE:
+    await _scheduleNotificationsForTodayAndTomorrow();
+    _startDailyNotificationTimer();
   }
 
+
+  /// Programar notificaciones para hoy y mañana
+  Future<void> _scheduleNotificationsForTodayAndTomorrow() async {
+    try {
+      final favorites = await _repository.getAllFavorites();
+      if (favorites.isEmpty) return;
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final tomorrow = today.add(Duration(days: 1));
+
+      // Formatear fechas
+      final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      final tomorrowStr = '${tomorrow.year}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
+
+      // Agrupar favoritos por fecha
+      final Map<String, List<Map<String, dynamic>>> favoritesByDate = {};
+
+      for (final favorite in favorites) {
+        final dateStr = favorite['date']?.toString().split(' ')[0];
+        if (dateStr != null && (dateStr == todayStr || dateStr == tomorrowStr)) { // ← AGREGAR null check
+          (favoritesByDate[dateStr] ??= []).add(favorite);
+        }
+      }
+
+      // Programar notificaciones
+      for (final entry in favoritesByDate.entries) {
+        await NotificationService.scheduleDailyNotification(entry.key, entry.value);
+      }
+
+      // Badge si hay favoritos hoy
+      if (favoritesByDate.containsKey(todayStr)) {
+        await NotificationService.setBadge();
+      }
+
+      print('✅ Notificaciones programadas para ${favoritesByDate.length} fechas (hoy/mañana)');
+
+    } catch (e) {
+      print('❌ Error programando notificaciones hoy/mañana: $e');
+    }
+  }
+  Timer? _dailyTimer;
+
+  void _startDailyNotificationTimer() {
+    _dailyTimer = Timer.periodic(Duration(minutes: 1), (timer) async {
+      final now = DateTime.now();
+      if (now.hour == 10 && now.minute == 50) {
+        await _scheduleNotificationsForTodayAndTomorrow(); // ← agregar await
+      }
+    });
+  }
   /// Cargar favoritos desde SQLite al startup
   Future<void> _loadFavoritesFromRepository() async {
     try {
@@ -120,7 +176,7 @@ class FavoritesProvider with ChangeNotifier {
           title: '❤️ Evento guardado en favoritos',
           message: '${eventDetails?['title'] ?? 'Evento'}',
           type: 'favorite_added',
-          icon: '⭐',
+          icon: '❤️',
           eventCode: eventId,
         );
       } else {
@@ -128,7 +184,7 @@ class FavoritesProvider with ChangeNotifier {
           title: '💔 Favorito removido',
           message: '${eventDetails?['title'] ?? 'Evento'} removido de favoritos',
           type: 'favorite_removed',
-          icon: '🗑️',
+          icon: '💔',
           eventCode: eventId,
         );
       }

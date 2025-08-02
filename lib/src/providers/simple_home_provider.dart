@@ -92,7 +92,7 @@ class SimpleHomeProvider with ChangeNotifier {
     print('🔗 Sync configurado entre FavoritesProvider y SimpleHomeProvider');
   }
   /// Obtener eventos con filtros de categoría y búsqueda, ignorando fecha
-  /// Obtener eventos con filtros de búsqueda, ignorando fecha
+
   List<EventCacheItem> getEventsWithoutDateFilter() {
     return _cacheService.filter(
       searchQuery: _currentSearchQuery.isEmpty ? null : _currentSearchQuery,
@@ -126,7 +126,9 @@ class SimpleHomeProvider with ChangeNotifier {
     // ELIMINADO: Guardar activeFilterCategories - ya no filtros globales
     await prefs.setString('app_theme', _theme); // NUEVO: Guardar tema
     print('💾 Preferencias guardadas: tema=$_theme, selected=${_selectedCategories.length}'); // CAMBIO: removido active
-  }/// NUEVO: Toggle categoría seleccionada (para Settings)
+  }
+
+  /// NUEVO: Toggle categoría seleccionada (para Settings)
   Future<void> toggleCategory(String category) async { // NUEVO
     if (_selectedCategories.contains(category)) { // NUEVO
       _selectedCategories.remove(category); // NUEVO
@@ -148,14 +150,12 @@ class SimpleHomeProvider with ChangeNotifier {
       'musica', 'teatro', 'standup', 'arte', 'cine', 'mic',
       'cursos', 'ferias', 'calle', 'redes', 'ninos', 'danza'
     }; // NUEVO
-    // ELIMINADO: _activeFilterCategories.clear() - ya no filtros globales
-    // ELIMINADO: _currentFilters = _currentFilters.copyWith(categories: {}) - ya no categorías en filtros
-    // ELIMINADO: _applyCurrentFilters() - no necesario recalcular filtros
+
     await _saveAllPreferences(); // NUEVO
     notifyListeners(); // NUEVO
     print('🔄 Categorías restablecidas a default'); // NUEVO
   } // NUEVO
-  /// Cambiar búsqueda
+
   /// Cambiar búsqueda
   void setSearchQuery(String query) {
     print('🔍 Cambiando búsqueda: "$query"');
@@ -199,12 +199,6 @@ class SimpleHomeProvider with ChangeNotifier {
     _currentSearchQuery = '';
     _currentSelectedDate = null;
     notifyListeners();
-  }
-
-  /// Toggle favorito (delegado a FavoritesProvider)
-  void toggleFavorite(int eventId) {
-    print('💖 Toggle favorito delegado a FavoritesProvider: $eventId');
-    // TODO: Llamar a FavoritesProvider en siguiente paso
   }
 
 
@@ -286,14 +280,14 @@ class SimpleHomeProvider with ChangeNotifier {
       return dateString;
     }
   }
-  Future<List<EventCacheItem>> getEventsForDate(DateTime date) async {
+  /*Future<List<EventCacheItem>> getEventsForDate(DateTime date) async {
     if (!_cacheService.isLoaded) {
       await initialize();
     }
 
     final dateString = "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
     return _cacheService.getEventsForDate(dateString);
-  }
+  }🔥🔥🔥*/
 
   /// NUEVO: Obtener conteos de eventos por rango de fechas (para calendario)
   Map<DateTime, int> getEventCountsForDateRange(DateTime start, DateTime end) {
@@ -330,13 +324,13 @@ class SimpleHomeProvider with ChangeNotifier {
     return "";
   }
   /// Obtener eventos para fecha específica - O(1) lookup sin re-procesamiento
-  List<EventCacheItem> getEventsForDateDirect(String dateKey) {
+  /*List<EventCacheItem> getEventsForDateDirect(String dateKey) {
     if (!_cacheService.isLoaded) {
       return [];
     }
 
     return _cacheService.getEventsForDate(dateKey);
-  }
+  }🔥🔥🔥*/
 
   /// Verificar si hay eventos para una fecha específica - O(1)
   bool hasEventsForDate(String dateKey) {
