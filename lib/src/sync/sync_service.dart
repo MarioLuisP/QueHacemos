@@ -4,13 +4,13 @@ import 'dart:async';
 import '../data/repositories/event_repository.dart';
 import '../data/database/database_helper.dart';
 import '../mock/mock_events.dart';
-import '../providers/mock_notifications_provider.dart';//import '../providers/notifications_provider.dart'; // CAMBIO: ruta corregida
-
+import '../providers/notifications_provider.dart';
 
 class SyncService {
   static final SyncService _instance = SyncService._internal();
   factory SyncService() => _instance;
   SyncService._internal();
+
   // NUEVO: StreamController para notificar cuando termina sync
   static final StreamController<SyncResult> _syncCompleteController =
   StreamController<SyncResult>.broadcast();
@@ -63,66 +63,209 @@ class SyncService {
     return false;
   }
 
+  // ========== NUEVOS MÉTODOS PRINCIPALES ==========
+
+  /// ✅ NUEVO: Primera instalación - Siempre 10 lotes
+  Future<SyncResult> firstInstallSync() async {
+    if (_isSyncing) {
+      print('⏭️ Sincronización ya en progreso, omitiendo...');
+      return SyncResult.notNeeded();
+    }
+
+    _isSyncing = true;
+    _globalSyncInProgress = true;
+
+    try {
+      print('🚀 Iniciando primera instalación - 10 lotes...');
+
+      // Descargar 10 lotes (sin verificar shouldSync)
+      final events = await _downloadLatestBatch(isMultipleLots: true);
+
+      if (events.isEmpty) {
+        print('📭 No hay eventos disponibles para primera instalación');
+        return SyncResult.noNewData();
+      }
+
+      await _processEvents(events);
+      final cleanupResults = await _performCleanup();
+      await _updateSyncTimestamp();
+      await _maintainNotificationSchedules();
+
+      // Notificar primera instalación completada
+      _notificationsProvider.addNotification(
+        title: '🎭 ¡App lista para usar!',
+        message: 'Se descargaron ${events.length} eventos culturales de Córdoba',
+        type: 'first_install_complete',
+        icon: '🎉',
+      );
+
+      print('✅ Primera instalación completada: ${events.length} eventos');
+      final result = SyncResult.success(
+        eventsAdded: events.length,
+        eventsRemoved: cleanupResults.eventsRemoved,
+        favoritesRemoved: cleanupResults.favoritesRemoved,
+      );
+      _syncCompleteController.add(result);
+      return result;
+
+    } catch (e) {
+      print('❌ Error en primera instalación: $e');
+      return SyncResult.error(e.toString());
+    } finally {
+      _isSyncing = false;
+      _globalSyncInProgress = false;
+    }
+  }
+
+  /// ✅ MODIFICADO: Sincronización automática - Solo 1 lote
+  Future<SyncResult> performAutoSync() async {
+    if (_isSyncing) {
+      print('⏭️ Sincronización ya en progreso, omitiendo...');
+      return SyncResult.notNeeded();
+    }
+
+    if (!await shouldSync()) {
+      print('⏭️ Sincronización no necesaria aún');
+      return SyncResult.notNeeded();
+    }
+
+    _isSyncing = true;
+    _globalSyncInProgress = true;
+
+    try {
+      print('🔄 Iniciando sincronización automática - 1 lote...');
+
+      // Descargar solo 1 lote (respeta shouldSync)
+      final events = await _downloadLatestBatch(isMultipleLots: false);
+
+      if (events.isEmpty) {
+        print('📭 No hay eventos nuevos');
+
+        _notificationsProvider.addNotification(
+          title: '✅ Todo actualizado',
+          message: 'No hay eventos nuevos en este momento',
+          type: 'sync_no_new_data',
+          icon: '📱',
+        );
+
+        return SyncResult.noNewData();
+      }
+
+      await _processEvents(events);
+      final cleanupResults = await _performCleanup();
+      await _updateSyncTimestamp();
+      await _sendSyncNotifications(events.length, cleanupResults);
+      await _maintainNotificationSchedules();
+
+      print('✅ Sincronización automática completada');
+      final result = SyncResult.success(
+        eventsAdded: events.length,
+        eventsRemoved: cleanupResults.eventsRemoved,
+        favoritesRemoved: cleanupResults.favoritesRemoved,
+      );
+      _syncCompleteController.add(result);
+      return result;
+
+    } catch (e) {
+      print('❌ Error en sincronización automática: $e');
+      return SyncResult.error(e.toString());
+    } finally {
+      _isSyncing = false;
+      _globalSyncInProgress = false;
+    }
+  }
+
+  /// ✅ MODIFICADO: Force sync para desarrollo - 10 lotes
+  Future<SyncResult> forceSync() async {
+    if (_isSyncing) {
+      print('⏭️ Sincronización ya en progreso, omitiendo...');
+      return SyncResult.notNeeded();
+    }
+
+    _isSyncing = true;
+    _globalSyncInProgress = true;
+
+    try {
+      print('🔄 FORZANDO sincronización (dev) - 10 lotes...');
+
+      // Descargar 10 lotes (forzado para desarrollo)
+      final events = await _downloadLatestBatch(isMultipleLots: true);
+
+      if (events.isEmpty) {
+        print('📭 No hay eventos nuevos');
+        return SyncResult.noNewData();
+      }
+
+      await _processEvents(events);
+      final cleanupResults = await _performCleanup();
+      await _updateSyncTimestamp();
+      await _maintainNotificationSchedules();
+
+      print('✅ Sincronización FORZADA completada');
+      final result = SyncResult.success(
+        eventsAdded: events.length,
+        eventsRemoved: cleanupResults.eventsRemoved,
+        favoritesRemoved: cleanupResults.favoritesRemoved,
+      );
+      _syncCompleteController.add(result);
+      return result;
+
+    } catch (e) {
+      print('❌ Error en sincronización forzada: $e');
+      return SyncResult.error(e.toString());
+    } finally {
+      _isSyncing = false;
+      _globalSyncInProgress = false;
+    }
+  }
+
   // ========== DESCARGA DE FIRESTORE ==========
 
-  /// Descargar último lote de eventos de Firestore
-  Future<List<Map<String, dynamic>>> _downloadLatestBatch() async {
+  /// ✅ MODIFICADO: Descargar lotes con parámetro de múltiples lotes
+  Future<List<Map<String, dynamic>>> _downloadLatestBatch({required bool isMultipleLots}) async {
     try {
-      print('📥 Descargando lote desde mok(luego firestore...');
+      print('📥 Descargando lote desde mock (luego firestore)...');
 
-      /*final querySnapshot = await FirebaseFirestore.instance
-       .collection('eventos_lotes')
-       .orderBy('metadata.fecha_subida', descending: true)
-       .limit(1)
-       .get();
-
-   if (querySnapshot.docs.isEmpty) {
-     print('📭 No hay lotes disponibles en Firestore');
-     return [];
-   }
-
-   final latestBatch = querySnapshot.docs.first;
-   final batchData = latestBatch.data();
-   */
       final batchData = MockEvents.mockBatch;
       print('🔍 Campos disponibles en batchData: ${batchData.keys.toList()}');
       print('🔍 Total eventos en metadata: ${batchData['metadata']?['total_eventos']}');
 
-      // Verificar si es un lote nuevo
-      final currentBatchVersion = await _getCurrentBatchVersion();
-      final newBatchVersion = batchData['metadata']?['nombre_lote'] as String? ?? 'unknown';
-      final totalEventsInDB = await _eventRepository.getTotalEvents();
-      final isFirstTime = totalEventsInDB == 0;
+      // Verificar si es un lote nuevo (solo para 1 lote)
+      if (!isMultipleLots) {
+        final currentBatchVersion = await _getCurrentBatchVersion();
+        final newBatchVersion = batchData['metadata']?['nombre_lote'] as String? ?? 'unknown';
+        final totalEventsInDB = await _eventRepository.getTotalEvents();
 
-      if (currentBatchVersion == newBatchVersion && totalEventsInDB > 0) {
-        print('📄 Mismo lote, no hay actualizaciones');
-        // NUEVO: Notificar que la app está actualizada
-        _notificationsProvider.addNotification(
-          title: '✅ Todo actualizado',
-          message: 'La app está al día, no hay eventos nuevos',
-          type: 'sync_up_to_date',
-          icon: '📱',
-        );
-        return [];
+        if (currentBatchVersion == newBatchVersion && totalEventsInDB > 0) {
+          print('📄 Mismo lote, no hay actualizaciones');
+          _notificationsProvider.addNotification(
+            title: '✅ Todo actualizado',
+            message: 'La app está al día, no hay eventos nuevos',
+            type: 'sync_up_to_date',
+            icon: '📱',
+          );
+          return [];
+        }
       }
 
-      // Extraer eventos del lote (datos completos)
+      // Extraer eventos del lote
       final baseEvents = (batchData['eventos'] as List<dynamic>?)
           ?.map((e) => Map<String, dynamic>.from(e as Map))
           .toList() ?? [];
 
-      // Para mock: simular múltiples lotes si es primera vez
-      final events = isFirstTime
+      // ✅ NUEVA LÓGICA: Múltiples lotes basado en parámetro
+      final events = isMultipleLots
           ? List.generate(10, (i) => baseEvents).expand((x) => x).toList()
           : baseEvents;
 
-      if (isFirstTime) {
-        print('📥 Primera descarga: simulando 10 lotes');
+      if (isMultipleLots) {
+        print('📥 Descarga múltiple: simulando 10 lotes');
       }
 
-      print('📦 Descargados ${events.length} eventos - Versión: $newBatchVersion');
+      print('📦 Descargados ${events.length} eventos');
 
       // Actualizar versión del lote
+      final newBatchVersion = batchData['metadata']?['nombre_lote'] as String? ?? 'unknown';
       await _eventRepository.updateSyncInfo(
         batchVersion: newBatchVersion,
         totalEvents: events.length,
@@ -143,12 +286,9 @@ class SyncService {
   }
 
   Future<void> _processEvents(List<Map<String, dynamic>> events) async {
-    print('⚙️ Agregando ${events.length} eventos nuevos...'); // CAMBIO
-
-    // BATCH INSERT súper rápido - NO borrar nada - NUEVO
+    print('⚙️ Agregando ${events.length} eventos nuevos...');
     await _eventRepository.insertEvents(events);
-
-    print('✅ ${events.length} eventos agregados a SQLite'); // CAMBIO
+    print('✅ ${events.length} eventos agregados a SQLite');
   }
 
   /// Limpiar eventos actuales (no favoritos)
@@ -163,15 +303,16 @@ class SyncService {
     print('🧹 Realizando limpieza automática...');
 
     final cleanupStats = await _eventRepository.cleanOldEvents();
-    final duplicatesRemoved = await _eventRepository.removeDuplicatesByCodes(); // NUEVO: limpieza duplicados
+    final duplicatesRemoved = await _eventRepository.removeDuplicatesByCodes();
 
-    print('🗑️ Limpieza completada: ${cleanupStats['normalEvents']} eventos normales, ${cleanupStats['favoriteEvents']} favoritos, $duplicatesRemoved duplicados'); // CAMBIO: agregar duplicados
+    print('🗑️ Limpieza completada: ${cleanupStats['normalEvents']} eventos normales, ${cleanupStats['favoriteEvents']} favoritos, $duplicatesRemoved duplicados');
 
     return CleanupResult(
-      eventsRemoved: cleanupStats['normalEvents']! + duplicatesRemoved,        // CAMBIO: incluir duplicados
+      eventsRemoved: cleanupStats['normalEvents']! + duplicatesRemoved,
       favoritesRemoved: cleanupStats['favoriteEvents']!,
     );
   }
+
   // ========== UTILIDADES ==========
 
   /// Actualizar timestamp de última sincronización
@@ -202,70 +343,7 @@ class SyncService {
     return await _performCleanup();
   }
 
-  /// Sincronización al abrir la app
-  Future<void> syncOnAppStart() async {
-    if (await shouldSync()) {
-      await performAutoSync();
-    }
-  }
-  /// Sincronización automática (respeta shouldSync)
-  Future<SyncResult> performAutoSync() async {                    // NUEVO: método principal automático
-    if (_isSyncing) {                                            // NUEVO: verificar flag
-      print('⏭️ Sincronización ya en progreso, omitiendo...');
-      return SyncResult.notNeeded();
-    }
-
-    if (!await shouldSync()) {                                   // NUEVO: respetar verificaciones
-      print('⏭️ Sincronización no necesaria aún');
-      return SyncResult.notNeeded();
-    }
-
-    _isSyncing = true;
-    _globalSyncInProgress = true; // NUEVO: Activar flag global                                         // NUEVO: activar flag
-
-    try {
-      print('🔄 Iniciando sincronización automática...');
-
-      final events = await _downloadLatestBatch();               // NUEVO: usar método existente
-
-      if (events.isEmpty) {
-        print('📭 No hay eventos nuevos');
-
-        // NUEVO: Notificar que sync completó sin eventos nuevos
-        _notificationsProvider.addNotification(
-          title: '✅ Todo actualizado',
-          message: 'No hay eventos nuevos en este momento',
-          type: 'sync_no_new_data',
-          icon: '📱',
-        );
-
-        return SyncResult.noNewData();
-      }
-
-      await _processEvents(events);                              // NUEVO: procesar eventos
-      final cleanupResults = await _performCleanup();           // NUEVO: limpieza
-      await _updateSyncTimestamp();                              // NUEVO: actualizar timestamp
-      // NUEVO: Enviar notificaciones automáticas
-      await _sendSyncNotifications(events.length, cleanupResults);
-
-      await _maintainNotificationSchedules();
-
-      print('✅ Sincronización automática completada');
-      final result = SyncResult.success(                                     // NUEVO: resultado exitoso
-        eventsAdded: events.length,
-        eventsRemoved: cleanupResults.eventsRemoved,
-        favoritesRemoved: cleanupResults.favoritesRemoved,
-      );
-      _syncCompleteController.add(result);                               // NUEVO: notificar completion
-      return result;
-
-    } catch (e) {
-      print('❌ Error en sincronización automática: $e');
-      return SyncResult.error(e.toString());                     // NUEVO: manejo de errores
-    } finally {
-      _isSyncing = false;                                        // NUEVO: desactivar flag
-    }
-  }
+  /// ❌ ELIMINADO: syncOnAppStart() - Ya no se usa
 
   /// Reset completo (solo para debug)
   Future<void> resetSync() async {
@@ -273,59 +351,15 @@ class SyncService {
     await prefs.remove(_lastSyncKey);
     await _eventRepository.clearAllData();
   }
-  /// MÉTODO TEMPORAL PARA DEV - BORRAR EN PRODUCCIÓN 🔥
-  Future<SyncResult> forceSync() async {
-    if (_isSyncing) {
-      print('⏭️ Sincronización ya en progreso, omitiendo...');
-      return SyncResult.notNeeded();
-    }
 
-    _isSyncing = true;
-    _globalSyncInProgress = true; // NUEVO: Activar flag global
+  // ========== NOTIFICACIONES AUTOMÁTICAS ==========
 
-    try {
-      print('🔄 FORZANDO sincronización (dev)...');
-
-      // CAMBIO: Saltar verificación de shouldSync() pero forzar descarga
-      final events = await _downloadLatestBatch();
-
-      if (events.isEmpty) {
-        print('📭 No hay eventos nuevos');
-        return SyncResult.noNewData();
-      }
-
-      await _processEvents(events);
-      final cleanupResults = await _performCleanup();
-      await _updateSyncTimestamp();
-      await _maintainNotificationSchedules();
-
-      print('✅ Sincronización FORZADA completada');
-      final result = SyncResult.success(
-        eventsAdded: events.length,
-        eventsRemoved: cleanupResults.eventsRemoved,
-        favoritesRemoved: cleanupResults.favoritesRemoved,
-      );
-      _syncCompleteController.add(result);                                 // NUEVO: notificar completion
-      return result;
-
-    } catch (e) {
-      print('❌ Error en sincronización forzada: $e');
-      return SyncResult.error(e.toString());
-    } finally {
-      _isSyncing = false;
-      _globalSyncInProgress = false; // NUEVO: Liberar flag global
-    }
-  }
-// ========== NOTIFICACIONES AUTOMÁTICAS ========== // NUEVO
-
-  /// NUEVO: Enviar notificaciones automáticas post-sincronización
+  /// Enviar notificaciones automáticas post-sincronización
   Future<void> _sendSyncNotifications(int newEventsCount, CleanupResult cleanupResults) async {
     try {
-      // NUEVO: Solo notificar si hay eventos nuevos significativos
       if (newEventsCount > 0) {
-        // NUEVO: Crear instancia de NotificationsProvider
         final notificationsProvider = _notificationsProvider;
-        // NUEVO: Notificación principal de eventos nuevos
+
         notificationsProvider.addNotification(
           title: '🎭 ¡Eventos nuevos en Córdoba!',
           message: 'Se agregaron $newEventsCount eventos culturales',
@@ -333,7 +367,6 @@ class SyncService {
           icon: '🎉',
         );
 
-        // NUEVO: Notificación adicional si hay muchos eventos
         if (newEventsCount >= 10) {
           notificationsProvider.addNotification(
             title: '🔥 ¡Semana cargada de cultura!',
@@ -343,7 +376,6 @@ class SyncService {
           );
         }
 
-        // NUEVO: Notificación de limpieza si fue significativa
         if (cleanupResults.eventsRemoved > 5) {
           notificationsProvider.addNotification(
             title: '🧹 Base de datos optimizada',
@@ -358,37 +390,33 @@ class SyncService {
 
     } catch (e) {
       print('⚠️ Error enviando notificaciones de sync: $e');
-      // NUEVO: No fallar la sincronización por errores de notificaciones
     }
   }
 
-  // NUEVO: Mantenimiento automático de recordatorios programados
+  // Mantenimiento automático de recordatorios programados
   Future<void> _maintainNotificationSchedules() async {
     try {
       print('🔔 Manteniendo recordatorios programados...');
 
-      // NUEVO: Obtener todos los recordatorios pendientes
       final pendingNotifications = await _eventRepository.getPendingScheduledNotifications();
 
-      int updated = 0;                              // NUEVO: contador de actualizaciones
-      int removed = 0;                              // NUEVO: contador de removidos
+      int updated = 0;
+      int removed = 0;
 
       for (final notification in pendingNotifications) {
         final eventCode = notification['event_code'] as String?;
 
-        if (eventCode == null) continue;            // NUEVO: skip si no tiene event_code
+        if (eventCode == null) continue;
 
-        // NUEVO: Buscar evento actual por code en tabla eventos
         final db = await DatabaseHelper.database;
-        final eventResults = await db.query(       // NUEVO: query por code
+        final eventResults = await db.query(
           'eventos',
           where: 'code = ?',
           whereArgs: [eventCode],
           limit: 1,
         );
 
-        if (eventResults.isEmpty) {                // NUEVO: evento ya no existe
-          // NUEVO: Cancelar recordatorio huérfano
+        if (eventResults.isEmpty) {
           await _eventRepository.deleteNotification(notification['id'] as int);
           removed++;
           print('🗑️ Recordatorio cancelado: evento $eventCode ya no existe');
@@ -399,16 +427,14 @@ class SyncService {
         final currentEventDate = event['date'] as String;
         final notificationScheduled = notification['scheduled_datetime'] as String?;
 
-        if (notificationScheduled != null) {       // NUEVO: verificar si fecha cambió
-          // NUEVO: Recalcular scheduled_datetime basado en nueva fecha del evento
+        if (notificationScheduled != null) {
           final newScheduledTime = _calculateScheduledTime(
               currentEventDate,
               notification['type'] as String
           );
 
-          if (newScheduledTime != notificationScheduled) { // NUEVO: fecha cambió
-            // NUEVO: Actualizar scheduled_datetime en la base de datos
-            await db.update(                       // NUEVO: update directo en db
+          if (newScheduledTime != notificationScheduled) {
+            await db.update(
               'notifications',
               {'scheduled_datetime': newScheduledTime},
               where: 'id = ?',
@@ -420,39 +446,37 @@ class SyncService {
         }
       }
 
-      if (updated > 0 || removed > 0) {           // NUEVO: log solo si hubo cambios
+      if (updated > 0 || removed > 0) {
         print('🔔 Mantenimiento completado: $updated actualizados, $removed removidos');
       }
 
     } catch (e) {
       print('⚠️ Error en mantenimiento de recordatorios: $e');
-      // NUEVO: No fallar sync por errores de mantenimiento
     }
   }
 
-  // NUEVO: Calcular scheduled_datetime basado en fecha de evento y tipo
+  // Calcular scheduled_datetime basado en fecha de evento y tipo
   String? _calculateScheduledTime(String eventDate, String notificationType) {
     try {
-      final eventDateTime = DateTime.parse(eventDate); // NUEVO: parsear fecha del evento
+      final eventDateTime = DateTime.parse(eventDate);
 
-      switch (notificationType) {                 // NUEVO: lógica por tipo de recordatorio
-        case 'event_reminder_tomorrow':           // NUEVO: recordatorio "mañana"
+      switch (notificationType) {
+        case 'event_reminder_tomorrow':
           return eventDateTime.subtract(Duration(days: 1, hours: 6)).toIso8601String();
-        case 'event_reminder_today':              // NUEVO: recordatorio "hoy"
+        case 'event_reminder_today':
           return DateTime(eventDateTime.year, eventDateTime.month, eventDateTime.day, 9).toIso8601String();
-        case 'event_reminder_hour':               // NUEVO: recordatorio "1 hora antes"
+        case 'event_reminder_hour':
           return eventDateTime.subtract(Duration(hours: 1)).toIso8601String();
         default:
-          return null;                           // NUEVO: tipo no reconocido
+          return null;
       }
     } catch (e) {
       print('⚠️ Error calculando scheduled_time: $e');
-      return null;                               // NUEVO: fallback seguro
+      return null;
     }
   }
-
-
 }
+
 // ========== MODELOS DE RESULTADO ==========
 
 class SyncResult {

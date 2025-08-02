@@ -146,7 +146,10 @@ class _ContactButtonSimple extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      onPressed: () => ContactModal.show(context),
+      onPressed: () {
+        FocusScope.of(context).unfocus(); // 👈 Cierra el teclado
+        ContactModal.show(context);       // 👈 Abre el modal
+      },
       icon: Container(
         width: 28,
         height: 28,
@@ -256,6 +259,7 @@ class _NotificationsBellReal extends StatelessWidget {
 
   void _showNotificationsPanel(BuildContext context) {
     final provider = context.read<NotificationsProvider>();
+    FocusScope.of(context).unfocus();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

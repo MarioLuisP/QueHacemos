@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'src/providers/favorites_provider.dart';
 import 'src/providers/simple_home_provider.dart';
 import 'src/themes/themes.dart';
@@ -11,6 +12,7 @@ import 'src/navigation/bottom_nav.dart';
 import 'src/providers/notifications_provider.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'src/services/notification_service.dart';
+import 'src/sync/sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +24,42 @@ void main() async {
   // Inicializar notificaciones
   await NotificationService.initialize();
 
+  // ✅ NUEVO: Verificar y ejecutar primera instalación
+  await _ensureFirstInstallation();
+
   runApp(const MyApp());
+}
+
+/// Garantizar que la primera instalación descarga los 10 lotes
+/// Solo se ejecuta UNA VEZ en la vida de la app
+Future<void> _ensureFirstInstallation() async {
+  final prefs = await SharedPreferences.getInstance();
+  final isFirstInstall = prefs.getBool('app_initialized') ?? true;
+
+  if (isFirstInstall) {
+    print('🚀 Primera instalación detectada - Descargando eventos...');
+
+    try {
+      // Forzar descarga de 10 lotes (bypassing shouldSync)
+      final syncResult = await SyncService().firstInstallSync();
+
+      if (syncResult.success && syncResult.eventsAdded > 0) {
+        // Marcar app como inicializada - NUNCA MÁS sync en startup
+        await prefs.setBool('app_initialized', false);
+        print('✅ Primera instalación completada: ${syncResult.eventsAdded} eventos descargados');
+      } else {
+        print('⚠️ Primera instalación sin datos - manteniendo flag para reintentar');
+        // No marcar como inicializada si no hay datos
+      }
+
+    } catch (e) {
+      print('❌ Error en primera instalación: $e');
+      // No marcar como inicializada si hay error
+    }
+  } else {
+    print('⚡ App ya inicializada - Startup directo');
+    // Zero overhead - directo a UI
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -68,7 +105,7 @@ class _AppContentState extends State<_AppContent> {
     final simpleHomeProvider = Provider.of<SimpleHomeProvider>(context, listen: false);
     final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
 
-    // Inicializar providers
+    // ✅ CAMBIO: Solo inicializar providers UI (ya no sync)
     await simpleHomeProvider.initialize();
     await favoritesProvider.init();
 

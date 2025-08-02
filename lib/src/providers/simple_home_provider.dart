@@ -58,7 +58,7 @@ class SimpleHomeProvider with ChangeNotifier {
   /// Inicializar provider (cargar cache + preferencias + aplicar filtros) // CAMBIO: comentario actualizado
   Future<void> initialize() async {
     // NUEVO: Sync automático al startup (pobla la DB)
-    await SyncService().syncOnAppStart();
+    //await SyncService().syncOnAppStart();
 
     // NUEVO: Cargar preferencias primero
     await _loadAllPreferences(); // NUEVO
