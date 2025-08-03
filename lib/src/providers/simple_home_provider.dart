@@ -14,9 +14,11 @@ import '../data/repositories/event_repository.dart';
 class SimpleHomeProvider with ChangeNotifier {
   final EventCacheService _cacheService = EventCacheService();
 
-  // Estado simple
+// Estado simple
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isInitializing = false; // NUEVO: Flag para evitar doble inicialización
+  bool _isInitialized = false;
 // ✅ SIMPLIFICADO: Solo filtros que realmente se usan globalmente
   String _currentSearchQuery = '';
   DateTime? _currentSelectedDate;
@@ -36,16 +38,8 @@ class SimpleHomeProvider with ChangeNotifier {
 // NUEVO: Propiedades para limpieza automática
   int _eventCleanupDays = 3;
   int _favoriteCleanupDays = 7;
-  // NUEVO: Constructor aquí
-  SimpleHomeProvider() {
-    _initializeAsync();
-  }
 
-  // NUEVO: Método async aquí
-  void _initializeAsync() {
-    initialize();
-  }
-
+  SimpleHomeProvider(); // CAMBIO: Constructor limpio sin llamadas async
 
   // Getters públicos
   bool get isLoading => _isLoading;
@@ -61,26 +55,39 @@ class SimpleHomeProvider with ChangeNotifier {
 
   /// Inicializar provider (cargar cache + preferencias)
   Future<void> initialize() async {
-    // Cargar preferencias primero
-    await _loadAllPreferences();
-
-    if (_cacheService.isLoaded) {
-      print('✅ Cache ya cargado');
+    // NUEVO: Protección contra doble ejecución
+    if (_isInitializing || _isInitialized) {
+      print('⏭️ Initialize ya ejecutado/ejecutándose');
       return;
     }
 
-    _setLoading(true);
+    _isInitializing = true; // NUEVO: Marcar como iniciando
 
-    try {
+    try { // NUEVO: Error handling robusto
+      // Cargar preferencias primero
+      await _loadAllPreferences();
+
+      if (_cacheService.isLoaded) {
+        print('✅ Cache ya cargado');
+        _isInitialized = true; // NUEVO: Marcar como inicializado
+        return; // CAMBIO: Salir aquí, el finally limpiará _isInitializing
+      }
+
+      _setLoading(true);
+
       // Cargar cache desde SQLite
       await _cacheService.loadCache(theme: _theme);
 
       _setLoading(false);
+      _isInitialized = true; // NUEVO: Marcar como inicializado exitosamente
       print('✅ SimpleHomeProvider inicializado: ${_cacheService.eventCount} eventos');
 
     } catch (e) {
       _setError('Error cargando eventos: $e');
       print('❌ Error en SimpleHomeProvider.initialize(): $e');
+      rethrow; // CAMBIO: usar rethrow en lugar de throw;
+    } finally {
+      _isInitializing = false; // NUEVO: Limpiar flag independientemente del resultado
     }
   }
 

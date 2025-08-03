@@ -37,28 +37,14 @@ Future<void> _ensureFirstInstallation() async {
   final isFirstInstall = prefs.getBool('app_initialized') ?? true;
 
   if (isFirstInstall) {
-    print('🚀 Primera instalación detectada - Descargando eventos...');
+    print('🚀 Primera instalación detectada - Iniciando sync...');
 
-    try {
-      // Forzar descarga de 10 lotes (bypassing shouldSync)
-      final syncResult = await SyncService().firstInstallSync();
+    // CAMBIO: Solo delegación sin evaluar resultado
+    SyncService().firstInstallSync(); // CAMBIO: Sin await para no bloquear
 
-      if (syncResult.success && syncResult.eventsAdded > 0) {
-        // Marcar app como inicializada - NUNCA MÁS sync en startup
-        await prefs.setBool('app_initialized', false);
-        print('✅ Primera instalación completada: ${syncResult.eventsAdded} eventos descargados');
-      } else {
-        print('⚠️ Primera instalación sin datos - manteniendo flag para reintentar');
-        // No marcar como inicializada si no hay datos
-      }
-
-    } catch (e) {
-      print('❌ Error en primera instalación: $e');
-      // No marcar como inicializada si hay error
-    }
+    print('✅ Sync de primera instalación iniciado en background'); // NUEVO
   } else {
     print('⚡ App ya inicializada - Startup directo');
-    // Zero overhead - directo a UI
   }
 }
 
@@ -105,18 +91,25 @@ class _AppContentState extends State<_AppContent> {
     final simpleHomeProvider = Provider.of<SimpleHomeProvider>(context, listen: false);
     final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
 
-    // ✅ CAMBIO: Solo inicializar providers UI (ya no sync)
-    await simpleHomeProvider.initialize();
-    await favoritesProvider.init();
+    try { // NUEVO: Error handling robusto
+      await simpleHomeProvider.initialize();
+      await favoritesProvider.init();
 
-    // Conectar sync entre providers
-    simpleHomeProvider.setupFavoritesSync(favoritesProvider);
+      // Conectar sync entre providers
+      simpleHomeProvider.setupFavoritesSync(favoritesProvider);
 
-    setState(() {
-      _isInitialized = true;
-    });
+      setState(() {
+        _isInitialized = true;
+      });
 
-    print('🎉 App completamente inicializada con sync de favoritos');
+      print('🎉 App completamente inicializada con sync de favoritos');
+    } catch (e) { // NUEVO: Manejo de errores
+      print('❌ Error crítico en inicialización: $e'); // NUEVO
+      // NUEVO: Mostrar UI con error en lugar de quedarse colgado
+      setState(() {
+        _isInitialized = true;
+      });
+    } // NUEVO: Bloque catch completo
   }
 
   @override

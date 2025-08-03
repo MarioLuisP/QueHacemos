@@ -5,6 +5,7 @@ import '../data/repositories/event_repository.dart';
 import '../data/database/database_helper.dart';
 import '../providers/notifications_provider.dart';
 import 'firestore_client.dart'; // 🔥 NUEVA DEPENDENCIA
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 🏗️ SYNC SERVICE LIMPIO - Solo CAPA 2 + Coordinación
 /// Responsabilidades: Processing, Cleanup, Notifications, Orchestration
@@ -61,6 +62,10 @@ class SyncService {
 
       // Notifications y maintenance
       await _maintainNotificationSchedules();
+
+      // NUEVO: SyncService maneja el flag app_initialized
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('app_initialized', false);
 
       // Notificar primera instalación completada
       _notificationsProvider.addNotification(
@@ -167,56 +172,10 @@ class SyncService {
       _globalSyncInProgress = false;
     }
   }
-
-  /// 💪 Force sync para desarrollo - 10 lotes
+  /// 💪 Force sync para desarrollo - delega a primera instalación
   Future<SyncResult> forceSync() async {
-    if (_isSyncing) {
-      print('⏭️ Sincronización ya en progreso, omitiendo...');
-      return SyncResult.notNeeded();
-    }
-
-    _isSyncing = true;
-    _globalSyncInProgress = true;
-
-    try {
-      print('🔄 FORZANDO sincronización (dev) - 10 lotes...');
-
-      // 🔥 USAR FIRESTORE CLIENT - 10 lotes (bypass shouldSync)
-      final events = await _firestoreClient.downloadBatch(isMultipleLots: true);
-
-      if (events.isEmpty) {
-        print('📭 No hay eventos nuevos');
-        return SyncResult.noNewData();
-      }
-
-      // Processing interno (CAPA 2)
-      await _processEvents(events);
-      final cleanupResults = await _performCleanup();
-
-      // Update timestamp via FirestoreClient
-      await _firestoreClient.updateSyncTimestamp();
-
-      // Maintenance
-      await _maintainNotificationSchedules();
-      print('🎇 DEBUG: Enviando notificaciones para ${events.length} eventos');
-      final realNewEvents = events.length - cleanupResults.duplicatesRemoved;
-      await _sendSyncNotifications(realNewEvents, cleanupResults);
-      print('✅ Sincronización FORZADA completada');
-      final result = SyncResult.success(
-        eventsAdded: events.length,
-        eventsRemoved: cleanupResults.eventsRemoved,
-        favoritesRemoved: cleanupResults.favoritesRemoved,
-      );
-      _syncCompleteController.add(result);
-      return result;
-
-    } catch (e) {
-      print('❌ Error en sincronización forzada: $e');
-      return SyncResult.error(e.toString());
-    } finally {
-      _isSyncing = false;
-      _globalSyncInProgress = false;
-    }
+    print('🔧 DEV: Force sync ejecutando primera instalación...'); // NUEVO
+    return await firstInstallSync(); // NUEVO: Una sola línea de delegación
   }
 
   // ========== PROCESSING INTERNO (CAPA 2) ==========
