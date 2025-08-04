@@ -20,7 +20,7 @@ class FirestoreClient {
 
   /// 🔥 CORE: Descargar lotes desde Firestore/Mock
   /// Único método que toca external sources
-  Future<List<Map<String, dynamic>>> downloadBatch({required bool isMultipleLots}) async {
+  Future<List<Map<String, dynamic>>> downloadBatch({bool isMultipleLots = false, List<String>? specificBatches}) async { // CAMBIO
     try {
       print('📥 Descargando lote desde mock (luego firestore)...');
 
@@ -58,13 +58,28 @@ class FirestoreClient {
           return [];
         }
       }
-
-      // Extraer eventos del lote
+// Extraer eventos del lote
       final baseEvents = (batchData['eventos'] as List<dynamic>?)
           ?.map((e) => Map<String, dynamic>.from(e as Map))
           .toList() ?? [];
 
-      // 🎯 LÓGICA DE MÚLTIPLES LOTES
+// NUEVO: Si se especifican lotes específicos, usar esa lista
+      if (specificBatches != null && specificBatches.isNotEmpty) { // NUEVO
+        print('📦 Descargando lotes específicos: ${specificBatches.join(", ")}'); // NUEVO
+        final events = List.generate(specificBatches.length, (i) => baseEvents).expand((x) => x).toList(); // NUEVO
+        print('📥 Descargados ${events.length} eventos de ${specificBatches.length} lotes específicos'); // NUEVO
+
+        // Actualizar batch_version al último de la lista // NUEVO
+        final lastBatch = specificBatches.last; // NUEVO
+        await _eventRepository.updateSyncInfo( // NUEVO
+          batchVersion: lastBatch, // NUEVO
+          totalEvents: events.length, // NUEVO
+        ); // NUEVO
+
+        return events; // NUEVO
+      } // NUEVO
+
+// 🎯 LÓGICA DE MÚLTIPLES LOTES (legacy)
       final events = isMultipleLots
           ? List.generate(10, (i) => baseEvents).expand((x) => x).toList()
           : baseEvents;
@@ -92,7 +107,7 @@ class FirestoreClient {
 
   // ========== SYNC TIMING LOGIC ==========
 
-  /// 🕐 Verificar si necesita sincronización (1 AM logic)
+  /// 🕐 Verificar si necesita sincronización (1 AM logic + ventana 00:00-01:00)
   Future<bool> shouldSync() async {
     final prefs = await SharedPreferences.getInstance();
     final lastSyncString = prefs.getString(_lastSyncKey);
@@ -105,6 +120,13 @@ class FirestoreClient {
     }
 
     final lastSync = DateTime.parse(lastSyncString);
+    final hoursSinceLastSync = now.difference(lastSync).inHours; // NUEVO
+
+    // NUEVO: Ventana excepcional 00:00-01:00
+    if (now.hour == 0 && hoursSinceLastSync >= 24) { // NUEVO
+      print('🌙 Sincronización en ventana excepcional 00:00-01:00'); // NUEVO
+      return true; // NUEVO
+    } // NUEVO
 
     // Verificar si ya sincronizó hoy
     final today = DateTime(now.year, now.month, now.day);
@@ -131,7 +153,40 @@ class FirestoreClient {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
   }
+  /// 📋 Obtener lista de lotes disponibles desde servidor // NUEVO
+  Future<List<String>> getAvailableBatches() async { // NUEVO
+    try { // NUEVO
+      print('📋 Obteniendo lista de lotes disponibles...'); // NUEVO
 
+      // MOCK: Simular lotes disponibles ordenados cronológicamente // NUEVO
+      final availableBatches = [ // NUEVO
+        'lote_2025_08_01_mock_1', // NUEVO
+        'lote_2025_08_02_mock_1', // NUEVO
+        'lote_2025_08_03_mock_1', // NUEVO
+        'lote_2025_08_04_mock_1', // NUEVO
+        'lote_2025_08_04_mock_2', // NUEVO
+      ]; // NUEVO
+
+      /* // NUEVO
+      // FIRESTORE REAL (comentado por ahora): // NUEVO
+      final querySnapshot = await FirebaseFirestore.instance // NUEVO
+        .collection('lotes_metadata') // NUEVO
+        .orderBy('fecha_creacion') // NUEVO
+        .get(); // NUEVO
+
+      final availableBatches = querySnapshot.docs // NUEVO
+        .map((doc) => doc.id) // NUEVO
+        .toList(); // NUEVO
+      */ // NUEVO
+
+      print('📋 Lotes disponibles: ${availableBatches.length}'); // NUEVO
+      return availableBatches; // NUEVO
+
+    } catch (e) { // NUEVO
+      print('❌ Error obteniendo lista de lotes: $e'); // NUEVO
+      return []; // NUEVO
+    } // NUEVO
+  } // NUEVO
   // ========== UTILIDADES INTERNAS ==========
 
   /// Obtener versión actual del lote

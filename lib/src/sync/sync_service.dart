@@ -117,13 +117,30 @@ class SyncService {
     _globalSyncInProgress = true;
 
     try {
-      print('🔄 Iniciando sincronización automática - 1 lote...');
+      print('🔄 Iniciando sincronización automática - lotes pendientes...');
 
-      // 🔥 USAR FIRESTORE CLIENT - 1 lote
-      final events = await _firestoreClient.downloadBatch(isMultipleLots: false);
+      // NUEVO: Obtener lotes disponibles y calcular faltantes
+      final availableBatches = await _firestoreClient.getAvailableBatches(); // NUEVO
+      final syncInfo = await _eventRepository.getSyncInfo(); // NUEVO
+      final currentBatchVersion = syncInfo?['batch_version'] as String? ?? ''; // NUEVO
 
-      if (events.isEmpty) {
-        print('📭 No hay eventos nuevos');
+      // NUEVO: Encontrar lotes faltantes (máximo 10)
+      final missingBatches = <String>[]; // NUEVO
+      bool foundCurrent = currentBatchVersion.isEmpty; // NUEVO
+
+      for (final batch in availableBatches) { // NUEVO
+        if (!foundCurrent) { // NUEVO
+          if (batch == currentBatchVersion) { // NUEVO
+            foundCurrent = true; // NUEVO
+          } // NUEVO
+          continue; // NUEVO
+        } // NUEVO
+        missingBatches.add(batch); // NUEVO
+        if (missingBatches.length >= 10) break; // NUEVO: Límite de 10 lotes
+      } // NUEVO
+
+      if (missingBatches.isEmpty) { // CAMBIO
+        print('📭 No hay lotes nuevos'); // CAMBIO
         // Notificar que está actualizado
         _notificationsProvider.addNotification(
           title: '✅ Todo actualizado',
@@ -134,6 +151,14 @@ class SyncService {
         return SyncResult.noNewData();
       }
 
+      // NUEVO: Descargar lotes faltantes específicos
+      print('📦 Descargando ${missingBatches.length} lotes faltantes: ${missingBatches.join(", ")}'); // NUEVO
+      final events = await _firestoreClient.downloadBatch(specificBatches: missingBatches); // CAMBIO
+
+      if (events.isEmpty) { // NUEVO
+        print('📭 Error descargando lotes específicos'); // NUEVO
+        return SyncResult.noNewData(); // NUEVO
+      } // NUEVO
       // Processing interno (CAPA 2)
       await _processEvents(events);
       final cleanupResults = await _performCleanup();
@@ -146,7 +171,7 @@ class SyncService {
       await _sendSyncNotifications(realNewEvents, cleanupResults);
       await _maintainNotificationSchedules();
 
-      print('✅ Sincronización automática completada');
+      print('✅ Sincronización automática completada: ${missingBatches.length} lotes, ${events.length} eventos'); // CAMBIO
       final result = SyncResult.success(
         eventsAdded: events.length,
         eventsRemoved: cleanupResults.eventsRemoved,
