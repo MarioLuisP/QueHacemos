@@ -39,7 +39,13 @@ class SimpleHomeProvider with ChangeNotifier {
   int _eventCleanupDays = 3;
   int _favoriteCleanupDays = 7;
 
-  SimpleHomeProvider(); // CAMBIO: Constructor limpio sin llamadas async
+  SimpleHomeProvider() {
+    SyncService.onSyncComplete.listen((result) {
+      if (result.success && result.eventsAdded > 0) {
+        refresh();
+      }
+    });
+  }
 
   // Getters públicos
   bool get isLoading => _isLoading;
