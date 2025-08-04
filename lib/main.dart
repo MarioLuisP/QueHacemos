@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +20,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'es_ES';
 
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   // Inicializar timezone
   tz.initializeTimeZones();
 

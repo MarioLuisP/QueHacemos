@@ -1,6 +1,6 @@
-// lib/src/sync/firestore_client.dart
+//lib/src/sync/firestore_client.dart
 
-//import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/repositories/event_repository.dart';
 import '../mock/mock_events.dart';
@@ -25,9 +25,9 @@ class FirestoreClient {
       print('📥 Descargando lote desde mock (luego firestore)...');
 
       // MOCK DATA (después será Firestore real)
-      final batchData = MockEvents.mockBatch;
+      // final batchData = MockEvents.mockBatch;
 
-      /*
+
       // FIRESTORE REAL (comentado por ahora):
       final querySnapshot = await FirebaseFirestore.instance
         .collection('eventos_lotes')
@@ -42,7 +42,7 @@ class FirestoreClient {
 
       final latestBatch = querySnapshot.docs.first;
       final batchData = latestBatch.data();
-      */
+
 
       print('🔍 Campos disponibles en batchData: ${batchData.keys.toList()}');
       print('🔍 Total eventos en metadata: ${batchData['metadata']?['total_eventos']}');
@@ -158,7 +158,7 @@ class FirestoreClient {
     try { // NUEVO
       print('📋 Obteniendo lista de lotes disponibles...'); // NUEVO
 
-      // MOCK: Simular lotes disponibles ordenados cronológicamente // NUEVO
+     /* // MOCK: Simular lotes disponibles ordenados cronológicamente // NUEVO
       final availableBatches = [ // NUEVO
         'lote_2025_08_01_mock_1', // NUEVO
         'lote_2025_08_02_mock_1', // NUEVO
@@ -166,8 +166,8 @@ class FirestoreClient {
         'lote_2025_08_04_mock_1', // NUEVO
         'lote_2025_08_04_mock_2', // NUEVO
       ]; // NUEVO
-
-      /* // NUEVO
+*/
+   // NUEVO
       // FIRESTORE REAL (comentado por ahora): // NUEVO
       final querySnapshot = await FirebaseFirestore.instance // NUEVO
         .collection('lotes_metadata') // NUEVO
@@ -177,7 +177,7 @@ class FirestoreClient {
       final availableBatches = querySnapshot.docs // NUEVO
         .map((doc) => doc.id) // NUEVO
         .toList(); // NUEVO
-      */ // NUEVO
+  // NUEVO
 
       print('📋 Lotes disponibles: ${availableBatches.length}'); // NUEVO
       return availableBatches; // NUEVO
