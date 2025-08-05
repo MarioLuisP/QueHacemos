@@ -79,15 +79,8 @@ class FirestoreClient {
         return events; // NUEVO
       } // NUEVO
 
-// 🎯 LÓGICA DE MÚLTIPLES LOTES (legacy)
-      final events = isMultipleLots
-          ? List.generate(10, (i) => baseEvents).expand((x) => x).toList()
-          : baseEvents;
-
-      if (isMultipleLots) {
-        print('📥 Descarga múltiple: simulando 10 lotes');
-      }
-
+// 🎯 USAR EVENTOS REALES DE FIRESTORE
+      final events = baseEvents;
       print('📦 Descargados ${events.length} eventos');
 
       // Actualizar versión del lote

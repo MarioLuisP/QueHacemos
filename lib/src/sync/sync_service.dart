@@ -70,7 +70,7 @@ class SyncService {
       // Notificar primera instalación completada
       _notificationsProvider.addNotification(
         title: '🎭 ¡App lista para usar!',
-        message: 'Se descargaron ${events.length} eventos culturales de Córdoba',
+        message: 'Se agregaron ${events.length - cleanupResults.eventsRemoved} eventos culturales de Córdoba',
         type: 'first_install_complete',
         icon: '🎉',
       );
