@@ -4,6 +4,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -41,47 +42,47 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: "AIzaSyDeeLqW5J4hw4IdxF4wrxSmEdpGRAv5TnU",
-    appId: '1:998972257036:web:app-id-placeholder',
-    messagingSenderId: '998972257036',
-    projectId: 'quehacemos-cba',
-    authDomain: 'quehacemos-cba.firebaseapp.com',
-    storageBucket: 'quehacemos-cba.firebasestorage.app',
+  static FirebaseOptions get web => FirebaseOptions(
+    apiKey: dotenv.env['FIREBASE_API_KEY']!,
+    appId: dotenv.env['FIREBASE_APP_ID_WEB'] ?? dotenv.env['FIREBASE_APP_ID_ANDROID']!,
+    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
+    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
+    authDomain: '${dotenv.env['FIREBASE_PROJECT_ID']}.firebaseapp.com',
+    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
   );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: "AIzaSyDeeLqW5J4hw4IdxF4wrxSmEdpGRAv5TnU",
-    appId: '1:998972257036:android:18550c6d86fc8c3eefcf29',
-    messagingSenderId: '998972257036',
-    projectId: 'quehacemos-cba',
-    storageBucket: 'quehacemos-cba.firebasestorage.app',
+  static FirebaseOptions get android => FirebaseOptions(
+    apiKey: dotenv.env['FIREBASE_API_KEY']!,
+    appId: dotenv.env['FIREBASE_APP_ID_ANDROID']!,
+    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
+    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
+    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: "AIzaSyDeeLqW5J4hw4IdxF4wrxSmEdpGRAv5TnU",
-    appId: '1:998972257036:ios:app-id-placeholder',
-    messagingSenderId: '998972257036',
-    projectId: 'quehacemos-cba',
-    storageBucket: 'quehacemos-cba.firebasestorage.app',
+  static FirebaseOptions get ios => FirebaseOptions(
+    apiKey: dotenv.env['FIREBASE_API_KEY']!,
+    appId: dotenv.env['FIREBASE_APP_ID_IOS']!,
+    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
+    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
+    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
     iosBundleId: 'com.quehacemos.cba',
   );
 
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: "AIzaSyDeeLqW5J4hw4IdxF4wrxSmEdpGRAv5TnU",
-    appId: '1:998972257036:ios:app-id-placeholder',
-    messagingSenderId: '998972257036',
-    projectId: 'quehacemos-cba',
-    storageBucket: 'quehacemos-cba.firebasestorage.app',
+  static FirebaseOptions get macos => FirebaseOptions(
+    apiKey: dotenv.env['FIREBASE_API_KEY']!,
+    appId: dotenv.env['FIREBASE_APP_ID_IOS']!,
+    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
+    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
+    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
     iosBundleId: 'com.quehacemos.cba',
   );
 
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: "AIzaSyDeeLqW5J4hw4IdxF4wrxSmEdpGRAv5TnU",
-    appId: '1:998972257036:web:app-id-placeholder',
-    messagingSenderId: '998972257036',
-    projectId: 'quehacemos-cba',
-    authDomain: 'quehacemos-cba.firebaseapp.com',
-    storageBucket: 'quehacemos-cba.firebasestorage.app',
+  static FirebaseOptions get windows => FirebaseOptions(
+    apiKey: dotenv.env['FIREBASE_API_KEY']!,
+    appId: dotenv.env['FIREBASE_APP_ID_WEB'] ?? dotenv.env['FIREBASE_APP_ID_ANDROID']!,
+    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
+    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
+    authDomain: '${dotenv.env['FIREBASE_PROJECT_ID']}.firebaseapp.com',
+    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
   );
 }

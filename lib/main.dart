@@ -15,11 +15,12 @@ import 'src/providers/notifications_provider.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'src/services/notification_service.dart';
 import 'src/sync/sync_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'es_ES';
-
+  await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

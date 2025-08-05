@@ -17,7 +17,7 @@ migrate_working_dir/
 *.tmp
 *.~
 *~
-
+.env
 # ------------------------------
 # IntelliJ / Android Studio
 # ------------------------------
