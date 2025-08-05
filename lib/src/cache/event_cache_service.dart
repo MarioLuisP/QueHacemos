@@ -125,6 +125,18 @@ class EventCacheService {
         return event.date.startsWith(dateString);
       }).toList();
     }
+    filtered.sort((a, b) {
+      // 1. Rating primero (mayor rating = sponsors primero)
+      final ratingComparison = b.rating.compareTo(a.rating);
+      if (ratingComparison != 0) return ratingComparison;
+
+      // 2. Categoría alfabéticamente (organización visual)
+      final categoryComparison = a.type.compareTo(b.type);
+      if (categoryComparison != 0) return categoryComparison;
+
+      // 3. Hora más temprana primero (practicidad del usuario)
+      return a.date.compareTo(b.date); // date incluye hora completa
+    });
 
     // Agrupar por fecha
     final groupedByDate = getGroupedByDate(filtered);
@@ -258,9 +270,7 @@ class EventCacheService {
     final today = DateTime.now();
     final todayString = today.toIso8601String().substring(0, 10);
     final tomorrowString = today.add(Duration(days: 1)).toIso8601String().substring(0, 10);
-
-    final dates = grouped.keys.toList();
-
+    final dates = grouped.keys.where((date) => date.compareTo(todayString) >= 0).toList();
     dates.sort((a, b) {
       // Hoy primero
       if (a == todayString) return -2;

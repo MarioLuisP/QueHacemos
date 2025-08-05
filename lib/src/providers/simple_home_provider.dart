@@ -255,11 +255,25 @@ class SimpleHomeProvider with ChangeNotifier {
         .where((event) => event.favorite)
         .toList();
 
-    // Ordenar por fecha (más recientes primero) y luego por rating
     favoriteEvents.sort((a, b) {
       final dateComparison = a.date.compareTo(b.date);
       if (dateComparison != 0) return dateComparison;
       return b.rating.compareTo(a.rating); // Mayor rating primero
+    });
+
+    // ✅ POR ESTE:
+    // Triple ordenamiento para consistencia con HomePage y ExplorePage
+    favoriteEvents.sort((a, b) {
+      // 1. Rating primero (mayor rating = sponsors primero)
+      final ratingComparison = b.rating.compareTo(a.rating);
+      if (ratingComparison != 0) return ratingComparison;
+
+      // 2. Categoría alfabéticamente (organización visual)
+      final categoryComparison = a.type.compareTo(b.type);
+      if (categoryComparison != 0) return categoryComparison;
+
+      // 3. Hora más temprana primero (practicidad del usuario)
+      return a.date.compareTo(b.date); // date incluye hora completa
     });
 
     return favoriteEvents;
