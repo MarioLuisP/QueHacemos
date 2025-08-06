@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -42,29 +43,48 @@ class AuthService {
   }
 
   /// Google Sign-In con nueva API 2025
+  /// Google Sign-In con detección de usuario previo
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      // Asegurar que Google Sign-In esté inicializado
       await initializeGoogleSignIn();
 
-      // Verificar si la plataforma soporta autenticación
       if (!_googleSignIn.supportsAuthenticate()) {
         print('❌ Plataforma no soporta Google Sign-In');
         return null;
       }
 
-      // 1. Autenticar con Google usando la nueva API
-      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
+      // NUEVO: Primero intentar lightweight authentication (silent)
+      final lastEmail = await _getLastGoogleUser();
 
-      // 2. Obtener authentication (ahora es síncrono)
+      GoogleSignInAccount? googleUser;
+
+      if (lastEmail != null) {
+        // NUEVO: Intentar lightweight authentication para mismo usuario
+        print('🔄 Intentando login silencioso para: $lastEmail');
+
+        try {
+          final result = _googleSignIn.attemptLightweightAuthentication();
+          if (result is Future<GoogleSignInAccount?>) {
+            googleUser = await result;
+          } else {
+            googleUser = result as GoogleSignInAccount?;
+          }
+        } catch (e) {
+          print('⚠️ Login silencioso falló, usando authenticate()');
+          googleUser = null;
+        }
+      }
+
+      // Si lightweight falló o es primera vez, usar authenticate()
+      if (googleUser == null) {
+        print('👤 Mostrando selector de Google');
+        googleUser = await _googleSignIn.authenticate(scopeHint: ['email']);
+        await _saveLastGoogleUser(googleUser.email);
+      }
+
+      // Resto del flujo igual
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-
-      // 3. Crear credencial de Firebase usando solo idToken (nuevo patrón)
-      final credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-      );
-
-      // 4. Autenticar con Firebase (upgrade automático si era anónimo)
+      final credential = GoogleAuthProvider.credential(idToken: googleAuth.idToken);
       final result = await _auth.signInWithCredential(credential);
 
       print('✅ Google Sign-In exitoso: ${result.user?.displayName}');
@@ -128,23 +148,17 @@ class AuthService {
     }
   }
 
-  /// Cerrar sesión (vuelve a anónimo automáticamente)
   Future<void> signOut() async {
     try {
-      // Cerrar sesión de Firebase primero
+      // NUEVO: Logout completo y limpio
       await _auth.signOut();
+      await _googleSignIn.signOut();
 
-      // Cerrar sesión de Google si está disponible
-      try {
-        await _googleSignIn.signOut();
-      } catch (e) {
-        print('⚠️ Error cerrando Google Sign-In: $e');
-      }
+      // NUEVO: NO limpiar último usuario - así Google se recuerda para próximo login
+      // (el email queda guardado en SharedPreferences)
 
-      // Automáticamente vuelve a anónimo
       await signInAnonymously();
-
-      print('✅ Logout exitoso - Usuario vuelve a anónimo');
+      print('✅ Logout completo - Google recordará último usuario para próximo login');
     } catch (e) {
       print('❌ Error en logout: $e');
     }
@@ -162,7 +176,20 @@ class AuthService {
   /// Verificar si el usuario es anónimo
   bool get isAnonymous => currentUser?.isAnonymous ?? true;
 
-  // HELPERS PRIVADOS
+
+// HELPERS PRIVADOS
+
+  /// NUEVO: Guardar último usuario Google
+  Future<void> _saveLastGoogleUser(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_google_email', email);
+  }
+
+  /// NUEVO: Obtener último usuario Google
+  Future<String?> _getLastGoogleUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('last_google_email');
+  }
 
   /// Generar nonce aleatorio para Apple Sign-In
   String _generateNonce([int length = 32]) {
@@ -177,4 +204,5 @@ class AuthService {
     final digest = sha256.convert(bytes);
     return digest.toString();
   }
+
 }

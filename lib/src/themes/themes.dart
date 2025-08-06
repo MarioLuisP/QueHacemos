@@ -11,7 +11,7 @@ class AppThemes {
       brightness: Brightness.light,
       primaryColor: Color(0xFF5E3011),
       colorScheme: ColorScheme.light(
-        primary: const Color(0xFFF7F2DB),
+        primary: const Color(0xFF817434),
         secondary: secondaryLerped,
         surface: Colors.white,
       ),

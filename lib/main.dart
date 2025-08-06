@@ -112,15 +112,15 @@ class _AppContentState extends State<_AppContent> {
   void initState() {
     super.initState();
     _initializeApp();
+    _initializeAuthInBackground(); // NUEVO: Auth no-bloqueante en background
   }
 
   Future<void> _initializeApp() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final simpleHomeProvider = Provider.of<SimpleHomeProvider>(context, listen: false);
     final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
 
-    try { // NUEVO: Error handling robusto
-      await authProvider.initializeAnonymousAuth();
+    try {
+      // NUEVO: Removido await authProvider.initializeAnonymousAuth() - ahora corre en background
       await simpleHomeProvider.initialize();
       await favoritesProvider.init();
 
@@ -131,14 +131,22 @@ class _AppContentState extends State<_AppContent> {
         _isInitialized = true;
       });
 
-      print('🎉 App completamente inicializada con auth y sync de favoritos');
-    } catch (e) { // NUEVO: Manejo de errores
-      print('❌ Error crítico en inicialización: $e'); // NUEVO
-      // NUEVO: Mostrar UI con error en lugar de quedarse colgado
+      print('🎉 App completamente inicializada'); // NUEVO: Mensaje simplificado
+    } catch (e) {
+      print('❌ Error crítico en inicialización: $e');
       setState(() {
         _isInitialized = true;
       });
-    } // NUEVO: Bloque catch completo
+    }
+  }
+
+  // NUEVO: Auth inicialización no-bloqueante
+  void _initializeAuthInBackground() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // NUEVO: Firebase authStateChanges ya maneja la restauración automática
+    // NUEVO: Si no hay usuario, intenta anonymous (pero no bloquea la app)
+    authProvider.initializeAnonymousAuth(); // NUEVO: Sin await - corre en background
   }
 
   @override
