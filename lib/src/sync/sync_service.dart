@@ -72,7 +72,6 @@ class SyncService {
         title: '🎭 ¡App lista para usar!',
         message: 'Se agregaron ${events.length - cleanupResults.eventsRemoved} eventos culturales de Córdoba',
         type: 'first_install_complete',
-        icon: '🎉',
       );
 
       print('✅ Primera instalación completada: ${events.length} eventos');
@@ -91,7 +90,6 @@ class SyncService {
         title: '⚠️ Error al configurar la app',
         message: 'Problema de conexión - reintentando automáticamente',
         type: 'first_install_error',
-        icon: '🔄',
       );
       return SyncResult.error(e.toString());
     } finally {
@@ -146,7 +144,6 @@ class SyncService {
           title: '✅ Todo actualizado',
           message: 'La app está al día, no hay eventos nuevos',
           type: 'sync_up_to_date',
-          icon: '📱',
         );
         return SyncResult.noNewData();
       }
@@ -188,7 +185,6 @@ class SyncService {
         title: '⚠️ Error al actualizar contenido',
         message: 'Problema de conexión - usando contenido guardado',
         type: 'auto_sync_error',
-        icon: '🔄',
       );
 
       return SyncResult.error(e.toString());
@@ -260,7 +256,6 @@ class SyncService {
           title: '🎭 ¡Eventos nuevos en Córdoba!',
           message: 'Se agregaron $newEventsCount eventos culturales',
           type: 'new_events',
-          icon: '🎉',
         );
 
         if (newEventsCount >= 10) {
@@ -268,7 +263,6 @@ class SyncService {
             title: '🔥 ¡Semana cargada de cultura!',
             message: 'Más de $newEventsCount eventos esperándote',
             type: 'high_activity',
-            icon: '🌟',
           );
         }
 
@@ -277,7 +271,6 @@ class SyncService {
             title: '🧹 Base de datos optimizada',
             message: 'Se limpiaron ${cleanupResults.eventsRemoved} eventos pasados',
             type: 'cleanup',
-            icon: '✨',
           );
         }
 

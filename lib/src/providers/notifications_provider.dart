@@ -115,7 +115,6 @@ class NotificationsProvider extends ChangeNotifier {
     required String title,
     required String message,
     required String type,
-    String? icon,
     String? eventCode,
   }) async {
     try {
@@ -133,7 +132,7 @@ class NotificationsProvider extends ChangeNotifier {
         'timestamp': DateTime.now(),
         'isRead': false,
         'type': type,
-        'icon': icon ?? '🔔',
+        'icon': _getIconForType(type),
         'event_code': eventCode,
       };
 
@@ -184,10 +183,21 @@ class NotificationsProvider extends ChangeNotifier {
         return '❤️';
       case 'favorite_removed':
         return '💔';
+      case 'first_install_complete':
+        return '🎉';
       case 'new_events':
         return '🎭';
+      case 'sync_up_to_date':
+        return '📡';
+      case 'auto_sync_error':
+      case 'first_install_error':
+        return '⚠️';
+      case 'high_activity':
+        return '🔥';
+      case 'cleanup':
+        return '🧹';
       case 'sync':
-        return '✅';
+        return '🔄';
       default:
         return '🔔';
     }

@@ -307,13 +307,15 @@ class EventDetailContent extends StatelessWidget {
   }
 
   Widget _buildDescriptionSection() {
-    return ExpandableDescription(
-      fullDescription: data.fullDescription,
-      truncatedDescription: data.truncatedDescription,
-      baseColor: data.baseColor,
+    return SizedBox(
+      width: double.infinity,
+      child: ExpandableDescription(
+        fullDescription: data.fullDescription,
+        truncatedDescription: data.truncatedDescription,
+        baseColor: data.baseColor,
+      ),
     );
   }
-
   Widget _buildInfoSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),

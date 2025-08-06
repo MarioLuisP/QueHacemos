@@ -176,7 +176,6 @@ class FavoritesProvider with ChangeNotifier {
           title: '❤️ Evento guardado en favoritos',
           message: '${eventDetails?['title'] ?? 'Evento'}',
           type: 'favorite_added',
-          icon: '❤️',
           eventCode: eventId,
         );
       } else {
@@ -184,7 +183,6 @@ class FavoritesProvider with ChangeNotifier {
           title: '💔 Favorito removido',
           message: '${eventDetails?['title'] ?? 'Evento'} removido de favoritos',
           type: 'favorite_removed',
-          icon: '💔',
           eventCode: eventId,
         );
       }
