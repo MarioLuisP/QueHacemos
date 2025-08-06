@@ -19,8 +19,9 @@ class AuthService {
     if (_isGoogleInitialized) return;
 
     try {
-      // La nueva API no requiere parámetros para initialize()
-      await _googleSignIn.initialize();
+      await _googleSignIn.initialize(
+        serverClientId: '998972257036-llbcet7uc4l7ilclp6uqp9r73o4eo1aa.apps.googleusercontent.com', // NUEVO
+      );
       _isGoogleInitialized = true;
       print('✅ Google Sign-In inicializado correctamente');
     } catch (e) {
