@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../contact_modal.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/notifications_provider.dart';
 import 'components/notifications_bell.dart';
 

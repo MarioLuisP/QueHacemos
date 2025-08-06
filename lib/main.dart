@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'src/providers/favorites_provider.dart';
 import 'src/providers/simple_home_provider.dart';
+import 'src/providers/auth_provider.dart'; // NUEVO
 import 'src/themes/themes.dart';
 import 'src/navigation/bottom_nav.dart';
 import 'src/providers/notifications_provider.dart';
@@ -21,9 +22,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'es_ES';
   await dotenv.load(fileName: ".env");
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // NUEVO: Inicializar autenticación anónima
+  await _initializeAnonymousAuth();
+
   // Inicializar timezone
   tz.initializeTimeZones();
 
@@ -36,6 +42,17 @@ void main() async {
   runApp(const MyApp());
 }
 
+/// NUEVO: Inicializar usuario anónimo automáticamente
+Future<void> _initializeAnonymousAuth() async {
+  try {
+    // Solo inicialización básica aquí
+    // El AuthProvider manejará el estado completo
+    print('🔐 Preparando autenticación...');
+  } catch (e) {
+    print('⚠️ Error preparando auth: $e');
+    // App continúa funcionando normal sin auth
+  }
+}
 /// Garantizar que la primera instalación descarga los 10 lotes
 /// Solo se ejecuta UNA VEZ en la vida de la app
 Future<void> _ensureFirstInstallation() async {
@@ -61,6 +78,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // NUEVO: AuthProvider - Primer provider para que esté disponible para todos
+        ChangeNotifierProvider(
+          create: (context) => AuthProvider(),
+        ),
         // Provider principal para cache/filtros/tema
         ChangeNotifierProvider(
           create: (context) => SimpleHomeProvider(),
@@ -94,10 +115,12 @@ class _AppContentState extends State<_AppContent> {
   }
 
   Future<void> _initializeApp() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final simpleHomeProvider = Provider.of<SimpleHomeProvider>(context, listen: false);
     final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
 
     try { // NUEVO: Error handling robusto
+      await authProvider.initializeAnonymousAuth();
       await simpleHomeProvider.initialize();
       await favoritesProvider.init();
 
@@ -108,7 +131,7 @@ class _AppContentState extends State<_AppContent> {
         _isInitialized = true;
       });
 
-      print('🎉 App completamente inicializada con sync de favoritos');
+      print('🎉 App completamente inicializada con auth y sync de favoritos');
     } catch (e) { // NUEVO: Manejo de errores
       print('❌ Error crítico en inicialización: $e'); // NUEVO
       // NUEVO: Mostrar UI con error en lugar de quedarse colgado
