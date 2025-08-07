@@ -8,7 +8,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
 import '../providers/notifications_provider.dart'; // NUEVO
-import 'package:shared_preferences/shared_preferences.dart'; // NUEVO
 
 
 class AuthService {
@@ -72,12 +71,9 @@ class AuthService {
         message: 'Bienvenido ${result.user?.displayName ?? result.user?.email}', // NUEVO
         type: 'login_success', // NUEVO
       ); // NUEVO
-      // NUEVO: Guardar email para remember user en próximo login
-      final prefs = await SharedPreferences.getInstance(); // NUEVO
-      await prefs.setString('last_google_email', result.user!.email!); // NUEVO
 
       return result;
-      return result;
+
 
     } catch (e) {
       print('❌ Error en Google Sign-In: $e');
