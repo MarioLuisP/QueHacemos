@@ -149,9 +149,11 @@ class EventCardWidget extends StatelessWidget {
                           Text(
                             event.location,
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 17,
                               color: event.textColor,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                           Text(
                             event.district,

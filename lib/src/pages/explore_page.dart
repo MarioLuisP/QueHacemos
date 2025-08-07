@@ -113,7 +113,7 @@ class _ExplorePageState extends State<ExplorePage> {
                     )
                         : null,
                     filled: true,
-                    fillColor: Theme.of(context).colorScheme.primary,
+                    fillColor: Theme.of(context).scaffoldBackgroundColor,
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 14.0,
                     ),

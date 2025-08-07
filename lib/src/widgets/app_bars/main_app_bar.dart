@@ -249,19 +249,23 @@ class _UserAvatarReal extends StatelessWidget {
 
   /// Construir icono del avatar // NUEVO
   Widget _buildAvatarIcon(AuthProvider authProvider, Color color) {
-    // NUEVO
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: authProvider.getAvatarColor(),
-        shape: BoxShape.circle,
-        border: Border.all(color: color.withAlpha(77), width: 2),
+    // Usar AspectRatio para mantener proporción circular
+    return AspectRatio(
+      aspectRatio: 1.0, // Mantiene círculo perfecto
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: 36,
+          maxHeight: 36,
+        ),
+        decoration: BoxDecoration(
+          color: authProvider.getAvatarColor(),
+          shape: BoxShape.circle,
+          border: Border.all(color: color.withAlpha(77), width: 2),
+        ),
+        child: _buildAvatarContent(authProvider, color),
       ),
-      child: _buildAvatarContent(authProvider, color), // NUEVO
     );
   }
-
   /// Contenido del avatar (foto, iniciales o silueta) // NUEVO
   Widget _buildAvatarContent(AuthProvider authProvider, Color color) {
     // NUEVO
@@ -269,9 +273,8 @@ class _UserAvatarReal extends StatelessWidget {
       return ClipOval(
         child: Image.network(
           authProvider.userPhotoUrl,
-          width: 36,
-          height: 36,
-          fit: BoxFit.cover,
+          fit: BoxFit.cover, // Sin width/height fijos
+          // ... resto igual
           errorBuilder: (context, error, stackTrace) {
             return _buildFallbackAvatar(authProvider, color); // NUEVO
           },
