@@ -132,6 +132,7 @@ class _NotificationsPanelHeader extends StatelessWidget {
                 'Notificaciones',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
+                  fontSize: 20,
                 ),
               ),
               Row(

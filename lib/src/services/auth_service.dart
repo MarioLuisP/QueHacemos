@@ -7,7 +7,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../providers/notifications_provider.dart'; // NUEVO
+import 'package:shared_preferences/shared_preferences.dart'; // NUEVO
+
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -43,7 +45,7 @@ class AuthService {
   }
 
   /// Google Sign-In con nueva API 2025
-  /// Google Sign-In con detección de usuario previo
+  /// Google Sign-In simplificado (solo para upgrade inicial) // CAMBIO
   Future<UserCredential?> signInWithGoogle() async {
     try {
       await initializeGoogleSignIn();
@@ -53,49 +55,42 @@ class AuthService {
         return null;
       }
 
-      // NUEVO: Primero intentar lightweight authentication (silent)
-      final lastEmail = await _getLastGoogleUser();
+      // Mostrar selector de Google directamente // NUEVO
+      print('👤 Mostrando selector de Google');
+      final googleUser = await _googleSignIn.authenticate(scopeHint: ['email']); // CAMBIO
 
-      GoogleSignInAccount? googleUser;
-
-      if (lastEmail != null) {
-        // NUEVO: Intentar lightweight authentication para mismo usuario
-        print('🔄 Intentando login silencioso para: $lastEmail');
-
-        try {
-          final result = _googleSignIn.attemptLightweightAuthentication();
-          if (result is Future<GoogleSignInAccount?>) {
-            googleUser = await result;
-          } else {
-            googleUser = result as GoogleSignInAccount?;
-          }
-        } catch (e) {
-          print('⚠️ Login silencioso falló, usando authenticate()');
-          googleUser = null;
-        }
-      }
-
-      // Si lightweight falló o es primera vez, usar authenticate()
-      if (googleUser == null) {
-        print('👤 Mostrando selector de Google');
-        googleUser = await _googleSignIn.authenticate(scopeHint: ['email']);
-        await _saveLastGoogleUser(googleUser.email);
-      }
-
-      // Resto del flujo igual
+      // Autenticar con Firebase // NUEVO
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
       final credential = GoogleAuthProvider.credential(idToken: googleAuth.idToken);
       final result = await _auth.signInWithCredential(credential);
 
       print('✅ Google Sign-In exitoso: ${result.user?.displayName}');
+
+// NUEVO: Notificación de bienvenida
+      await NotificationsProvider.instance.addNotification( // NUEVO
+        title: '🎈 ¡Ya estás dentro!', // NUEVO
+        message: 'Bienvenido ${result.user?.displayName ?? result.user?.email}', // NUEVO
+        type: 'login_success', // NUEVO
+      ); // NUEVO
+      // NUEVO: Guardar email para remember user en próximo login
+      final prefs = await SharedPreferences.getInstance(); // NUEVO
+      await prefs.setString('last_google_email', result.user!.email!); // NUEVO
+
+      return result;
       return result;
 
     } catch (e) {
       print('❌ Error en Google Sign-In: $e');
+      if (!e.toString().contains('cancel')) { // NUEVO
+        await NotificationsProvider.instance.addNotification( // NUEVO
+          title: '🚩 No se pudo conectar', // NUEVO
+          message: 'Verificá tu conexión e intentá de nuevo', // NUEVO
+          type: 'login_error', // NUEVO
+        ); // NUEVO
+      }
       return null;
     }
   }
-
   /// Apple Sign-In (solo iOS, upgrade desde anónimo o login directo)
   Future<UserCredential?> signInWithApple() async {
     try {
@@ -140,25 +135,35 @@ class AuthService {
       }
 
       print('✅ Apple Sign-In exitoso: ${result.user?.displayName ?? result.user?.email}');
+      await NotificationsProvider.instance.addNotification( // NUEVO
+        title: '🎈 ¡Ya estás dentro!', // NUEVO
+        message: 'Bienvenido ${result.user?.displayName ?? result.user?.email}', // NUEVO
+        type: 'login_success', // NUEVO
+      );
       return result;
 
     } catch (e) {
       print('❌ Error en Apple Sign-In: $e');
+
+      if (!e.toString().contains('cancel')) { // NUEVO
+        await NotificationsProvider.instance.addNotification( // NUEVO
+          title: '🚩 No se pudo conectar', // NUEVO
+          message: 'Verificá tu conexión e intentá de nuevo', // NUEVO
+          type: 'login_error', // NUEVO
+        ); // NUEVO
+      }
+
       return null;
     }
   }
 
   Future<void> signOut() async {
     try {
-      // NUEVO: Logout completo y limpio
-      await _auth.signOut();
-      await _googleSignIn.signOut();
+      await _auth.signOut(); // Firebase logout
+      await _googleSignIn.signOut(); // Google cleanup // CAMBIO
 
-      // NUEVO: NO limpiar último usuario - así Google se recuerda para próximo login
-      // (el email queda guardado en SharedPreferences)
-
-      await signInAnonymously();
-      print('✅ Logout completo - Google recordará último usuario para próximo login');
+      await signInAnonymously(); // Volver a anónimo // CAMBIO
+      print('✅ Logout completo'); // CAMBIO
     } catch (e) {
       print('❌ Error en logout: $e');
     }
@@ -178,18 +183,6 @@ class AuthService {
 
 
 // HELPERS PRIVADOS
-
-  /// NUEVO: Guardar último usuario Google
-  Future<void> _saveLastGoogleUser(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('last_google_email', email);
-  }
-
-  /// NUEVO: Obtener último usuario Google
-  Future<String?> _getLastGoogleUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('last_google_email');
-  }
 
   /// Generar nonce aleatorio para Apple Sign-In
   String _generateNonce([int length = 32]) {

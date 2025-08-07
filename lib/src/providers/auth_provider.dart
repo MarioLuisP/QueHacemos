@@ -73,16 +73,25 @@ class AuthProvider extends ChangeNotifier {
     _user = _authService.currentUser;
   }
 
-  /// Inicializar usuario anónimo (llamado desde main.dart)
-  Future<void> initializeAnonymousAuth() async {
+  /// Inicializar autenticación (detecta usuario existente o crea anónimo) // CAMBIO
+  Future<void> initializeAuth() async { // CAMBIO
     _isLoading = true;
     notifyListeners();
 
     try {
-      await _authService.signInAnonymously();
-      // El listener se encarga de actualizar el estado
+      final existingUser = _authService.currentUser; // CAMBIO
+
+      if (existingUser != null && !existingUser.isAnonymous) { // NUEVO
+        // Usuario ya logueado - auto-login exitoso // NUEVO
+        print('✅ Auto-login exitoso: ${existingUser.displayName ?? existingUser.email}'); // NUEVO
+        // El listener ya se encarga de actualizar el estado // NUEVO
+      } else { // NUEVO
+        // No hay usuario real, crear anónimo // NUEVO
+        await _authService.signInAnonymously();
+        // El listener se encarga de actualizar el estado
+      } // NUEVO
     } catch (e) {
-      print('❌ Error inicializando auth anónimo: $e');
+      print('❌ Error inicializando auth: $e'); // CAMBIO
     } finally {
       _isLoading = false;
       notifyListeners();

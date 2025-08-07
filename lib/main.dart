@@ -146,7 +146,7 @@ class _AppContentState extends State<_AppContent> {
 
     // NUEVO: Firebase authStateChanges ya maneja la restauración automática
     // NUEVO: Si no hay usuario, intenta anonymous (pero no bloquea la app)
-    authProvider.initializeAnonymousAuth(); // NUEVO: Sin await - corre en background
+    authProvider.initializeAuth();// NUEVO: Sin await - corre en background
   }
 
   @override

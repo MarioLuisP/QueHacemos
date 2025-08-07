@@ -99,7 +99,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Calcular tamaño de fuente eficientemente
   double _getTitleFontSize(String title) {
     if (title.length > 20) return 20.0;
-    if (title.length > 15) return 21.0;
+    if (title.length > 15) return 17.0;
     return 22.0;
   }
 
@@ -352,7 +352,7 @@ class _LoginModal extends StatelessWidget { // NUEVO
 
           // Descripción motivacional // NUEVO
           Text(
-            'Ayudá a que esta app crezca.\nPronte vas a acceder a\nimportantes beneficios',
+              '🚀 Ayudá a que esta app crezca\n✨ Pronto vas a acceder a\n🎁 increibles beneficios 😎🎁',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: Colors.grey[600],
               height: 1.4,
@@ -484,7 +484,7 @@ class CalendarAppBar extends MainAppBar {
 class ExploreAppBar extends MainAppBar {
   const ExploreAppBar({super.key, String? title, List<Widget>? customActions})
       : super(
-    title: title ?? 'Explorar Eventos',
+    title: title ?? 'Busca Eventos',
     customActions: customActions,
     showUserAvatar: true,
     showNotifications: true,

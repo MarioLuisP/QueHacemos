@@ -198,6 +198,10 @@ class NotificationsProvider extends ChangeNotifier {
         return '🧹';
       case 'sync':
         return '🔄';
+      case 'login_success':
+        return '🎈';
+      case 'login_error': // NUEVO
+        return '🚩';
       default:
         return '🔔';
     }

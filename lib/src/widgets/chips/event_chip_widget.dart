@@ -58,8 +58,8 @@ class EventChipWidget extends StatelessWidget {
           color: isSelected ? colors.base : inactiveBackground,
           borderRadius: BorderRadius.circular(AppDimens.borderRadius),
           border: Border.all(
-            color: isSelected ? colors.base : inactiveBackground,
-            width: 1.0,
+            color: isSelected ? colors.base : inactiveTextColor,
+            width: 0.5,
           ),
         ),
         height: AppDimens.chipHeight,
