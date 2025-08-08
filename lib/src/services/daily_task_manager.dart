@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_time_guard/flutter_time_guard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../sync/sync_service.dart';
 // import '../providers/favorites_provider.dart'; // TODO: Descomentar en Fase 2
@@ -16,7 +17,6 @@ class DailyTaskManager {
   // ========== CORE STATE ==========
   Timer? _dailyTimer;
   bool _isInitialized = false;
-  _TimeDetector? _timeDetector;
 
   // ========== TASK STATES ==========
   bool _syncCompleted = false;
@@ -323,18 +323,17 @@ class DailyTaskManager {
   }
 
   /// Setup detector de cambio de día
+  /// Setup detector de cambio de día
   void _setupTimeDetector() {
-    _timeDetector = _TimeDetector(
-      onDayChanged: () async {
-        print('🌅 Cambio de día detectado por time detector');
+    FlutterTimeGuard.listenToDateTimeChange(
+      onTimeChanged: () async {
+        print('🌅 Cambio detectado por flutter_time_guard');
         await _resetDailyState();
         _startDailyTimer();
       },
+      stopListeingAfterFirstChange: false,
     );
-
-    _timeDetector!.start();
   }
-
   // ========== DEBUG & TESTING ==========
 
   /// Método para testing - simular cambio de día
@@ -368,54 +367,7 @@ class DailyTaskManager {
   /// Cleanup al cerrar app
   void dispose() {
     _stopDailyTimer();
-    _timeDetector?.stop();
     print('🧹 DailyTaskManager disposed');
   }
 }
 
-// ========== TIME DETECTOR (CLASE INTERNA) ==========
-
-/// Detector de cambio de día con múltiples estrategias
-class _TimeDetector {
-  final VoidCallback onDayChanged;
-  Timer? _checkTimer;
-  String? _lastKnownDate;
-
-  _TimeDetector({required this.onDayChanged});
-
-  /// Iniciar detección
-  void start() {
-    _lastKnownDate = _getCurrentDateString();
-
-    // TODO: Implementar time_change_detector plugin en futuro
-    // Por ahora: verificación cada 5 minutos
-    _checkTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
-      _checkForDayChange();
-    });
-
-    print('🕐 Time detector iniciado (verificación cada 5 min)');
-  }
-
-  /// Detener detección
-  void stop() {
-    _checkTimer?.cancel();
-    _checkTimer = null;
-  }
-
-  /// Verificar cambio de día manualmente
-  void _checkForDayChange() {
-    final currentDate = _getCurrentDateString();
-
-    if (_lastKnownDate != null && _lastKnownDate != currentDate) {
-      print('📅 Cambio de día detectado: $_lastKnownDate → $currentDate');
-      _lastKnownDate = currentDate;
-      onDayChanged();
-    }
-  }
-
-  /// Obtener fecha actual como string
-  String _getCurrentDateString() {
-    final now = DateTime.now();
-    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-  }
-}
