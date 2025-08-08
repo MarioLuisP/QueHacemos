@@ -151,25 +151,15 @@ class FirestoreClient {
     try { // NUEVO
       print('📋 Obteniendo lista de lotes disponibles...'); // NUEVO
 
-     /* // MOCK: Simular lotes disponibles ordenados cronológicamente // NUEVO
-      final availableBatches = [ // NUEVO
-        'lote_2025_08_01_mock_1', // NUEVO
-        'lote_2025_08_02_mock_1', // NUEVO
-        'lote_2025_08_03_mock_1', // NUEVO
-        'lote_2025_08_04_mock_1', // NUEVO
-        'lote_2025_08_04_mock_2', // NUEVO
-      ]; // NUEVO
-*/
-   // NUEVO
-      // FIRESTORE REAL (comentado por ahora): // NUEVO
-      final querySnapshot = await FirebaseFirestore.instance // NUEVO
-        .collection('lotes_metadata') // NUEVO
-        .orderBy('fecha_creacion') // NUEVO
-        .get(); // NUEVO
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('eventos_lotes')
+          .orderBy('metadata.fecha_subida', descending: true)
+          .limit(20)  // ← Solo traer últimos 20 lotes
+          .get();
 
-      final availableBatches = querySnapshot.docs // NUEVO
-        .map((doc) => doc.id) // NUEVO
-        .toList(); // NUEVO
+      final availableBatches = querySnapshot.docs
+          .map((doc) => doc.data()['metadata']['nombre_lote'] as String)  // ✅ CORRECTO
+          .toList();
   // NUEVO
 
       print('📋 Lotes disponibles: ${availableBatches.length}'); // NUEVO

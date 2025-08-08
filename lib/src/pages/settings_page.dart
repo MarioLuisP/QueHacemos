@@ -5,7 +5,10 @@ import './../utils/dimens.dart';
 import './../utils/colors.dart';
 // 🔥 IMPORTS SOLO PARA DESARROLLADOR - ELIMINAR EN PRODUCCIÓN
 import '../sync/sync_service.dart';
+import '../sync/firestore_client.dart';
 import '../data/repositories/event_repository.dart';
+// Agregar después de la línea 7:
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -247,6 +250,15 @@ class SettingsPage extends StatelessWidget {
                         '📈 Conteo por categorías y resumen',
                         Colors.orange,
                             () => _showEventStats(context),
+                      ),
+
+                      const SizedBox(height: AppDimens.paddingSmall), // ← AGREGAR ESTA LÍNEA
+                      _buildDebugButton( // ← AGREGAR TODO ESTE BLOQUE
+                        context,
+                        'TEST AUTO SYNC',
+                        '🧪 Simular sincronización automática nocturna',
+                        Colors.purple,
+                            () => _testAutoSync(context),
                       ),
                     ],
                   ),
@@ -700,6 +712,46 @@ class SettingsPage extends StatelessWidget {
       );
     }
   }
+
+  // Justo después de _showEventStats() y antes de los comentarios finales:
+
+  Future<void> _testAutoSync(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🧪 Iniciando test de sync automático...')),
+      );
+
+      print('🧪 TEST: Simulando sync automático nocturno...');
+
+      // 1. Reset completo del estado de sync
+      final syncService = SyncService();
+      final firestoreClient = FirestoreClient();
+      await firestoreClient.resetSyncState();  // ✅ Solo timestamp
+      print('🔄 Estado de sync reseteado completamente');
+
+      // 2. Ejecutar performAutoSync() (no firstInstallSync)
+      final result = await syncService.performAutoSync();
+
+      // 3. Mostrar resultado detallado
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.success
+              ? '✅ Auto sync: ${result.eventsAdded} eventos agregados'
+              : '❌ Auto sync falló: ${result.error}'
+          ),
+          duration: Duration(seconds: 5),
+          backgroundColor: result.success ? Colors.green : Colors.red,
+        ),
+      );
+
+      print('🧪 TEST COMPLETO: ${result.success ? 'ÉXITO' : 'FALLO'}');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error en test: $e')),
+      );
+      print('🧪 ERROR EN TEST: $e');
+    }
+  }
 // 🔥 FIN MÉTODOS DESARROLLADOR - ELIMINAR HASTA AQUÍ 🔥
 }
 
@@ -726,7 +778,7 @@ class SettingsPage extends StatelessWidget {
 /*🔥 LO QUE SÍ SE ELIMINA:
 Solo el código dentro de settings_page.dart:
 
-Los imports de SyncService y EventRepository
+Los imports de SyncService y EventRepository y shared_preferences.dart'
 
 La Card 4 completa (HTML/UI)
 Los 4 métodos helper (_buildDebugButton, _forceSyncDatabase,

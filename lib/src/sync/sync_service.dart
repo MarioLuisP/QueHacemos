@@ -110,7 +110,7 @@ class SyncService {
       print('⏭️ Sincronización no necesaria aún');
       return SyncResult.notNeeded();
     }
-
+    print('🐛 DEBUG shouldSync: ${await _firestoreClient.shouldSync()}');
     _isSyncing = true;
     _globalSyncInProgress = true;
 
@@ -121,7 +121,10 @@ class SyncService {
       final availableBatches = await _firestoreClient.getAvailableBatches(); // NUEVO
       final syncInfo = await _eventRepository.getSyncInfo(); // NUEVO
       final currentBatchVersion = syncInfo?['batch_version'] as String? ?? ''; // NUEVO
-
+// AGREGAR ESTOS PRINTS:
+      print('🐛 DEBUG availableBatches: $availableBatches');
+      print('🐛 DEBUG currentBatchVersion: $currentBatchVersion');
+      print('🐛 DEBUG syncInfo completo: $syncInfo');
       // NUEVO: Encontrar lotes faltantes (máximo 10)
       final missingBatches = <String>[]; // NUEVO
       bool foundCurrent = currentBatchVersion.isEmpty; // NUEVO
@@ -138,6 +141,7 @@ class SyncService {
       } // NUEVO
 
       if (missingBatches.isEmpty) { // CAMBIO
+        print('🐛 DEBUG missingBatches encontrados: $missingBatches'); // ← AQUÍ
         print('📭 No hay lotes nuevos'); // CAMBIO
         // Notificar que está actualizado
         _notificationsProvider.addNotification(
@@ -147,7 +151,9 @@ class SyncService {
         );
         return SyncResult.noNewData();
       }
-
+// NUEVO: Descargar lotes faltantes específicos
+      print('🐛 DEBUG missingBatches encontrados: $missingBatches'); // ← Y TAMBIÉN AQUÍ
+      print('📦 Descargando ${missingBatches.length} lotes faltantes: ${missingBatches.join(", ")}');
       // NUEVO: Descargar lotes faltantes específicos
       print('📦 Descargando ${missingBatches.length} lotes faltantes: ${missingBatches.join(", ")}'); // NUEVO
       final events = await _firestoreClient.downloadBatch(specificBatches: missingBatches); // CAMBIO
