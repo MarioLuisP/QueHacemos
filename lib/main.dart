@@ -16,6 +16,7 @@ import 'src/providers/notifications_provider.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'src/services/notification_service.dart';
 import 'src/sync/sync_service.dart';
+import 'src/services/daily_task_manager.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
@@ -36,9 +37,6 @@ void main() async {
   // Inicializar notificaciones
   await NotificationService.initialize();
 
-  // ✅ NUEVO: Verificar y ejecutar primera instalación
-  await _ensureFirstInstallation();
-
   runApp(const MyApp());
 }
 
@@ -53,23 +51,7 @@ Future<void> _initializeAnonymousAuth() async {
     // App continúa funcionando normal sin auth
   }
 }
-/// Garantizar que la primera instalación descarga los 10 lotes
-/// Solo se ejecuta UNA VEZ en la vida de la app
-Future<void> _ensureFirstInstallation() async {
-  final prefs = await SharedPreferences.getInstance();
-  final isFirstInstall = prefs.getBool('app_initialized') ?? true;
 
-  if (isFirstInstall) {
-    print('🚀 Primera instalación detectada - Iniciando sync...');
-
-    // CAMBIO: Solo delegación sin evaluar resultado
-    SyncService().firstInstallSync(); // CAMBIO: Sin await para no bloquear
-
-    print('✅ Sync de primera instalación iniciado en background'); // NUEVO
-  } else {
-    print('⚡ App ya inicializada - Startup directo');
-  }
-}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -105,14 +87,15 @@ class _AppContent extends StatefulWidget {
   State<_AppContent> createState() => _AppContentState();
 }
 
-class _AppContentState extends State<_AppContent> {
+class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
   bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // ← AGREGAR
     _initializeApp();
-    _initializeAuthInBackground(); // NUEVO: Auth no-bloqueante en background
+    _initializeAuthInBackground();
   }
 
   Future<void> _initializeApp() async {
@@ -123,6 +106,7 @@ class _AppContentState extends State<_AppContent> {
       // NUEVO: Removido await authProvider.initializeAnonymousAuth() - ahora corre en background
       await simpleHomeProvider.initialize();
       await favoritesProvider.init();
+      await DailyTaskManager().initialize();
 
       // Conectar sync entre providers
       simpleHomeProvider.setupFavoritesSync(favoritesProvider);
@@ -148,7 +132,21 @@ class _AppContentState extends State<_AppContent> {
     // NUEVO: Si no hay usuario, intenta anonymous (pero no bloquea la app)
     authProvider.initializeAuth();// NUEVO: Sin await - corre en background
   }
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    DailyTaskManager().dispose();
+    super.dispose();
+  }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      DailyTaskManager().checkOnAppOpen();
+    }
+  }
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
