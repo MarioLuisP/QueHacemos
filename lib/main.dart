@@ -164,18 +164,21 @@ class _AppContentState extends State<_AppContent> {
 
     return Consumer<SimpleHomeProvider>(
       builder: (context, provider, child) {
-        return MaterialApp(
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: const [Locale('es', ''), Locale('en', '')],
-          title: 'Eventos Córdoba - Cache Test',
-          theme: AppThemes.themes[provider.theme] ?? AppThemes.themes['normal']!,
-          home: const MainScreen(),
-          debugShowCheckedModeBanner: false,
-        );
+        return GestureDetector(  // AGREGAR ESTO
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: MaterialApp(
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [Locale('es', ''), Locale('en', '')],
+            title: 'Eventos Córdoba - Cache Test',
+            theme: AppThemes.themes[provider.theme] ?? AppThemes.themes['normal']!,
+            home: const MainScreen(),
+            debugShowCheckedModeBanner: false,
+          ),
+        );  // CERRAR GestureDetector
       },
     );
   }

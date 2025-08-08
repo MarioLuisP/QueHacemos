@@ -162,8 +162,7 @@ class _ContactButtonSimple extends StatelessWidget {
 
     return IconButton(
       onPressed: () {
-        FocusScope.of(context).unfocus(); // 👈 Cierra el teclado
-        ContactModal.show(context);       // 👈 Abre el modal
+        ContactModal.show(context);
       },
       icon: Container(
         width: 28,
@@ -237,9 +236,6 @@ class _UserAvatarReal extends StatelessWidget {
 
   /// Manejar tap en avatar // NUEVO
   void _handleAvatarTap(BuildContext context, AuthProvider authProvider) {
-    // NUEVO
-    FocusScope.of(context).unfocus(); // Cerrar teclado
-
     if (authProvider.isLoggedIn) {
       _showLogoutModal(context, authProvider); // NUEVO
     } else {

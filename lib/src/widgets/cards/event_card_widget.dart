@@ -30,7 +30,6 @@ class EventCardWidget extends StatelessWidget {
       ),
           child: GestureDetector(
             onTap: () async {
-              FocusScope.of(context).unfocus();
               print('🔍 Buscando evento con ID: ${event.id}');
               final repository = EventRepository();
               final fullEvent = await repository.getEventById(event.id);

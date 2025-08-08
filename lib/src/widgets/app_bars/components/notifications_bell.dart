@@ -64,9 +64,6 @@ class NotificationsBell extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _NotificationsPanel(provider: provider),
-    ).then((_) {
-      FocusScope.of(context).unfocus();  // ← AGREGAR AQUÍ🔥
-    }
     );
   }
 }
