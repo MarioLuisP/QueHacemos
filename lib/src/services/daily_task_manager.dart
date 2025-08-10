@@ -130,7 +130,7 @@ class DailyTaskManager {
 
       // ========== NOTIFICATIONS TASK (COMENTADO - FASE 2) ==========
 
-      if (!_notificationsCompleted && _isAfterTime(11,0)) {
+      if (!_notificationsCompleted && _isAfterTime(11,00)) {   //💥💥💥💥💥💥💥💥
         print('🔔 Ejecutando scheduling de notificaciones...');
         await _executeNotifications();
         tasksExecuted = true;

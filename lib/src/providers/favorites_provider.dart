@@ -28,6 +28,7 @@ class FavoritesProvider with ChangeNotifier {
   Future<void> scheduleNotificationsForToday() async {
     try {
       final favorites = await _repository.getAllFavorites();
+
       if (favorites.isEmpty) return;
 
       final now = DateTime.now();
@@ -36,11 +37,18 @@ class FavoritesProvider with ChangeNotifier {
       // Formatear fecha de hoy
       final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
+// 🐛 DEBUG TEMPORAL - AGREGAR ESTAS LÍNEAS:
+      print('🐛 DEBUG: Sistema hoy = $todayStr');
+      print('🐛 DEBUG: Total favoritos = ${favorites.length}');
       // Filtrar solo favoritos de hoy
       final List<Map<String, dynamic>> todayFavorites = [];
 
       for (final favorite in favorites) {
-        final dateStr = favorite['date']?.toString().split(' ')[0];
+        final dateStr = favorite['date']?.toString().split('T')[0];
+
+        // 🐛 DEBUG TEMPORAL - AGREGAR ESTA LÍNEA:
+        print('🐛 DEBUG: Favorito ${favorite['title']} fecha = $dateStr, comparando con $todayStr');
+
         if (dateStr != null && dateStr == todayStr) {
           todayFavorites.add(favorite);
         }

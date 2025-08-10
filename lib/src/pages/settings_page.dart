@@ -7,7 +7,7 @@ import './../utils/colors.dart';
 import '../sync/sync_service.dart';
 import '../sync/firestore_client.dart';
 import '../data/repositories/event_repository.dart';
-// Agregar después de la línea 7:
+import '../services/daily_task_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -79,6 +79,78 @@ class SettingsPage extends StatelessWidget {
                           _buildThemeButton(context, provider, 'Harmony', 'harmony'),
                           _buildThemeButton(context, provider, 'Fluor', 'fluor'),
                         ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+// ========== CARD 1.5: NOTIFICACIONES ==========
+              const SizedBox(height: AppDimens.paddingMedium),
+              Card(
+                elevation: AppDimens.cardElevation,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppDimens.borderRadius),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppDimens.paddingMedium),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '🔔 Notificaciones',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: AppDimens.paddingMedium),
+                      FutureBuilder<Map<String, dynamic>>(
+                        future: _getNotificationStatus(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const CircularProgressIndicator();
+                          }
+
+                          final status = snapshot.data!;
+                          final isEnabled = status['enabled'] as bool;
+                          final statusText = status['text'] as String;
+                          final statusIcon = status['icon'] as String;
+                          final buttonText = status['buttonText'] as String;
+                          final buttonEnabled = status['buttonEnabled'] as bool;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(statusIcon, style: const TextStyle(fontSize: 20)),
+                                  const SizedBox(width: 8),
+                                  Text(statusText, style: Theme.of(context).textTheme.bodyMedium),
+                                ],
+                              ),
+                              const SizedBox(height: AppDimens.paddingSmall),
+                              Text(
+                                'Recibí recordatorios de tus eventos favoritos cada día',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                              ),
+                              const SizedBox(height: AppDimens.paddingMedium),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: buttonEnabled ? () => _handleNotificationAction(context) : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isEnabled
+                                        ? Theme.of(context).colorScheme.surfaceVariant
+                                        : Theme.of(context).colorScheme.primary,
+                                  ),
+                                  child: Text(buttonText),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -259,6 +331,14 @@ class SettingsPage extends StatelessWidget {
                         '🧪 Simular sincronización automática nocturna',
                         Colors.purple,
                             () => _testAutoSync(context),
+                      ),
+                      const SizedBox(height: AppDimens.paddingSmall),
+                      _buildDebugButton(
+                        context,
+                        'RESET DAILY STATE',
+                        '🔄 Resetear estado diario para testing completo',
+                        Colors.teal,
+                            () => _resetDailyState(context),
                       ),
                     ],
                   ),
@@ -489,7 +569,97 @@ class SettingsPage extends StatelessWidget {
       ),
     );
   }
+// ========== MÉTODOS CARD 1.5: NOTIFICACIONES ==========
+  Future<Map<String, dynamic>> _getNotificationStatus() async {
+    try {
+      // TODO: Implementar verificación real de permisos con flutter_local_notifications
+      // Por ahora, simulamos estados para testing
 
+      // Verificación básica - en producción usar:
+      // final plugin = FlutterLocalNotificationsPlugin();
+      // final androidImplementation = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      // final permissionGranted = await androidImplementation?.areNotificationsEnabled() ?? false;
+
+      // Estado temporal para testing
+      final prefs = await SharedPreferences.getInstance();
+      final userDeniedNotifications = prefs.getBool('user_denied_notifications') ?? false;
+      final notificationsRequested = prefs.getBool('notifications_requested') ?? false;
+
+      if (userDeniedNotifications) {
+        return {
+          'enabled': false,
+          'text': 'Notificaciones desactivadas',
+          'icon': '⚠️',
+          'buttonText': 'Ir a Configuración',
+          'buttonEnabled': true,
+        };
+      } else if (notificationsRequested) {
+        return {
+          'enabled': true,
+          'text': 'Notificaciones activadas',
+          'icon': '✅',
+          'buttonText': 'Configurado correctamente',
+          'buttonEnabled': false,
+        };
+      } else {
+        return {
+          'enabled': false,
+          'text': 'Notificaciones no configuradas',
+          'icon': '⭕',
+          'buttonText': 'Activar notificaciones',
+          'buttonEnabled': true,
+        };
+      }
+    } catch (e) {
+      return {
+        'enabled': false,
+        'text': 'Error verificando estado',
+        'icon': '❓',
+        'buttonText': 'Reintentar',
+        'buttonEnabled': true,
+      };
+    }
+  }
+
+  Future<void> _handleNotificationAction(BuildContext context) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDeniedNotifications = prefs.getBool('user_denied_notifications') ?? false;
+
+      if (userDeniedNotifications) {
+        // Abrir configuración del sistema
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Abriendo configuración del sistema para activar notificaciones'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+        // TODO: Implementar deep link a configuración
+        // await openAppSettings();
+      } else {
+        // Intentar solicitar permisos
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Solicitando permisos de notificación...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // Marcar como solicitado para testing
+        await prefs.setBool('notifications_requested', true);
+
+        // Refrescar UI
+        if (context.mounted) {
+          // Trigger rebuild
+          (context as Element).markNeedsBuild();
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
   // 🔥 ========== MÉTODOS CARD 4: DESARROLLADOR ========== 🔥
   // 🔥 ELIMINAR TODOS ESTOS MÉTODOS EN PRODUCCIÓN 🔥
   Widget _buildDebugButton(
@@ -750,6 +920,36 @@ class SettingsPage extends StatelessWidget {
         SnackBar(content: Text('❌ Error en test: $e')),
       );
       print('🧪 ERROR EN TEST: $e');
+    }
+  }
+  Future<void> _resetDailyState(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🔄 Reseteando estado diario...')),
+      );
+
+      // Solo resetear estado diario, preservar configuraciones usuario
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('daily_tasks_date');
+      await prefs.remove('notifications_completed');
+
+      print('🔄 Estado diario limpiado de SharedPreferences');
+
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Estado diario reseteado - Timer reactivado'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      print('🎯 RESET COMPLETO: Timer híbrido reactivado para testing');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error en reset: $e')),
+      );
+      print('❌ ERROR EN RESET: $e');
     }
   }
 // 🔥 FIN MÉTODOS DESARROLLADOR - ELIMINAR HASTA AQUÍ 🔥

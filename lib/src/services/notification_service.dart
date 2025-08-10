@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:app_badge_plus/app_badge_plus.dart';
+import 'dart:io';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
@@ -26,6 +27,12 @@ class NotificationService {
       initSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
+
+// Fix para Android 13+ - Solicitar permisos explícitamente
+    if (Platform.isAndroid) {
+      final androidImplementation = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      await androidImplementation?.requestNotificationsPermission();
+    }
 
     // Cleanup inteligente: limpiar badge si es nuevo día
     await _cleanupBadgeIfNewDay();
