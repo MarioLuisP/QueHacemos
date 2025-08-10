@@ -11,7 +11,7 @@ class NotificationService {
   static Future<void> initialize() async {
     if (_initialized) return;
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings('@drawable/ic_notification');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -62,6 +62,7 @@ class NotificationService {
       channelDescription: 'Notificaciones de la app QuehaCeMos',
       importance: Importance.high,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',  // <-- Agregar esta línea
     );
 
     const iosDetails = DarwinNotificationDetails();
@@ -90,7 +91,7 @@ class NotificationService {
       channelDescription: 'Recordatorios de eventos favoritos',
       importance: Importance.high,
       priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
+      icon: '@drawable/ic_notification',
     );
 
     const iosDetails = DarwinNotificationDetails();
@@ -194,18 +195,18 @@ class NotificationService {
     final eventTime = _formatEventTime(firstEvent);
 
     if (sortedEvents.length == 1) {
-      return "Hoy: $eventTitle $eventTime";
+      return "✨ No te lo pierdas\n$eventTitle ⏰ $eventTime";
     } else if (sortedEvents.length == 2) {
       final secondEvent = sortedEvents[1];
       final secondTitle = secondEvent['title'] ?? 'Evento';
       final secondTime = _formatEventTime(secondEvent);
-      return "Hoy tienes 2: $eventTitle $eventTime, $secondTitle $secondTime";
+      return "🥂 Doble planazo\n✨ $eventTitle ⏰ $eventTime\n✨ $secondTitle ⏰ $secondTime";
     } else {
       final remainingCount = sortedEvents.length - 2;
       final secondEvent = sortedEvents[1];
       final secondTitle = secondEvent['title'] ?? 'Evento';
       final secondTime = _formatEventTime(secondEvent);
-      return "Hoy tienes ${sortedEvents.length}: $eventTitle $eventTime, $secondTitle $secondTime + $remainingCount más";
+      return "🚀 Maratón cultural\n✨ $eventTitle ⏰ $eventTime\n✨ $secondTitle ⏰ $secondTime + $remainingCount más";
     }
   }
 
@@ -250,7 +251,7 @@ class NotificationService {
 
         await showNotification(
           id: notificationId,
-          title: '🎭 Eventos de hoy',
+          title: '❤️ Favoritos de hoy ⭐',
           message: message,
           payload: 'daily_reminder:$date',
         );
@@ -274,7 +275,7 @@ class NotificationService {
       // Programar notificación
       await scheduleNotification(
         id: notificationId,
-        title: '🎭 Eventos de hoy',
+        title: '❤️ Favoritos de hoy ⭐' ,
         message: message,
         scheduledDate: notificationTime,
         payload: 'daily_reminder:$date',

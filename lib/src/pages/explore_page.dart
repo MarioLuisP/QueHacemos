@@ -88,13 +88,16 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
-    return Consumer<SimpleHomeProvider>(
-      builder: (context, provider, _) {
-        return Scaffold(
-          appBar: ExploreAppBar(),
-          body: Column(
-            children: [
+    return GestureDetector(  // AGREGAR AQUÍ
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Consumer<SimpleHomeProvider>(
+        builder: (context, provider, _) {
+          return Scaffold(
+            appBar: ExploreAppBar(),
+            body: Column(
+              children: [
               // Campo de búsqueda
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -160,7 +163,8 @@ class _ExplorePageState extends State<ExplorePage> {
             ],
           ),
         );
-      },
+    },
+    ),
     );
   }
 
