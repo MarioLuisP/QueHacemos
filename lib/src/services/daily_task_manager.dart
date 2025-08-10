@@ -1,11 +1,10 @@
 // lib/src/services/daily_task_manager.dart
 
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_time_guard/flutter_time_guard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../sync/sync_service.dart';
-// import '../providers/favorites_provider.dart'; // TODO: Descomentar en Fase 2
+import '../providers/favorites_provider.dart';
 
 /// Gestor central de tareas diarias automáticas
 /// Maneja sync nocturno y scheduling de notificaciones mediante timer híbrido
@@ -22,13 +21,12 @@ class DailyTaskManager {
   bool _syncCompleted = false;
   int _syncRetries = 0;
   bool _isFirstInstallation = false;
-  // bool _notificationsCompleted = false; // TODO: Descomentar en Fase 2
-
+  bool _notificationsCompleted = false; //
   // ========== CONSTANTS ==========
   static const String _taskDateKey = 'daily_tasks_date';
   static const String _syncCompletedKey = 'sync_completed';
   static const int _maxSyncRetries = 6; // 1 hora de reintentos (6 × 10min)
-  // static const String _notifCompletedKey = 'notifications_completed'; // TODO: Fase 2
+  static const String _notifCompletedKey = 'notifications_completed'; // hecho
 
   /// Inicializar sistema de tareas diarias
   Future<void> initialize() async {
@@ -131,13 +129,13 @@ class DailyTaskManager {
       }
 
       // ========== NOTIFICATIONS TASK (COMENTADO - FASE 2) ==========
-      /*
-      if (!_notificationsCompleted && _isAfterTime(10, 50)) {
+
+      if (!_notificationsCompleted && _isAfterTime(11,0)) {
         print('🔔 Ejecutando scheduling de notificaciones...');
         await _executeNotifications();
         tasksExecuted = true;
       }
-      */
+
 
       // ========== AUTO-SHUTDOWN ==========
       if (_allTasksCompleted()) {
@@ -207,12 +205,12 @@ class DailyTaskManager {
   }
 
   // ========== NOTIFICATIONS EXECUTION (COMENTADO - FASE 2) ==========
-  /*
+
   /// Ejecutar scheduling de notificaciones de favoritos
   Future<void> _executeNotifications() async {
     try {
-      // TODO: Integrar con FavoritesProvider
-      // await FavoritesProvider.instance.scheduleNotificationsForTodayAndTomorrow();
+      final favoritesProvider = FavoritesProvider();
+      await favoritesProvider.scheduleNotificationsForToday();
 
       _notificationsCompleted = true;
       await _saveNotificationState();
@@ -229,7 +227,7 @@ class DailyTaskManager {
     // Por ahora: 10:50 AM como en sistema actual
     return 10.83; // 10:50 AM
   }
-  */
+
 
   // ========== STATE MANAGEMENT ==========
 
@@ -241,12 +239,12 @@ class DailyTaskManager {
 
   /// Verificar si hay tareas pendientes
   bool _hasPendingTasks() {
-    return !_syncCompleted; // || !_notificationsCompleted; // TODO: Fase 2
+    return !_syncCompleted || !_notificationsCompleted;
   }
 
   /// Verificar si todas las tareas están completadas
   bool _allTasksCompleted() {
-    return _syncCompleted; // && _notificationsCompleted; // TODO: Fase 2
+    return _syncCompleted && _notificationsCompleted;
   }
 
   /// Cargar estado diario desde SharedPreferences
@@ -258,7 +256,7 @@ class DailyTaskManager {
     if (savedDate == today) {
       // Mismo día - cargar estados guardados
       _syncCompleted = prefs.getBool(_syncCompletedKey) ?? false;
-      // _notificationsCompleted = prefs.getBool(_notifCompletedKey) ?? false; // TODO: Fase 2
+      _notificationsCompleted = prefs.getBool(_notifCompletedKey) ?? false; // hecho
 
       print('📅 Estado cargado para hoy: Sync=${_syncCompleted ? "✅" : "❌"}');
     } else {
@@ -271,7 +269,7 @@ class DailyTaskManager {
   Future<void> _resetDailyState() async {
     _syncCompleted = false;
     _syncRetries = 0; // Reset contador de reintentos
-    // _notificationsCompleted = false; // TODO: Fase 2
+    _notificationsCompleted = false; // hecho
 
     await _saveDailyState();
     print('🔄 Estado diario reseteado para nuevo día');
@@ -282,7 +280,7 @@ class DailyTaskManager {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_taskDateKey, _getTodayString());
     await prefs.setBool(_syncCompletedKey, _syncCompleted);
-    // await prefs.setBool(_notifCompletedKey, _notificationsCompleted); // TODO: Fase 2
+    await prefs.setBool(_notifCompletedKey, _notificationsCompleted); // hecho
   }
 
   /// Guardar solo estado de sync
@@ -292,13 +290,13 @@ class DailyTaskManager {
   }
 
   // ========== NOTIFICATION STATE (COMENTADO - FASE 2) ==========
-  /*
+
   /// Guardar solo estado de notificaciones
   Future<void> _saveNotificationState() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_notifCompletedKey, _notificationsCompleted);
   }
-  */
+
 
   /// Verificar si es un nuevo día
   Future<bool> _isNewDay() async {
@@ -358,7 +356,7 @@ class DailyTaskManager {
       'sync_completed': _syncCompleted,
       'sync_retries': _syncRetries,
       'max_sync_retries': _maxSyncRetries,
-      // 'notifications_completed': _notificationsCompleted, // TODO: Fase 2
+      'notifications_completed': _notificationsCompleted, // hecho
       'current_time': '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
       'today': _getTodayString(),
     };

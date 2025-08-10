@@ -145,11 +145,15 @@ class NotificationService {
       return DateTime(targetDate.year, targetDate.month, targetDate.day, 11, 0);
     }
 
-    // Calcular horario: 1 hora antes del evento más temprano
-    final oneHourBefore = earliestEvent.subtract(const Duration(hours: 1));
-
-    // Límites: no antes de 6:00 AM, no después de 11:00 AM
     final targetDate = DateTime.parse(date);
+
+    // NUEVA LÓGICA: Si evento más temprano es ≥ 12:00, notificar a las 11:00
+    if (earliestEvent.hour >= 12) {
+      return DateTime(targetDate.year, targetDate.month, targetDate.day, 11, 0);
+    }
+
+    // Si evento es < 12:00, calcular 1 hora antes con límites
+    final oneHourBefore = earliestEvent.subtract(const Duration(hours: 1));
     final minTime = DateTime(targetDate.year, targetDate.month, targetDate.day, 6, 0);
     final maxTime = DateTime(targetDate.year, targetDate.month, targetDate.day, 11, 0);
 
@@ -229,8 +233,26 @@ class NotificationService {
       // Calcular horario óptimo
       final notificationTime = calculateNotificationTime(date, events);
       final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day, 11, 0);
 
-      // Solo programar si es en el futuro
+      // Verificar si debe ser notificación inmediata (eventos ≥12:00)
+      if (notificationTime.hour == 11 && notificationTime.minute == 0) {
+        // Notificación inmediata para eventos ≥12:00
+        final notificationId = "daily_$date".hashCode;
+        final message = generateDailyMessage(events);
+
+        await showNotification(
+          id: notificationId,
+          title: '🎭 Eventos de hoy',
+          message: message,
+          payload: 'daily_reminder:$date',
+        );
+
+        print('✅ Notificación inmediata enviada para $date (eventos ≥12:00)');
+        return;
+      }
+
+      // Solo programar si es en el futuro (eventos <12:00)
       if (notificationTime.isBefore(now)) {
         print('⏰ Horario de notificación es pasado ($notificationTime), no se programa');
         return;
@@ -251,7 +273,7 @@ class NotificationService {
         payload: 'daily_reminder:$date',
       );
 
-      print('✅ Notificación diaria programada para $date a las ${notificationTime.hour}:${notificationTime.minute.toString().padLeft(2, '0')}');
+      print('✅ Notificación programada para $date a las ${notificationTime.hour}:${notificationTime.minute.toString().padLeft(2, '0')} (eventos <12:00)');
 
     } catch (e) {
       print('❌ Error programando notificación diaria para $date: $e');

@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import '../data/repositories/event_repository.dart';
 import 'notifications_provider.dart';
 import '../services/notification_service.dart';
-import 'dart:async'; // Para Timer
 
 class FavoritesProvider with ChangeNotifier {
   final EventRepository _repository = EventRepository();
@@ -24,63 +23,46 @@ class FavoritesProvider with ChangeNotifier {
     await _loadFavoritesFromRepository();
     _isInitialized = true;
     notifyListeners();
-
-    // AGREGAR ESTE BLOQUE:
-    await _scheduleNotificationsForTodayAndTomorrow();
-    _startDailyNotificationTimer();
   }
-
-
-  /// Programar notificaciones para hoy y mañana
-  Future<void> _scheduleNotificationsForTodayAndTomorrow() async {
+  /// Programar notificaciones para hoy únicamente (llamado desde DailyTaskManager)
+  Future<void> scheduleNotificationsForToday() async {
     try {
       final favorites = await _repository.getAllFavorites();
       if (favorites.isEmpty) return;
 
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      final tomorrow = today.add(Duration(days: 1));
 
-      // Formatear fechas
+      // Formatear fecha de hoy
       final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-      final tomorrowStr = '${tomorrow.year}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
 
-      // Agrupar favoritos por fecha
-      final Map<String, List<Map<String, dynamic>>> favoritesByDate = {};
+      // Filtrar solo favoritos de hoy
+      final List<Map<String, dynamic>> todayFavorites = [];
 
       for (final favorite in favorites) {
         final dateStr = favorite['date']?.toString().split(' ')[0];
-        if (dateStr != null && (dateStr == todayStr || dateStr == tomorrowStr)) { // ← AGREGAR null check
-          (favoritesByDate[dateStr] ??= []).add(favorite);
+        if (dateStr != null && dateStr == todayStr) {
+          todayFavorites.add(favorite);
         }
       }
 
-      // Programar notificaciones
-      for (final entry in favoritesByDate.entries) {
-        await NotificationService.scheduleDailyNotification(entry.key, entry.value);
-      }
+      // Programar notificaciones solo para hoy
+      if (todayFavorites.isNotEmpty) {
+        await NotificationService.scheduleDailyNotification(todayStr, todayFavorites);
 
-      // Badge si hay favoritos hoy
-      if (favoritesByDate.containsKey(todayStr)) {
+        // Badge si hay favoritos hoy
         await NotificationService.setBadge();
-      }
 
-      print('✅ Notificaciones programadas para ${favoritesByDate.length} fechas (hoy/mañana)');
+        print('✅ Notificaciones programadas para hoy (${todayFavorites.length} eventos)');
+      } else {
+        print('📅 No hay eventos favoritos para hoy');
+      }
 
     } catch (e) {
-      print('❌ Error programando notificaciones hoy/mañana: $e');
+      print('❌ Error programando notificaciones para hoy: $e');
     }
   }
-  Timer? _dailyTimer;
 
-  void _startDailyNotificationTimer() {
-    _dailyTimer = Timer.periodic(Duration(minutes: 10), (timer) async {
-      final now = DateTime.now();
-      if (now.hour == 10 && now.minute >= 50) { // Entre 10:50 y 10:59
-        await _scheduleNotificationsForTodayAndTomorrow();
-      }
-    });
-  }
   /// Cargar favoritos desde SQLite al startup
   Future<void> _loadFavoritesFromRepository() async {
     try {
