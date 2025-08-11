@@ -7,7 +7,7 @@ import './../utils/colors.dart';
 import '../sync/sync_service.dart';
 import '../sync/firestore_client.dart';
 import '../data/repositories/event_repository.dart';
-import '../services/daily_task_manager.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -572,28 +572,12 @@ class SettingsPage extends StatelessWidget {
 // ========== MÉTODOS CARD 1.5: NOTIFICACIONES ==========
   Future<Map<String, dynamic>> _getNotificationStatus() async {
     try {
-      // TODO: Implementar verificación real de permisos con flutter_local_notifications
-      // Por ahora, simulamos estados para testing
+      final plugin = FlutterLocalNotificationsPlugin();
+      final androidImplementation = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
-      // Verificación básica - en producción usar:
-      // final plugin = FlutterLocalNotificationsPlugin();
-      // final androidImplementation = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      // final permissionGranted = await androidImplementation?.areNotificationsEnabled() ?? false;
+      final bool? areEnabled = await androidImplementation?.areNotificationsEnabled();
 
-      // Estado temporal para testing
-      final prefs = await SharedPreferences.getInstance();
-      final userDeniedNotifications = prefs.getBool('user_denied_notifications') ?? false;
-      final notificationsRequested = prefs.getBool('notifications_requested') ?? false;
-
-      if (userDeniedNotifications) {
-        return {
-          'enabled': false,
-          'text': 'Notificaciones desactivadas',
-          'icon': '⚠️',
-          'buttonText': 'Ir a Configuración',
-          'buttonEnabled': true,
-        };
-      } else if (notificationsRequested) {
+      if (areEnabled == true) {
         return {
           'enabled': true,
           'text': 'Notificaciones activadas',
@@ -604,8 +588,8 @@ class SettingsPage extends StatelessWidget {
       } else {
         return {
           'enabled': false,
-          'text': 'Notificaciones no configuradas',
-          'icon': '⭕',
+          'text': 'Notificaciones desactivadas',
+          'icon': '⚠️',
           'buttonText': 'Activar notificaciones',
           'buttonEnabled': true,
         };
@@ -620,39 +604,21 @@ class SettingsPage extends StatelessWidget {
       };
     }
   }
-
   Future<void> _handleNotificationAction(BuildContext context) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userDeniedNotifications = prefs.getBool('user_denied_notifications') ?? false;
+      final plugin = FlutterLocalNotificationsPlugin();
+      final androidImplementation = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
-      if (userDeniedNotifications) {
-        // Abrir configuración del sistema
+      final bool? granted = await androidImplementation?.requestNotificationsPermission();
+
+      if (granted == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Abriendo configuración del sistema para activar notificaciones'),
-            duration: Duration(seconds: 3),
-          ),
+          const SnackBar(content: Text('✅ Permisos concedidos')),
         );
-        // TODO: Implementar deep link a configuración
-        // await openAppSettings();
       } else {
-        // Intentar solicitar permisos
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Solicitando permisos de notificación...'),
-            duration: Duration(seconds: 2),
-          ),
+          const SnackBar(content: Text('❌ Permisos denegados')),
         );
-
-        // Marcar como solicitado para testing
-        await prefs.setBool('notifications_requested', true);
-
-        // Refrescar UI
-        if (context.mounted) {
-          // Trigger rebuild
-          (context as Element).markNeedsBuild();
-        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -660,6 +626,7 @@ class SettingsPage extends StatelessWidget {
       );
     }
   }
+
   // 🔥 ========== MÉTODOS CARD 4: DESARROLLADOR ========== 🔥
   // 🔥 ELIMINAR TODOS ESTOS MÉTODOS EN PRODUCCIÓN 🔥
   Widget _buildDebugButton(

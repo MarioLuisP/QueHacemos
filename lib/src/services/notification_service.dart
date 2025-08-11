@@ -2,6 +2,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:app_badge_plus/app_badge_plus.dart';
 import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
@@ -62,7 +65,8 @@ class NotificationService {
       channelDescription: 'Notificaciones de la app QuehaCeMos',
       importance: Importance.high,
       priority: Priority.high,
-      icon: '@drawable/ic_notification',  // <-- Agregar esta línea
+      icon: '@drawable/ic_notification',
+      color: Colors.orange,  // Esto sí funciona con const
     );
 
     const iosDetails = DarwinNotificationDetails();
@@ -92,6 +96,7 @@ class NotificationService {
       importance: Importance.high,
       priority: Priority.high,
       icon: '@drawable/ic_notification',
+      color: Colors.orange,
     );
 
     const iosDetails = DarwinNotificationDetails();
