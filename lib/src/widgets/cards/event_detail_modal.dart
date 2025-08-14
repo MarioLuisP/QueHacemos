@@ -128,9 +128,12 @@ class EventDetailModal {
               ),
             );
           },
+
         );
       },
-    );
+    ).then((_) {
+      FocusScope.of(context).unfocus();
+    });
   }
 }
 
@@ -495,6 +498,7 @@ class EventDetailContent extends StatelessWidget {
 
     showDialog(
       context: context,
+      requestFocus: false,
       builder: (context) => Dialog.fullscreen(
         backgroundColor: Colors.black,
         child: Stack(

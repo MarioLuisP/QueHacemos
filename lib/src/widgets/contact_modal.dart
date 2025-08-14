@@ -9,7 +9,9 @@ class ContactModal {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const _ContactModalContent(),
-    );
+    ).then((_) {                          // <-- AGREGAR
+      FocusScope.of(context).unfocus();   // <-- AGREGAR
+    });                                   // <-- AGREGAR
   }
 }
 

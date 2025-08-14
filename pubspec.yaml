@@ -24,7 +24,7 @@ dependencies:
   app_badge_plus: ^1.2.3
   timezone: ^0.9.0
   flutter_dotenv: ^5.1.0
-  flutter_time_guard: ^1.1.0
+  cron: ^0.6.2
 
   # Dates y localización
   intl: ^0.20.2
