@@ -282,15 +282,17 @@ class DailyTaskManager {
   }
 
   /// Ejecutar notificaciones de recovery
+  /// Ejecutar notificaciones de recovery
   Future<void> _executeRecoveryNotifications() async {
     try {
       print('🔔 Ejecutando recovery notificaciones...');
+      // ✅ CAMBIAR: Usar singleton pattern o injection
       final favoritesProvider = FavoritesProvider();
+      await favoritesProvider.init(); // ← AGREGAR: Asegurar inicialización
       await favoritesProvider.scheduleNotificationsForToday();
 
       await _saveSuccessfulNotificationTimestamp();
       print('✅ Recovery notificaciones exitosas');
-
     } catch (e) {
       print('❌ Error en recovery notificaciones: $e');
     }
@@ -308,7 +310,7 @@ class DailyTaskManager {
 
         // Marcar app como inicializada
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('app_initialized', false);
+        await prefs.setBool('app_initialized', true);
 
         print('✅ Primera instalación completada exitosamente');
       } else {
@@ -351,7 +353,7 @@ class DailyTaskManager {
   /// Verificar si es primera instalación
   Future<bool> _checkFirstInstallation() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('app_initialized') ?? true;
+    return !(prefs.getBool('app_initialized') ?? false);
   }
 
   /// Obtener string de fecha (YYYY-MM-DD)

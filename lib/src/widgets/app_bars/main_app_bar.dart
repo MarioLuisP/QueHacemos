@@ -314,9 +314,7 @@ class _UserAvatarReal extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => _LoginModal(authProvider: authProvider), // NUEVO
-    ).then((_) {
-      FocusScope.of(context).unfocus();
-    });
+    );
   }
 
   /// Mostrar modal de logout (logueado → anónimo) // NUEVO
@@ -324,7 +322,6 @@ class _UserAvatarReal extends StatelessWidget {
     // NUEVO
     showDialog(
       context: context,
-      requestFocus: false,
       builder: (context) => _LogoutModal(authProvider: authProvider), // NUEVO
     );
   }

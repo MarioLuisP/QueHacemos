@@ -194,7 +194,6 @@ class _NotificationsPanelHeader extends StatelessWidget {
   void _showClearAllDialog(BuildContext context, NotificationsProvider provider) {
     showDialog(
       context: context,
-      requestFocus: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Limpiar historial'),

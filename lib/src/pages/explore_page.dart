@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quehacemos_cba/src/providers/simple_home_provider.dart';
@@ -17,6 +18,8 @@ class ExplorePage extends StatefulWidget {
 class _ExplorePageState extends State<ExplorePage> {
   late SimpleHomeProvider _provider;
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode(); // <-- AGREGAR
+  Timer? _keyboardTimer; // <-- AGREGAR
 
   // NUEVO: Estado local para filtros (temporal, no persiste)
   Set<String> _localActiveCategories = {};
@@ -27,14 +30,25 @@ class _ExplorePageState extends State<ExplorePage> {
     _provider = Provider.of<SimpleHomeProvider>(context, listen: false);
 
     _searchController.addListener(() {
-      // CAMBIO: No afectar provider global, solo rebuild local
       setState(() {});
+      _resetKeyboardTimer(); // <-- AGREGAR esta línea
     });
   }
-
+  void _resetKeyboardTimer() {
+    _keyboardTimer?.cancel();
+    if (_searchFocusNode.hasFocus) {
+      _keyboardTimer = Timer(Duration(seconds: 3), () {
+        if (mounted && _searchFocusNode.hasFocus) {
+          _searchFocusNode.unfocus();
+        }
+      });
+    }
+  }
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose(); // <-- AGREGAR
+    _keyboardTimer?.cancel(); // <-- AGREGAR
     super.dispose();
   }
 
@@ -90,9 +104,7 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(  // AGREGAR AQUÍ
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Consumer<SimpleHomeProvider>(
+    return Consumer<SimpleHomeProvider>(
         builder: (context, provider, _) {
           return Scaffold(
             appBar: ExploreAppBar(),
@@ -102,7 +114,14 @@ class _ExplorePageState extends State<ExplorePage> {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: TextField(
+                  focusNode: _searchFocusNode, // <-- AGREGAR
                   controller: _searchController,
+                  onTap: () {
+                    // Dar tiempo a que se establezca el foco, luego activar timer
+                    Future.delayed(Duration(milliseconds: 100), () {
+                      _resetKeyboardTimer();
+                    });
+                  },
                   decoration: InputDecoration(
                     hintText: 'Busca eventos (ej. payasos)',
                     prefixIcon: const Icon(Icons.search),
@@ -161,10 +180,9 @@ class _ExplorePageState extends State<ExplorePage> {
                     : _buildOptimizedEventsList(),
               ),
             ],
-          ),
-        );
-    },
-    ),
+            ),
+          );
+        },
     );
   }
 

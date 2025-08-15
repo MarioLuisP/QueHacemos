@@ -93,30 +93,36 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // ← AGREGAR
+    WidgetsBinding.instance.addObserver(this);
     _initializeApp();
-    _initializeAuthInBackground();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeAuthInBackground();
+    });
   }
-
   Future<void> _initializeApp() async {
     final simpleHomeProvider = Provider.of<SimpleHomeProvider>(context, listen: false);
     final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
 
     try {
-      // NUEVO: Removido await authProvider.initializeAnonymousAuth() - ahora corre en background
       await simpleHomeProvider.initialize();
       await favoritesProvider.init();
-      await DailyTaskManager().initialize();
-      DailyTaskManager().checkOnAppOpen();
 
-      // Conectar sync entre providers
+      final dailyTaskManager = DailyTaskManager();
+      await dailyTaskManager.initialize();
+      // ❌ REMOVER: DailyTaskManager().checkOnAppOpen();
+
       simpleHomeProvider.setupFavoritesSync(favoritesProvider);
 
       setState(() {
         _isInitialized = true;
       });
 
-      print('🎉 App completamente inicializada'); // NUEVO: Mensaje simplificado
+      // ✅ AGREGAR: Ejecutar después del build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        dailyTaskManager.checkOnAppOpen();
+      });
+
+      print('🎉 App completamente inicializada');
     } catch (e) {
       print('❌ Error crítico en inicialización: $e');
       setState(() {
