@@ -107,6 +107,7 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
       await simpleHomeProvider.initialize();
       await favoritesProvider.init();
       await DailyTaskManager().initialize();
+      DailyTaskManager().checkOnAppOpen();
 
       // Conectar sync entre providers
       simpleHomeProvider.setupFavoritesSync(favoritesProvider);

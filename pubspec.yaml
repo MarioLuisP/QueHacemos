@@ -2,7 +2,7 @@ name: quehacemos_cba
 description: "App de eventos culturales Córdoba - Versión cache optimizada"
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.8.0
@@ -24,7 +24,7 @@ dependencies:
   app_badge_plus: ^1.2.3
   timezone: ^0.9.0
   flutter_dotenv: ^5.1.0
-  cron: ^0.6.2
+  workmanager: ^0.9.0+2
 
   # Dates y localización
   intl: ^0.20.2
