@@ -414,7 +414,7 @@ class EventRepository {
     batch.delete('eventos');
     batch.update('sync_info', {
       'last_sync': null,  // ✅ CAMBIO: limpiar fecha
-      'batch_version': '0.0.0',
+      'batch_version': '',
       'total_events': 0,
       'updated_at': DateTime.now().toIso8601String(),
     }, where: 'id = ?', whereArgs: [1]);
