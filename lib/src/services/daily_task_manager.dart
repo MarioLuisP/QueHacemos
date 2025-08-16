@@ -152,7 +152,10 @@ class DailyTaskManager {
       await Workmanager().cancelAll();
 
       // DEBUG: Calcular delays y mostrar info
-      final delaySync = _calculateDelayTo(1,0);
+      // DEBUG: Calcular delays y mostrar info
+      final syncHour = prefs.getInt('wm_sync_hour') ?? 1;
+      final syncMin = prefs.getInt('wm_sync_min') ?? 0;
+      final delaySync = _calculateDelayTo(syncHour, syncMin);
       final delayNotif = _calculateDelayTo(11, 0);
       print('🕐 Delay sync: ${delaySync.inMinutes} minutos');
       print('🕐 Delay notif: ${delayNotif.inMinutes} minutos');

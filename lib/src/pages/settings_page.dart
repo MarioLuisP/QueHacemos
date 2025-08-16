@@ -9,6 +9,8 @@ import '../sync/firestore_client.dart';
 import '../data/repositories/event_repository.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/daily_task_manager.dart';
+import 'package:workmanager/workmanager.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -294,10 +296,10 @@ class SettingsPage extends StatelessWidget {
                       const SizedBox(height: AppDimens.paddingMedium),
                       _buildDebugButton(
                         context,
-                        'FORZAR SINCRONIZACIÓN',
-                        '🔄 Descargar lote desde Firestore ahora',
+                        'RESET PRIMERA INSTALACIÓN',
+                        '🔄 Marcar app como no inicializada (4 SP keys)',
                         Colors.blue,
-                            () => _forceSyncDatabase(context),
+                            () => _resetFirstInstallation(context),
                       ),
                       const SizedBox(height: AppDimens.paddingSmall),
                       _buildDebugButton(
@@ -324,21 +326,71 @@ class SettingsPage extends StatelessWidget {
                             () => _showEventStats(context),
                       ),
 
-                      const SizedBox(height: AppDimens.paddingSmall), // ← AGREGAR ESTA LÍNEA
-                      _buildDebugButton( // ← AGREGAR TODO ESTE BLOQUE
+                      _buildDebugButton(
                         context,
-                        'TEST AUTO SYNC',
-                        '🧪 Simular sincronización automática nocturna',
+                        'TEST SYNC WM (+2MIN)',
+                        '🧪 Programar one-off sync en WorkManager',
                         Colors.purple,
-                            () => _testAutoSync(context),
+                            () => _testSyncWorkManager(context),  // ← Ya tienes este método
+                      ),
+
+                      _buildDebugButton(
+                        context,
+                        'MARCAR SYNC VENCIDA',
+                        '⏰ Setear timestamp -25h para forzar recovery',
+                        Colors.teal,
+                            () => _markSyncExpired(context),  // ← Ya tienes este método
+                      ),
+
+
+                      const SizedBox(height: AppDimens.paddingSmall),
+                      _buildDebugButton(
+                        context,
+                        'FORZAR REPROGRAMACIÓN WM',
+                        '🔄 Remove daily_check + reprogram WorkManager',
+                        Colors.indigo,
+                            () => _forceRescheduleWorkManager(context),
+                      ),
+                      const SizedBox(height: AppDimens.paddingMedium),
+// Picker de hora para sync
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              'Hora Sync:',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: FutureBuilder<String>(
+                              future: _getSyncTime(),
+                              builder: (context, snapshot) {
+                                final currentTime = snapshot.data ?? '01:00';
+                                return TextFormField(
+                                  initialValue: currentTime,
+                                  decoration: const InputDecoration(
+                                    hintText: 'HH:MM',
+                                    border: OutlineInputBorder(),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  ),
+                                  onChanged: (value) => _setSyncTime(value),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: AppDimens.paddingSmall),
                       _buildDebugButton(
                         context,
-                        'RESET DAILY STATE',
-                        '🔄 Resetear estado diario para testing completo',
+                        'APLICAR HORARIO SYNC',
+                        '⏰ Usar hora del picker para reprogramar WM',
                         Colors.teal,
-                            () => _resetDailyState(context),
+                            () => _applySyncSchedule(context),
                       ),
                     ],
                   ),
@@ -674,31 +726,31 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  Future<void> _forceSyncDatabase(BuildContext context) async {
+  Future<void> _resetFirstInstallation(BuildContext context) async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🔄 Sincronizando con Firestore...')),
+        const SnackBar(content: Text('🔄 Reseteando primera instalación...')),
       );
 
-      final syncService = SyncService();
-      final result = await syncService.forceSync();
+      final prefs = await SharedPreferences.getInstance();
 
-      if (result.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '✅ Sincronización exitosa: ${result.eventsAdded} eventos',
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error: ${result.error}')),
-        );
-      }
+      // Borrar las 4 keys principales
+      await prefs.remove('last_sync_timestamp');
+      await prefs.remove('last_notification_timestamp');
+      await prefs.remove('workmanager_daily_check');
+      await prefs.setBool('app_initialized', false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Reset completo - Mata app y abre para probar primera instalación'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+
+      print('🧪 RESET: App marcada como no inicializada');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error inesperado: $e')),
+        SnackBar(content: Text('❌ Error en reset: $e')),
       );
     }
   }
@@ -852,71 +904,149 @@ class SettingsPage extends StatelessWidget {
 
   // Justo después de _showEventStats() y antes de los comentarios finales:
 
-  Future<void> _testAutoSync(BuildContext context) async {
+  Future<void> _testSyncWorkManager(BuildContext context) async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🧪 Iniciando test de sync automático...')),
+        const SnackBar(content: Text('🧪 Programando test sync WM en +2min...')),
       );
 
-      print('🧪 TEST: Simulando sync automático nocturno...');
-
-      // 1. Reset completo del estado de sync
-      final syncService = SyncService();
-      final firestoreClient = FirestoreClient();
-      await firestoreClient.resetSyncState();  // ✅ Solo timestamp
-      print('🔄 Estado de sync reseteado completamente');
-
-      // 2. Ejecutar performAutoSync() (no firstInstallSync)
-      final result = await syncService.performAutoSync();
-
-      // 3. Mostrar resultado detallado
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.success
-              ? '✅ Auto sync: ${result.eventsAdded} eventos agregados'
-              : '❌ Auto sync falló: ${result.error}'
-          ),
-          duration: Duration(seconds: 5),
-          backgroundColor: result.success ? Colors.green : Colors.red,
+      // Programar one-off task que se ejecuta en 2 minutos
+      await Workmanager().registerOneOffTask(
+        'test-sync-wm',
+        'daily-sync',  // Usa el mismo callback que sync real
+        initialDelay: const Duration(minutes: 2),
+        constraints: Constraints(
+          networkType: NetworkType.connected,
         ),
       );
 
-      print('🧪 TEST COMPLETO: ${result.success ? 'ÉXITO' : 'FALLO'}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⏰ Test sync programado - Ejecutará en 2 minutos'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+
+      print('🧪 TEST WM: One-off sync task programada para +2min');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error en test: $e')),
+        SnackBar(content: Text('❌ Error programando test: $e')),
       );
-      print('🧪 ERROR EN TEST: $e');
+      print('🧪 ERROR TEST WM: $e');
     }
   }
-  Future<void> _resetDailyState(BuildContext context) async {
+
+  Future<void> _markSyncExpired(BuildContext context) async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🔄 Reseteando estado diario...')),
+        const SnackBar(content: Text('⏰ Marcando sync como vencida...')),
       );
 
-      // Solo resetear estado diario, preservar configuraciones usuario
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('daily_tasks_date');
-      await prefs.remove('notifications_completed');
 
-      print('🔄 Estado diario limpiado de SharedPreferences');
-
+      // Setear timestamp de hace 25 horas para forzar sync
+      final expiredTime = DateTime.now().subtract(const Duration(hours: 25));
+      await prefs.setString('last_sync_timestamp', expiredTime.toIso8601String());
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Estado diario reseteado - Timer reactivado'),
-          backgroundColor: Colors.green,
+          content: Text('✅ Sync marcada como vencida - Mata app y abre para probar recovery'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+
+      print('🧪 EXPIRED: last_sync_timestamp seteado a ${expiredTime.toIso8601String()}');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error marcando sync vencida: $e')),
+      );
+      print('❌ ERROR EXPIRED: $e');
+    }
+  }
+
+  Future<void> _forceRescheduleWorkManager(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🔄 Forzando reprogramación WM...')),
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+
+      // Remove la key que previene reprogramación diaria
+      await prefs.remove('workmanager_daily_check');
+
+      // Llamar al método de testing del DailyTaskManager
+      await DailyTaskManager().testRescheduleWorkManager();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ WorkManager reprogramado forzosamente'),
           duration: Duration(seconds: 3),
         ),
       );
 
-      print('🎯 RESET COMPLETO: Timer híbrido reactivado para testing');
+      print('🧪 REPROGRAM: workmanager_daily_check removida + WM reprogramado');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error en reset: $e')),
+        SnackBar(content: Text('❌ Error reprogramando WM: $e')),
       );
-      print('❌ ERROR EN RESET: $e');
+      print('❌ ERROR REPROGRAM: $e');
+    }
+  }
+
+  Future<String> _getSyncTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hour = prefs.getInt('wm_sync_hour') ?? 1;
+    final minute = prefs.getInt('wm_sync_min') ?? 0;
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _setSyncTime(String timeString) async {
+    try {
+      // Limpiar string
+      timeString = timeString.trim();
+      if (timeString.isEmpty) return;
+
+      final parts = timeString.split(':');
+      if (parts.length == 2) {
+        final hour = int.tryParse(parts[0]) ?? -1;  // ← tryParse es más seguro
+        final minute = int.tryParse(parts[1]) ?? -1;
+
+        if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('wm_sync_hour', hour);
+          await prefs.setInt('wm_sync_min', minute);
+          print('✅ Hora sync actualizada: ${timeString}');
+        } else {
+          print('⚠️ Hora inválida: $timeString (debe ser HH:MM, 00-23:00-59)');
+        }
+      }
+    } catch (e) {
+      print('❌ Error parseando hora: $e');
+    }
+  }
+
+  Future<void> _applySyncSchedule(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⏰ Aplicando horario personalizado...')),
+      );
+
+      // Forzar reprogramación con nueva hora
+      await _forceRescheduleWorkManager(context);
+
+      final currentTime = await _getSyncTime();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Sync reprogramado para las $currentTime'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error aplicando horario: $e')),
+      );
     }
   }
 // 🔥 FIN MÉTODOS DESARROLLADOR - ELIMINAR HASTA AQUÍ 🔥
