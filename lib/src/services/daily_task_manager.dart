@@ -260,8 +260,16 @@ class DailyTaskManager {
     return lastSyncDay != today; // No hay sync hoy
   }
 
-  /// Verificar si necesita notificaciones hoy
+  /// Verificar si necesita notificaciones hoy, respetando el horario programado
   Future<bool> _needsNotificationsToday() async {
+    final now = DateTime.now();
+
+    // Solo ejecutar notificaciones después de las 11 AM
+    if (now.hour < 11) {
+      print('⏰ Notificaciones programadas para las 11 AM - esperando');
+      return false; // Todavía no es hora
+    }
+
     final today = _getTodayString();
     final lastNotif = await _getLastNotificationTimestamp();
 

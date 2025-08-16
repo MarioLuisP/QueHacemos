@@ -65,7 +65,7 @@ class SyncService {
 
       // NUEVO: SyncService maneja el flag app_initialized
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('app_initialized', false);
+      await prefs.setBool('app_initialized', true);   // ← CORRECTO
 
       // Notificar primera instalación completada
       _notificationsProvider.addNotification(
@@ -121,24 +121,31 @@ class SyncService {
       final availableBatches = await _firestoreClient.getAvailableBatches(); // NUEVO
       final syncInfo = await _eventRepository.getSyncInfo(); // NUEVO
       final currentBatchVersion = syncInfo?['batch_version'] as String? ?? ''; // NUEVO
-// AGREGAR ESTOS PRINTS:
+      // AGREGAR ESTOS PRINTS:
       print('🐛 DEBUG availableBatches: $availableBatches');
       print('🐛 DEBUG currentBatchVersion: $currentBatchVersion');
       print('🐛 DEBUG syncInfo completo: $syncInfo');
-      // NUEVO: Encontrar lotes faltantes (máximo 10)
-      final missingBatches = <String>[]; // NUEVO
-      bool foundCurrent = currentBatchVersion.isEmpty; // NUEVO
 
-      for (final batch in availableBatches) { // NUEVO
-        if (!foundCurrent) { // NUEVO
-          if (batch == currentBatchVersion) { // NUEVO
-            foundCurrent = true; // NUEVO
-          } // NUEVO
-          continue; // NUEVO
-        } // NUEVO
-        missingBatches.add(batch); // NUEVO
-        if (missingBatches.length >= 10) break; // NUEVO: Límite de 10 lotes
-      } // NUEVO
+      // NUEVO: Encontrar lotes faltantes (máximo 10)
+      final missingBatches = <String>[];
+
+      // Si no hay versión actual, descargar los primeros 10
+      if (currentBatchVersion.isEmpty) {
+        missingBatches.addAll(availableBatches.take(10));
+      }
+      // Si la versión actual no está en la lista, descargar los primeros 10
+      else if (!availableBatches.contains(currentBatchVersion)) {
+        print('⚠️ Versión actual "$currentBatchVersion" no encontrada - descargando primeros 10');
+        missingBatches.addAll(availableBatches.take(10));
+      }
+      // Versión actual existe, buscar solo los más nuevos (máximo 10)
+      else {
+        final currentIndex = availableBatches.indexOf(currentBatchVersion);
+        if (currentIndex > 0) {
+          // Solo los que están ANTES del actual (más nuevos), máximo 10
+          missingBatches.addAll(availableBatches.take(currentIndex).take(10));
+        }
+      }
 
       if (missingBatches.isEmpty) { // CAMBIO
         print('🐛 DEBUG missingBatches encontrados: $missingBatches'); // ← AQUÍ
