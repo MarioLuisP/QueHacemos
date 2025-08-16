@@ -13,6 +13,7 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
   void _onItemTapped(int index) {
+    FocusScope.of(context).unfocus();
     setState(() {
       _currentIndex = index;
     });

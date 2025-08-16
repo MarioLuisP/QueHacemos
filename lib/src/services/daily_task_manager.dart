@@ -137,12 +137,23 @@ class DailyTaskManager {
   /// Programar tareas diarias con WorkManager
   Future<void> _scheduleWorkManagerTasks() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastCheck = prefs.getString('workmanager_daily_check');
+      final today = _getTodayString();
+
+      if (lastCheck == today) {
+        print('✅ WorkManager check ya hecho hoy - skip');
+        return; // ← SALIR RÁPIDO
+      }
+
+      print('🔄 Daily WorkManager check...');
+
       // Cancelar tareas existentes
       await Workmanager().cancelAll();
 
       // DEBUG: Calcular delays y mostrar info
-      final delaySync = _calculateDelayTo(1,0);//🔥🔥🔥
-      final delayNotif = _calculateDelayTo(11, 0);//🔥🔥🔥
+      final delaySync = _calculateDelayTo(1,0);
+      final delayNotif = _calculateDelayTo(11, 0);
       print('🕐 Delay sync: ${delaySync.inMinutes} minutos');
       print('🕐 Delay notif: ${delayNotif.inMinutes} minutos');
       print('🕐 Hora actual: ${DateTime.now()}');
@@ -152,7 +163,7 @@ class DailyTaskManager {
         'daily-sync',
         'daily-sync',
         frequency: const Duration(hours: 24),
-        initialDelay: delaySync,        // 1:00 AM
+        initialDelay: delaySync,
         constraints: Constraints(
           networkType: NetworkType.connected,
         ),
@@ -163,13 +174,12 @@ class DailyTaskManager {
         'daily-notifications',
         'daily-notifications',
         frequency: const Duration(hours: 24),
-        initialDelay: delayNotif, // 11:00 AM
-        //constraints: Constraints(
-        //  networkType: NetworkType.unmetered,
-        //),
+        initialDelay: delayNotif,
       );
 
-      print('⏰ Tareas WorkManager programadas (1:00 AM sync, 11:00 AM notif)');
+      // Marcar como verificado hoy
+      await prefs.setString('workmanager_daily_check', today);
+      print('✅ WorkManager reprogramado para hoy');
 
     } catch (e) {
       print('❌ Error programando WorkManager: $e');
