@@ -35,7 +35,7 @@ void main() async {
   tz.initializeTimeZones();
 
   // Inicializar notificaciones
-  await NotificationService.initialize();
+  //await NotificationService.initialize();
 
   runApp(const MyApp());
 }
@@ -100,6 +100,7 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
     });
   }
   Future<void> _initializeApp() async {
+    //NotificationService.initialize();
     final simpleHomeProvider = Provider.of<SimpleHomeProvider>(context, listen: false);
     final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
 
