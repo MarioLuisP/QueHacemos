@@ -32,72 +32,6 @@ class SyncService {
 
   // ========== MÉTODOS PRINCIPALES DE SYNC ==========
 
-  /// 🚀 Primera instalación - Siempre 10 lotes
-  Future<SyncResult> firstInstallSync() async {
-    if (_isSyncing) {
-      print('⏭️ Sincronización ya en progreso, omitiendo...');
-      return SyncResult.notNeeded();
-    }
-
-    _isSyncing = true;
-    _globalSyncInProgress = true;
-
-    try {
-      print('🚀 Iniciando primera instalación - 10 lotes...');
-
-      // 🔥 USAR FIRESTORE CLIENT - 10 lotes
-      final events = await _firestoreClient.downloadBatch(isMultipleLots: true);
-
-      if (events.isEmpty) {
-        print('📭 No hay eventos disponibles para primera instalación');
-        return SyncResult.noNewData();
-      }
-
-      // Processing interno (CAPA 2)
-      await _processEvents(events);
-      final cleanupResults = await _performCleanup();
-
-      // Update timestamp via FirestoreClient
-      await _firestoreClient.updateSyncTimestamp();
-
-      // Notifications y maintenance
-      await _maintainNotificationSchedules();
-
-      // NUEVO: SyncService maneja el flag app_initialized
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('app_initialized', true);   // ← CORRECTO
-
-      // Notificar primera instalación completada
-      _notificationsProvider.addNotification(
-        title: '🎭 ¡App lista para usar!',
-        message: 'Se agregaron ${events.length - cleanupResults.eventsRemoved} eventos culturales de Córdoba',
-        type: 'first_install_complete',
-      );
-
-      print('✅ Primera instalación completada: ${events.length} eventos');
-      final result = SyncResult.success(
-        eventsAdded: events.length,
-        eventsRemoved: cleanupResults.eventsRemoved,
-        favoritesRemoved: cleanupResults.favoritesRemoved,
-      );
-      _syncCompleteController.add(result);
-      return result;
-
-    } catch (e) {
-      print('❌ Error en primera instalación: $e');
-      // Notificar error en primera instalación
-      _notificationsProvider.addNotification(
-        title: '⚠️ Error al configurar la app',
-        message: 'Problema de conexión - reintentando automáticamente',
-        type: 'first_install_error',
-      );
-      return SyncResult.error(e.toString());
-    } finally {
-      _isSyncing = false;
-      _globalSyncInProgress = false;
-    }
-  }
-
   /// 🔄 Sincronización automática diaria - Solo 1 lote
   Future<SyncResult> performAutoSync() async {
     if (_isSyncing) {
@@ -206,12 +140,11 @@ class SyncService {
       _globalSyncInProgress = false;
     }
   }
-  /// 💪 Force sync para desarrollo - delega a primera instalación
+  /// 💪 Force sync para desarrollo - ejecuta sync automático
   Future<SyncResult> forceSync() async {
-    print('🔧 DEV: Force sync ejecutando primera instalación...'); // NUEVO
-    return await firstInstallSync(); // NUEVO: Una sola línea de delegación
+    print('🔧 DEV: Force sync ejecutando sync automático...');
+    return await performAutoSync();
   }
-
   // ========== PROCESSING INTERNO (CAPA 2) ==========
 
   /// ⚙️ Procesar eventos descargados (inserción masiva a SQLite)

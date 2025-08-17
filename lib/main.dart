@@ -6,17 +6,15 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'src/providers/favorites_provider.dart';
 import 'src/providers/simple_home_provider.dart';
-import 'src/providers/auth_provider.dart'; // NUEVO
+import 'src/providers/auth_provider.dart';
 import 'src/themes/themes.dart';
 import 'src/navigation/bottom_nav.dart';
 import 'src/providers/notifications_provider.dart';
 import 'package:timezone/data/latest.dart' as tz;
-import 'src/services/notification_service.dart';
-import 'src/sync/sync_service.dart';
 import 'src/services/daily_task_manager.dart';
+import 'src/services/first_install_service.dart'; // 🆕 NUEVO IMPORT
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
@@ -51,7 +49,6 @@ Future<void> _initializeAnonymousAuth() async {
     // App continúa funcionando normal sin auth
   }
 }
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -90,6 +87,10 @@ class _AppContent extends StatefulWidget {
 class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
   bool _isInitialized = false;
 
+  // 🆕 NUEVO: Estado para primera instalación
+  bool _isFirstInstallCompleted = false;
+  bool _isFirstInstallRunning = false;
+
   @override
   void initState() {
     super.initState();
@@ -99,7 +100,55 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
       _initializeAuthInBackground();
     });
   }
+
+  // 🆕 NUEVO: Método principal de inicialización con FirstInstallService
   Future<void> _initializeApp() async {
+    try {
+      // 🆕 PASO 1: Verificar si necesita primera instalación
+      final firstInstallService = FirstInstallService();
+      final needsFirstInstall = await firstInstallService.needsFirstInstall();
+
+      if (needsFirstInstall) {
+        print('🚀 Primera instalación detectada - ejecutando FirstInstallService...');
+        setState(() {
+          _isFirstInstallRunning = true;
+        });
+
+        // 🆕 Ejecutar primera instalación completa
+        final result = await firstInstallService.performFirstInstall();
+
+        if (result.success) {
+          print('✅ Primera instalación completada exitosamente');
+          setState(() {
+            _isFirstInstallCompleted = true;
+            _isFirstInstallRunning = false;
+          });
+        } else {
+          print('❌ Primera instalación falló: ${result.error}');
+          setState(() {
+            _isFirstInstallRunning = false;
+          });
+          // Continuar con flujo normal aunque haya fallado
+        }
+      } else {
+        print('✅ Primera instalación ya completada previamente');
+        setState(() {
+          _isFirstInstallCompleted = true;
+        });
+      }
+
+      // 🆕 PASO 2: Inicialización normal (como siempre)
+      await _performNormalInitialization();
+
+    } catch (e) {
+      print('❌ Error en inicialización: $e');
+      // Continuar con inicialización normal como fallback
+      await _performNormalInitialization();
+    }
+  }
+
+  // 🆕 NUEVO: Inicialización normal (código existente separado)
+  Future<void> _performNormalInitialization() async {
     //NotificationService.initialize();
     final simpleHomeProvider = Provider.of<SimpleHomeProvider>(context, listen: false);
     final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
@@ -110,7 +159,7 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
 
       final dailyTaskManager = DailyTaskManager();
       await dailyTaskManager.initialize();
-      // ❌ REMOVER: DailyTaskManager().checkOnAppOpen();
+      // ⌛ REMOVER: DailyTaskManager().checkOnAppOpen();
 
       simpleHomeProvider.setupFavoritesSync(favoritesProvider);
 
@@ -125,7 +174,7 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
 
       print('🎉 App completamente inicializada');
     } catch (e) {
-      print('❌ Error crítico en inicialización: $e');
+      print('⌛ Error crítico en inicialización: $e');
       setState(() {
         _isInitialized = true;
       });
@@ -140,6 +189,7 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
     // NUEVO: Si no hay usuario, intenta anonymous (pero no bloquea la app)
     authProvider.initializeAuth();// NUEVO: Sin await - corre en background
   }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -155,13 +205,64 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
       DailyTaskManager().checkOnAppOpen();
     }
   }
+
   @override
   Widget build(BuildContext context) {
+    // 🆕 NUEVO: Mostrar loading específico durante primera instalación
+    if (_isFirstInstallRunning) {
+      return MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.blueGrey[50],
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+                ),
+                SizedBox(height: 24),
+                Text(
+                  '🎭 Configurando eventos de Córdoba...',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.deepPurple[700],
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Descargando contenido inicial',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        debugShowCheckedModeBanner: false,
+      );
+    }
+
+    // 🆕 NUEVO: Loading normal para el resto de la inicialización
     if (!_isInitialized) {
       return MaterialApp(
         home: Scaffold(
           body: Center(
-            child: CircularProgressIndicator(),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                if (_isFirstInstallCompleted) ...[
+                  SizedBox(height: 16),
+                  Text(
+                    '✅ Configuración completada',
+                    style: TextStyle(color: Colors.green[700]),
+                  ),
+                ]
+              ],
+            ),
           ),
         ),
         debugShowCheckedModeBanner: false,

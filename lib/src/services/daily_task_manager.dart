@@ -99,7 +99,6 @@ class DailyTaskManager {
 
   // ========== CORE STATE ==========
   bool _isInitialized = false;
-  bool _isFirstInstallation = false;
 
   // ========== CONSTANTS ==========
   static const String _lastSyncTimestampKey = 'last_sync_timestamp';
@@ -116,21 +115,8 @@ class DailyTaskManager {
       await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
 
       // 2. Verificar si es primera instalación
-      _isFirstInstallation = await _checkFirstInstallation();
-
-      if (_isFirstInstallation) {
-        print('🆕 Primera instalación detectada - ejecutando sync inmediato');
-        await _executeFirstInstallSync();
-
-        // Delay para programar WorkManager después en primera instalación
-        print('⏰ Programando WorkManager en 20 segundos...');
-        Timer(Duration(seconds: 20), () async {
-          await _scheduleWorkManagerTasks();
-        });
-      } else {
-        // App ya inicializada, programar inmediatamente
-        await _scheduleWorkManagerTasks();
-      }
+// Programar WorkManager inmediatamente
+      await _scheduleWorkManagerTasks();
 
       _isInitialized = true;
       print('✅ DailyTaskManager inicializado correctamente');
@@ -325,29 +311,6 @@ class DailyTaskManager {
     }
   }
 
-  /// Ejecutar sync de primera instalación (inmediato)
-  Future<void> _executeFirstInstallSync() async {
-    try {
-      print('🚀 Ejecutando firstInstallSync...');
-      final syncResult = await SyncService().firstInstallSync();
-
-      if (syncResult.success) {
-        _isFirstInstallation = false;
-        await _saveSuccessfulSyncTimestamp();
-
-        // Marcar app como inicializada
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('app_initialized', true);
-
-        print('✅ Primera instalación completada exitosamente');
-      } else {
-        print('⚠️ Primera instalación falló: ${syncResult.error}');
-      }
-
-    } catch (e) {
-      print('❌ Error en primera instalación: $e');
-    }
-  }
 
   // ========== TIMESTAMP MANAGEMENT ==========
 
@@ -377,12 +340,6 @@ class DailyTaskManager {
 
   // ========== STATE MANAGEMENT ==========
 
-  /// Verificar si es primera instalación
-  Future<bool> _checkFirstInstallation() async {
-    final prefs = await SharedPreferences.getInstance();
-    return !(prefs.getBool('app_initialized') ?? false);
-  }
-
   /// Obtener string de fecha (YYYY-MM-DD)
   String _getTodayString([DateTime? date]) {
     final target = date ?? DateTime.now();
@@ -395,7 +352,6 @@ class DailyTaskManager {
   Map<String, dynamic> getDebugState() {
     return {
       'initialized': _isInitialized,
-      'is_first_installation': _isFirstInstallation,
       'workmanager_active': true,
       'current_time': '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
       'today': _getTodayString(),
