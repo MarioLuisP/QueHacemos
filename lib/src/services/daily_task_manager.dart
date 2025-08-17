@@ -121,10 +121,16 @@ class DailyTaskManager {
       if (_isFirstInstallation) {
         print('🆕 Primera instalación detectada - ejecutando sync inmediato');
         await _executeFirstInstallSync();
-      }
 
-      // 3. Programar tareas diarias con WorkManager
-      await _scheduleWorkManagerTasks();
+        // Delay para programar WorkManager después en primera instalación
+        print('⏰ Programando WorkManager en 20 segundos...');
+        Timer(Duration(seconds: 20), () async {
+          await _scheduleWorkManagerTasks();
+        });
+      } else {
+        // App ya inicializada, programar inmediatamente
+        await _scheduleWorkManagerTasks();
+      }
 
       _isInitialized = true;
       print('✅ DailyTaskManager inicializado correctamente');

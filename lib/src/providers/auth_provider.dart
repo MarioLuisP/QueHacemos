@@ -74,7 +74,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Inicializar autenticación (detecta usuario existente o crea anónimo) // CAMBIO
-  Future<void> initializeAuth() async { // CAMBIO
+  void initializeAuth() { // CAMBIO
     _isLoading = true;
     notifyListeners();
 
@@ -87,7 +87,7 @@ class AuthProvider extends ChangeNotifier {
         // El listener ya se encarga de actualizar el estado // NUEVO
       } else { // NUEVO
         // No hay usuario real, crear anónimo // NUEVO
-        await _authService.signInAnonymously();
+        _authService.signInAnonymously();
         // El listener se encarga de actualizar el estado
       } // NUEVO
     } catch (e) {

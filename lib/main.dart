@@ -24,12 +24,6 @@ void main() async {
   Intl.defaultLocale = 'es_ES';
   await dotenv.load(fileName: ".env");
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  // NUEVO: Inicializar autenticación anónima
-  await _initializeAnonymousAuth();
 
   // Inicializar timezone
   tz.initializeTimeZones();
@@ -38,18 +32,6 @@ void main() async {
   await NotificationService.initialize();
 
   runApp(const MyApp());
-}
-
-/// NUEVO: Inicializar usuario anónimo automáticamente
-Future<void> _initializeAnonymousAuth() async {
-  try {
-    // Solo inicialización básica aquí
-    // El AuthProvider manejará el estado completo
-    print('🔐 Preparando autenticación...');
-  } catch (e) {
-    print('⚠️ Error preparando auth: $e');
-    // App continúa funcionando normal sin auth
-  }
 }
 
 
@@ -100,6 +82,7 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
     });
   }
   Future<void> _initializeApp() async {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     final simpleHomeProvider = Provider.of<SimpleHomeProvider>(context, listen: false);
     final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
 
