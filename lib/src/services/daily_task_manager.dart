@@ -6,92 +6,80 @@ import 'package:workmanager/workmanager.dart';
 import '../sync/sync_service.dart';
 import '../providers/favorites_provider.dart';
 
-/// Callback dispatcher para WorkManager
-/// Debe estar fuera de la clase y marcado con @pragma
+// ========== TASK TYPES ENUM ==========
+enum TaskType {
+  sync('daily-sync', 'last_sync_timestamp', 1, 0, 6),           // 1:00 AM, recovery después 6:00 AM
+  notifications('daily-notifications', 'last_notification_timestamp', 11, 0, 11); // 11:00 AM, recovery después 11:00 AM
+
+  const TaskType(this.workManagerId, this.timestampKey, this.scheduleHour, this.scheduleMinute, this.recoveryMinHour);
+
+  final String workManagerId;
+  final String timestampKey;
+  final int scheduleHour;
+  final int scheduleMinute;
+  final int recoveryMinHour;
+}
+
+/// 🚀 Callback dispatcher para WorkManager - LIMPIO
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     print('🔄 WorkManager ejecutando task: $task');
 
-    switch (task) {
-      case 'daily-sync':
-        return await _executeWorkManagerSync();
-      case 'daily-notifications':
-        return await _executeWorkManagerNotifications();
-      default:
-        print('⚠️ Task desconocido: $task');
-        return false;
-    }
+    // Mapear task string a TaskType
+    final taskType = TaskType.values.firstWhere(
+          (t) => t.workManagerId == task,
+      orElse: () => throw Exception('Task desconocido: $task'),
+    );
+
+    return await _executeWorkManagerTask(taskType);
   });
 }
 
-/// Ejecutar sync desde WorkManager
-Future<bool> _executeWorkManagerSync() async {
+/// 🎯 Ejecutar task genérico desde WorkManager
+Future<bool> _executeWorkManagerTask(TaskType taskType) async {
   try {
-    final today = _getTodayString();
-    final lastSync = await _getLastSyncTimestamp();
-
-    // Verificar si ya hay sync hoy
-    if (lastSync != null) {
-      final lastSyncDate = DateTime.parse(lastSync);
-      final lastSyncDay = _getTodayString(lastSyncDate);
-
-      if (lastSyncDay == today) {
-        print('✅ Sync ya completado hoy');
-        return true;
-      }
-    }
-
-    print('🔄 Ejecutando sync desde WorkManager...');
-    final syncResult = await SyncService().performAutoSync();
-
-    if (syncResult.success) {
-      await _saveSuccessfulSyncTimestamp();
-      print('✅ WorkManager sync exitoso');
+    // Verificar si ya se ejecutó hoy
+    if (await _wasExecutedTodayGlobal(taskType)) {
+      print('✅ ${taskType.workManagerId} ya completado hoy');
       return true;
+    }
+
+    print('🔄 Ejecutando ${taskType.workManagerId} desde WorkManager...');
+
+    // Ejecutar task específico
+    final success = await _performTask(taskType);
+
+    if (success) {
+      await _saveSuccessfulExecutionGlobal(taskType);
+      print('✅ WorkManager ${taskType.workManagerId} exitoso');
     } else {
-      print('❌ WorkManager sync falló: ${syncResult.error}');
-      return false;
+      print('❌ WorkManager ${taskType.workManagerId} falló');
     }
 
+    return success;
+
   } catch (e) {
-    print('❌ Error en WorkManager sync: $e');
+    print('❌ Error en WorkManager ${taskType.workManagerId}: $e');
     return false;
   }
 }
 
-/// Ejecutar notificaciones desde WorkManager
-Future<bool> _executeWorkManagerNotifications() async {
-  try {
-    final today = _getTodayString();
-    final lastNotif = await _getLastNotificationTimestamp();
+/// ⚡ Ejecutar task específico según tipo
+Future<bool> _performTask(TaskType taskType) async {
+  switch (taskType) {
+    case TaskType.sync:
+      final syncResult = await SyncService().performAutoSync();
+      return syncResult.success;
 
-    // Verificar si ya hay notificaciones hoy
-    if (lastNotif != null) {
-      final lastNotifDate = DateTime.parse(lastNotif);
-      final lastNotifDay = _getTodayString(lastNotifDate);
-
-      if (lastNotifDay == today) {
-        print('✅ Notificaciones ya completadas hoy');
-        return true;
-      }
-    }
-
-    print('🔔 Ejecutando notificaciones desde WorkManager...');
-    final favoritesProvider = FavoritesProvider();
-    await favoritesProvider.scheduleNotificationsForToday();
-
-    await _saveSuccessfulNotificationTimestamp();
-    print('✅ WorkManager notificaciones exitosas');
-    return true;
-
-  } catch (e) {
-    print('❌ Error en WorkManager notificaciones: $e');
-    return false;
+    case TaskType.notifications:
+      final favoritesProvider = FavoritesProvider();
+      await favoritesProvider.scheduleNotificationsForToday();
+      return true;
   }
 }
 
-/// Gestor central de tareas diarias con WorkManager
+/// 🧠 GESTOR CENTRAL DE TAREAS DIARIAS - ARQUITECTURA LIMPIA
 class DailyTaskManager {
   static final DailyTaskManager _instance = DailyTaskManager._internal();
   factory DailyTaskManager() => _instance;
@@ -99,24 +87,21 @@ class DailyTaskManager {
 
   // ========== CORE STATE ==========
   bool _isInitialized = false;
+  static const String _workManagerCheckKey = 'workmanager_daily_check';
 
-  // ========== CONSTANTS ==========
-  static const String _lastSyncTimestampKey = 'last_sync_timestamp';
-  static const String _lastNotifTimestampKey = 'last_notification_timestamp';
-
-  /// Inicializar sistema de tareas diarias con WorkManager
+  /// 🚀 Inicializar sistema de tareas diarias
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     print('🚀 Inicializando DailyTaskManager con WorkManager...');
 
     try {
-      // 1. Inicializar WorkManager
+      // Inicializar WorkManager
       await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
       await Future.delayed(Duration(milliseconds: 500));
 
-// Programar WorkManager inmediatamente
-      await _scheduleWorkManagerTasks();
+      // Programar tareas
+      await _scheduleAllTasks();
 
       _isInitialized = true;
       print('✅ DailyTaskManager inicializado correctamente');
@@ -126,16 +111,16 @@ class DailyTaskManager {
     }
   }
 
-  /// Programar tareas diarias con WorkManager
-  Future<void> _scheduleWorkManagerTasks() async {
+  /// ⏰ Programar todas las tareas con WorkManager
+  Future<void> _scheduleAllTasks() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final lastCheck = prefs.getString('workmanager_daily_check');
+      final lastCheck = prefs.getString(_workManagerCheckKey);
       final today = _getTodayString();
 
       if (lastCheck == today) {
         print('✅ WorkManager check ya hecho hoy - skip');
-        return; // ← SALIR RÁPIDO
+        return;
       }
 
       print('🔄 Daily WorkManager check...');
@@ -143,37 +128,13 @@ class DailyTaskManager {
       // Cancelar tareas existentes
       await Workmanager().cancelAll();
 
-      // DEBUG: Calcular delays y mostrar info
-      // DEBUG: Calcular delays y mostrar info
-      final syncHour = prefs.getInt('wm_sync_hour') ?? 1;
-      final syncMin = prefs.getInt('wm_sync_min') ?? 0;
-      final delaySync = _calculateDelayTo(syncHour, syncMin);
-      final delayNotif = _calculateDelayTo(11, 0);
-      print('🕐 Delay sync: ${delaySync.inMinutes} minutos');
-      print('🕐 Delay notif: ${delayNotif.inMinutes} minutos');
-      print('🕐 Hora actual: ${DateTime.now()}');
-
-      // Programar sync diario a la 1:00 AM
-      await Workmanager().registerPeriodicTask(
-        'daily-sync',
-        'daily-sync',
-        frequency: const Duration(hours: 24),
-        initialDelay: delaySync,
-        constraints: Constraints(
-          networkType: NetworkType.connected,
-        ),
-      );
-
-      // Programar notificaciones diarias a las 11:00 AM
-      await Workmanager().registerPeriodicTask(
-        'daily-notifications',
-        'daily-notifications',
-        frequency: const Duration(hours: 24),
-        initialDelay: delayNotif,
-      );
+      // Programar cada tipo de task
+      for (final taskType in TaskType.values) {
+        await _scheduleTask(taskType, prefs);
+      }
 
       // Marcar como verificado hoy
-      await prefs.setString('workmanager_daily_check', today);
+      await prefs.setString(_workManagerCheckKey, today);
       print('✅ WorkManager reprogramado para hoy');
 
     } catch (e) {
@@ -181,12 +142,36 @@ class DailyTaskManager {
     }
   }
 
-  /// Calcular delay hasta hora específica
+  /// 📅 Programar task específico
+  Future<void> _scheduleTask(TaskType taskType, SharedPreferences prefs) async {
+    // Obtener hora configurada (sync puede ser personalizada)
+    final hour = taskType == TaskType.sync
+        ? prefs.getInt('wm_sync_hour') ?? taskType.scheduleHour
+        : taskType.scheduleHour;
+    final minute = taskType == TaskType.sync
+        ? prefs.getInt('wm_sync_min') ?? taskType.scheduleMinute
+        : taskType.scheduleMinute;
+
+    final delay = _calculateDelayTo(hour, minute);
+
+    print('🕐 ${taskType.workManagerId} programado para ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} (delay: ${delay.inMinutes}min)');
+
+    await Workmanager().registerPeriodicTask(
+      taskType.workManagerId,
+      taskType.workManagerId,
+      frequency: const Duration(hours: 24),
+      initialDelay: delay,
+      constraints: taskType == TaskType.sync ? Constraints(
+        networkType: NetworkType.connected,
+      ) : null,
+    );
+  }
+
+  /// ⏰ Calcular delay hasta hora específica
   Duration _calculateDelayTo(int hour, int minute) {
     final now = DateTime.now();
     final target = DateTime(now.year, now.month, now.day, hour, minute);
 
-    // Si ya pasó la hora hoy, programar para mañana
     final targetTime = target.isBefore(now)
         ? target.add(const Duration(days: 1))
         : target;
@@ -194,7 +179,7 @@ class DailyTaskManager {
     return targetTime.difference(now);
   }
 
-  /// Verificar tareas al abrir app (fallback + recovery)
+  /// 🏥 Verificar tareas al abrir app (recovery + fallback)
   Future<void> checkOnAppOpen() async {
     if (!_isInitialized) await initialize();
 
@@ -202,153 +187,110 @@ class DailyTaskManager {
     print('📱 App abierta a las ${now.hour}:${now.minute.toString().padLeft(2, '0')}');
 
     try {
-      // ========== RECOVERY FALLBACK ==========
-
-      // Solo intentar recovery si es después de las 6:00 AM
-      if (now.hour >= 1) {
-
-        // ========== DEBUGGING LOGS ==========
-        print('🧪 === DEBUGGING RECOVERY ===');
-        print('🧪 _isInitialized: $_isInitialized');
-        print('🧪 Hora actual: ${now.hour}:${now.minute}');
-        print('🧪 Es después de las 6? ${now.hour >= 6}');
-        print('🧪 needsSyncToday: ${await _needsSyncToday()}');
-        print('🧪 needsNotificationsToday: ${await _needsNotificationsToday()}');
-
-        final lastSync = await _getLastSyncTimestamp();
-        print('🧪 lastSync: $lastSync');
-        print('🧪 today: ${_getTodayString()}');
-
-        if (lastSync != null) {
-          final lastSyncDate = DateTime.parse(lastSync);
-          print('🧪 lastSyncDay: ${_getTodayString(lastSyncDate)}');
-        }
-        // ========== FIN DEBUGGING ==========
-        // Verificar si falta sync hoy
-        if (await _needsSyncToday()) {
-          print('🔄 Recovery: Sync pendiente detectado');
-          await _executeRecoverySync();
-        }
-
-        // Verificar si faltan notificaciones hoy
-        if (await _needsNotificationsToday()) {
-          print('🔔 Recovery: Notificaciones pendientes detectadas');
-          await _executeRecoveryNotifications();
-        }
+      // Recovery solo después de las 6:00 AM
+      if (now.hour >= 6) {
+        await _performRecoveryCheck();
       }
-
     } catch (e) {
       print('❌ Error en checkOnAppOpen: $e');
     }
   }
 
-  /// Verificar si necesita sync hoy
-  Future<bool> _needsSyncToday() async {
-    final today = _getTodayString();
-    final lastSync = await _getLastSyncTimestamp();
-
-    if (lastSync == null) return true; // Primera vez
-
-    final lastSyncDate = DateTime.parse(lastSync);
-    final lastSyncDay = _getTodayString(lastSyncDate);
-
-    return lastSyncDay != today; // No hay sync hoy
-  }
-
-  /// Verificar si necesita notificaciones hoy, respetando el horario programado
-  Future<bool> _needsNotificationsToday() async {
+  /// 🔄 Verificar y ejecutar recovery para todas las tareas
+  Future<void> _performRecoveryCheck() async {
     final now = DateTime.now();
 
-    // Solo ejecutar notificaciones después de las 11 AM
-    if (now.hour < 11) {
-      print('⏰ Notificaciones programadas para las 11 AM - esperando');
-      return false; // Todavía no es hora
+    for (final taskType in TaskType.values) {
+      // Solo recovery si ya pasó la hora mínima
+      if (now.hour >= taskType.recoveryMinHour && await _needsExecutionToday(taskType)) {
+        print('🔄 Recovery: ${taskType.workManagerId} pendiente detectado');
+        await _executeRecovery(taskType);
+      }
     }
-
-    final today = _getTodayString();
-    final lastNotif = await _getLastNotificationTimestamp();
-
-    if (lastNotif == null) return true; // Primera vez
-
-    final lastNotifDate = DateTime.parse(lastNotif);
-    final lastNotifDay = _getTodayString(lastNotifDate);
-
-    return lastNotifDay != today; // No hay notificaciones hoy
   }
 
-  /// Ejecutar sync de recovery
-  Future<void> _executeRecoverySync() async {
+  /// 🎯 Ejecutar recovery genérico
+  Future<void> _executeRecovery(TaskType taskType) async {
     try {
-      print('🔄 Ejecutando recovery sync...');
-      final syncResult = await SyncService().performAutoSync();
+      print('🔄 Ejecutando recovery ${taskType.workManagerId}...');
 
-      if (syncResult.success) {
-        await _saveSuccessfulSyncTimestamp();
-        print('✅ Recovery sync exitoso');
+      final success = await _performTask(taskType);
+
+      if (success) {
+        await _saveSuccessfulExecution(taskType);
+        print('✅ Recovery ${taskType.workManagerId} exitoso');
       } else {
-        print('❌ Recovery sync falló: ${syncResult.error}');
+        print('❌ Recovery ${taskType.workManagerId} falló');
       }
 
     } catch (e) {
-      print('❌ Error en recovery sync: $e');
+      print('❌ Error en recovery ${taskType.workManagerId}: $e');
     }
   }
 
-  /// Ejecutar notificaciones de recovery
-  /// Ejecutar notificaciones de recovery
-  Future<void> _executeRecoveryNotifications() async {
-    try {
-      print('🔔 Ejecutando recovery notificaciones...');
-      // ✅ CAMBIAR: Usar singleton pattern o injection
-      final favoritesProvider = FavoritesProvider();
-      await favoritesProvider.init(); // ← AGREGAR: Asegurar inicialización
-      await favoritesProvider.scheduleNotificationsForToday();
+  // ========== TIMESTAMP MANAGEMENT GENÉRICO ==========
 
-      await _saveSuccessfulNotificationTimestamp();
-      print('✅ Recovery notificaciones exitosas');
-    } catch (e) {
-      print('❌ Error en recovery notificaciones: $e');
-    }
+  /// ✅ Verificar si task fue ejecutado hoy
+  Future<bool> _wasExecutedToday(TaskType taskType) async {
+    final today = _getTodayString();
+    final lastExecution = await _getLastExecutionTimestamp(taskType);
+
+    if (lastExecution == null) return false;
+
+    final lastExecutionDate = DateTime.parse(lastExecution);
+    final lastExecutionDay = _getTodayString(lastExecutionDate);
+
+    return lastExecutionDay == today;
   }
 
+  /// 🔍 Verificar si task necesita ejecución hoy
+  Future<bool> _needsExecutionToday(TaskType taskType) async {
+    return !(await _wasExecutedToday(taskType));
+  }
 
-  // ========== TIMESTAMP MANAGEMENT ==========
-
-  /// Obtener timestamp de último sync
-  Future<String?> _getLastSyncTimestamp() async {
+  /// 📝 Obtener timestamp de última ejecución
+  Future<String?> _getLastExecutionTimestamp(TaskType taskType) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_lastSyncTimestampKey);
+    return prefs.getString(taskType.timestampKey);
   }
 
-  /// Obtener timestamp de última notificación
-  Future<String?> _getLastNotificationTimestamp() async {
+  /// 💾 Guardar timestamp de ejecución exitosa
+  Future<void> _saveSuccessfulExecution(TaskType taskType) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_lastNotifTimestampKey);
+    await prefs.setString(taskType.timestampKey, DateTime.now().toIso8601String());
   }
 
-  /// Guardar timestamp de sync exitoso
-  Future<void> _saveSuccessfulSyncTimestamp() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_lastSyncTimestampKey, DateTime.now().toIso8601String());
-  }
-
-  /// Guardar timestamp de notificación exitosa
-  Future<void> _saveSuccessfulNotificationTimestamp() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_lastNotifTimestampKey, DateTime.now().toIso8601String());
-  }
-
-  // ========== STATE MANAGEMENT ==========
-
-  /// Obtener string de fecha (YYYY-MM-DD)
+  /// 📅 Obtener string de fecha (YYYY-MM-DD)
   String _getTodayString([DateTime? date]) {
     final target = date ?? DateTime.now();
     return '${target.year}-${target.month.toString().padLeft(2, '0')}-${target.day.toString().padLeft(2, '0')}';
   }
 
-  // ========== DEBUG & TESTING ==========
+  // ========== TESTING & DEBUG METHODS ==========
 
-  /// Obtener estado actual para debugging
+  /// 🧪 Marcar task como vencida (para testing)
+  Future<void> markTaskAsExpired(TaskType taskType) async {
+    final prefs = await SharedPreferences.getInstance();
+    final expiredTime = DateTime.now().subtract(const Duration(hours: 25));
+    await prefs.setString(taskType.timestampKey, expiredTime.toIso8601String());
+    print('🧪 ${taskType.workManagerId} marcado como vencido');
+  }
+
+  /// 🔄 Forzar reprogramación de WorkManager (para testing)
+  Future<void> testRescheduleWorkManager() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_workManagerCheckKey);
+    await _scheduleAllTasks();
+    print('🧪 WorkManager reprogramado forzosamente');
+  }
+
+  /// 🏥 Ejecutar recovery manualmente (para testing)
+  Future<void> testExecuteRecovery() async {
+    print('🧪 TEST: Ejecutando recovery manualmente...');
+    await _performRecoveryCheck();
+  }
+
+  /// 📊 Obtener estado actual para debugging
   Map<String, dynamic> getDebugState() {
     return {
       'initialized': _isInitialized,
@@ -358,52 +300,59 @@ class DailyTaskManager {
     };
   }
 
-  /// Método para testing - forzar ejecución de recovery
-  Future<void> testExecuteRecovery() async {
-    print('🧪 TEST: Ejecutando recovery manualmente...');
-    await checkOnAppOpen();
-  }
-
-  /// Método para testing - reprogramar WorkManager
-  Future<void> testRescheduleWorkManager() async {
-    print('🧪 TEST: Reprogramando WorkManager...');
-    await _scheduleWorkManagerTasks();
-  }
-
-  /// Cleanup al cerrar app
+  /// 🧹 Cleanup al cerrar app
   void dispose() {
     print('🧹 DailyTaskManager disposed');
   }
 }
 
-// ========== HELPER FUNCTIONS ==========
+// ========== HELPER FUNCTIONS GLOBALES ==========
 
-/// Obtener timestamp de último sync (función helper)
-Future<String?> _getLastSyncTimestamp() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('last_sync_timestamp');
+/// ✅ Verificar si task fue ejecutado hoy (función global)
+Future<bool> _wasExecutedTodayGlobal(TaskType taskType) async {
+  final today = _getTodayStringGlobal();
+  final lastExecution = await _getLastExecutionTimestampGlobal(taskType);
+
+  if (lastExecution == null) return false;
+
+  final lastExecutionDate = DateTime.parse(lastExecution);
+  final lastExecutionDay = _getTodayStringGlobal(lastExecutionDate);
+
+  return lastExecutionDay == today;
 }
 
-/// Obtener timestamp de última notificación (función helper)
-Future<String?> _getLastNotificationTimestamp() async {
+/// 📝 Obtener timestamp de última ejecución (función global)
+Future<String?> _getLastExecutionTimestampGlobal(TaskType taskType) async {
   final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('last_notification_timestamp');
+  return prefs.getString(taskType.timestampKey);
 }
 
-/// Guardar timestamp de sync exitoso (función helper)
-Future<void> _saveSuccessfulSyncTimestamp() async {
+/// 💾 Guardar timestamp de ejecución exitosa (función global)
+Future<void> _saveSuccessfulExecutionGlobal(TaskType taskType) async {
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('last_sync_timestamp', DateTime.now().toIso8601String());
+  await prefs.setString(taskType.timestampKey, DateTime.now().toIso8601String());
 }
 
-/// Guardar timestamp de notificación exitosa (función helper)
-Future<void> _saveSuccessfulNotificationTimestamp() async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('last_notification_timestamp', DateTime.now().toIso8601String());
-}
-
-/// Obtener string de fecha (función helper)
-String _getTodayString([DateTime? date]) {
+/// 📅 Obtener string de fecha (función global)
+String _getTodayStringGlobal([DateTime? date]) {
   final target = date ?? DateTime.now();
   return '${target.year}-${target.month.toString().padLeft(2, '0')}-${target.day.toString().padLeft(2, '0')}';
 }
+//
+// 🚀 HOOKS PREPARADOS PARA FUTURAS EXTENSIONES:
+//
+// Future<void> testNotificationsWorkManager() async {
+//   await Workmanager().registerOneOffTask(
+//     'test-notifications-wm',
+//     TaskType.notifications.workManagerId,
+//     initialDelay: const Duration(minutes: 2),
+//   );
+// }
+//
+// Future<void> markNotificationsAsExpired() async {
+//   await markTaskAsExpired(TaskType.notifications);
+// }
+//
+// Future<void> forceNotificationsExecution() async {
+//   await _executeRecovery(TaskType.notifications);
+// }

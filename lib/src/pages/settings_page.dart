@@ -4,8 +4,6 @@ import 'package:quehacemos_cba/src/providers/simple_home_provider.dart';
 import './../utils/dimens.dart';
 import './../utils/colors.dart';
 // 🔥 IMPORTS SOLO PARA DESARROLLADOR - ELIMINAR EN PRODUCCIÓN
-import '../sync/sync_service.dart';
-import '../sync/firestore_client.dart';
 import '../data/repositories/event_repository.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -946,11 +944,7 @@ class SettingsPage extends StatelessWidget {
         const SnackBar(content: Text('⏰ Marcando sync como vencida...')),
       );
 
-      final prefs = await SharedPreferences.getInstance();
-
-      // Setear timestamp de hace 25 horas para forzar sync
-      final expiredTime = DateTime.now().subtract(const Duration(hours: 25));
-      await prefs.setString('last_sync_timestamp', expiredTime.toIso8601String());
+      await DailyTaskManager().markTaskAsExpired(TaskType.sync);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -959,7 +953,6 @@ class SettingsPage extends StatelessWidget {
         ),
       );
 
-      print('🧪 EXPIRED: last_sync_timestamp seteado a ${expiredTime.toIso8601String()}');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ Error marcando sync vencida: $e')),
