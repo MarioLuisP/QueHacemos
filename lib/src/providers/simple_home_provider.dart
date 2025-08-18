@@ -40,11 +40,6 @@ class SimpleHomeProvider with ChangeNotifier {
   int _favoriteCleanupDays = 7;
 
   SimpleHomeProvider() {
-    SyncService.onSyncComplete.listen((result) {
-      if (result.success && result.eventsAdded > 0) {
-        refresh();
-      }
-    });
   }
 
   // Getters públicos

@@ -49,7 +49,7 @@ class EventCacheItem {
   factory EventCacheItem.fromMap(Map<String, dynamic> map, {String theme = 'normal'}) {
     final String dateString = map['date'] as String? ?? '';
     final String typeString = map['type'] as String? ?? '';
-    print('🔍 Type from map: "$typeString"');
+    //print('🔍 Type from map: "$typeString"');
     // NUEVO: Precalcular fecha formateada
     final String formattedDate = _formatDateForCard(dateString);
 
@@ -58,7 +58,7 @@ class EventCacheItem {
     final String premiumEmoji = _calculatePremiumEmoji(map['rating'] as int? ?? 0);
     // NUEVO: Precalcular colores (theme hardcodeado 'normal')
     final optimizedColors = EventCardColorPalette.getOptimizedColors(theme, typeString);
-    print('🎨 Assigned color: ${optimizedColors.base}');
+    //print('🎨 Assigned color: ${optimizedColors.base}');
     return EventCacheItem(
       id: map['id'] as int,
       title: map['title'] as String? ?? '',

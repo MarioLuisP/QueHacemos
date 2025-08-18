@@ -734,11 +734,15 @@ class SettingsPage extends StatelessWidget {
 
       final prefs = await SharedPreferences.getInstance();
 
-      // Borrar las 4 keys principales
+      // Borrar las keys principales
+      await prefs.remove('first_install_completed');
+      print('🔄 Flag primera instalación borrado');
       await prefs.remove('last_sync_timestamp');
       await prefs.remove('last_notification_timestamp');
       await prefs.remove('workmanager_daily_check');
       await prefs.setBool('app_initialized', false);
+
+      print('🔄 Flag primera instalación borrado');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

@@ -3,11 +3,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/repositories/event_repository.dart';
-import '../mock/mock_events.dart';
 
-/// 🔒 CAPA 1 AISLADA - Solo External Data Sources
-/// Responsabilidad única: Descargar datos de Firestore
-/// BLINDAJE: No puede tocar SQLite, UI, ni coordinación
+/// 🔥 FIRESTORE CLIENT SIMPLIFICADO
+/// Responsabilidad única: Descargar lotes diarios de Firestore
+/// NUEVA LÓGICA: 1 lote por día faltante (máximo 10)
 class FirestoreClient {
   static final FirestoreClient _instance = FirestoreClient._internal();
   factory FirestoreClient() => _instance;
@@ -16,91 +15,76 @@ class FirestoreClient {
   final EventRepository _eventRepository = EventRepository();
   static const String _lastSyncKey = 'last_sync_timestamp';
 
-  // ========== EXTERNAL DATA DOWNLOAD ==========
+  // 🎯 CONFIGURACIÓN ESCALABLE
+  static const int LOTES_POR_DIA = 1;  // ← Cambiar para escalar🔥🔥🔥🔥🔥🔥
+  static const int MAX_LOTES = 10;     // ← Límite de recuperación
 
-  /// 🔥 CORE: Descargar lotes desde Firestore
-  /// Único método que toca external sources
-  Future<List<Map<String, dynamic>>> downloadBatch({bool isMultipleLots = false, List<String>? specificBatches}) async {
+  // ========== MÉTODO PRINCIPAL SIMPLIFICADO ==========
+
+  /// 🔥 Descargar lotes basado en días desde última sync
+  /// SÚPER SIMPLE: días_faltantes × LOTES_POR_DIA (máx 10)
+  Future<List<Map<String, dynamic>>> downloadDailyBatches() async {
     try {
-      print('📥 Descargando lote desde mock (luego firestore)...');
+      final daysMissed = await _getDaysSinceLastSync();
+      final lotesToDownload = (daysMissed * LOTES_POR_DIA).clamp(1, MAX_LOTES);
 
-      // MOCK DATA (después será Firestore real)
-      // final batchData = MockEvents.mockBatch;
+      print('📅 Días desde última sync: $daysMissed');
+      print('📦 Descargando $lotesToDownload lotes...');
 
-
-      // FIRESTORE REAL (comentado por ahora):
       final querySnapshot = await FirebaseFirestore.instance
-        .collection('eventos_lotes')
-        .orderBy('metadata.fecha_subida', descending: true)
-        .limit(isMultipleLots ? 10 : 5)
-        .get();
+          .collection('eventos_lotes')
+          .orderBy('metadata.fecha_subida', descending: true)
+          .limit(lotesToDownload)
+          .get();
 
       if (querySnapshot.docs.isEmpty) {
         print('📭 No hay lotes disponibles en Firestore');
         return [];
       }
 
-      // Si se especifican lotes específicos, usar nuevo enfoque eficiente
-      if (specificBatches != null && specificBatches.isNotEmpty) {
-        print('🔦 Sync diario - descargando 5 lotes más recientes...');
+      // Procesar todos los lotes descargados
+      final events = _getAllEventsFromDocs(querySnapshot.docs);
 
-        final currentBatchVersion = await _getCurrentBatchVersion();
-
-        // Filtrar solo lotes nuevos
-        final newBatches = querySnapshot.docs.where((doc) {
-          final batchName = doc.data()['metadata']?['nombre_lote'] as String? ?? '';
-          return batchName.compareTo(currentBatchVersion) > 0;
-        }).toList();
-
-        if (newBatches.isEmpty) {
-          print('📄 No hay lotes nuevos disponibles');
-          return [];
-        }
-
-        // Procesar eventos de todos los lotes nuevos
-        final allEvents = _getAllEventsFromDocs(newBatches);
-
-        // Actualizar con el más reciente
-        final latestBatchVersion = newBatches.first.data()['metadata']?['nombre_lote'] as String? ?? 'unknown';
+      // Actualizar info de sync
+      if (querySnapshot.docs.isNotEmpty) {
+        final latestBatchVersion = querySnapshot.docs.first.data()['metadata']?['nombre_lote'] as String? ?? 'unknown';
         await _eventRepository.updateSyncInfo(
           batchVersion: latestBatchVersion,
-          totalEvents: allEvents.length,
+          totalEvents: events.length,
         );
-
-        print('✅ Total descargado: ${allEvents.length} eventos de ${newBatches.length} lotes nuevos');
-        return allEvents;
       }
 
-
-// 🎯 PRIMERA INSTALACIÓN - Procesar todos los lotes descargados
-      final events = _getAllEventsFromDocs(querySnapshot.docs);
-      print('🔦 Primera instalación: ${events.length} eventos de ${querySnapshot.docs.length} lotes');
-
-      // Actualizar versión del lote más reciente
-      final newBatchVersion = querySnapshot.docs.first.data()['metadata']?['nombre_lote'] as String? ?? 'multiple';
-      await _eventRepository.updateSyncInfo(
-        batchVersion: newBatchVersion,
-        totalEvents: events.length,
-      );
-
+      print('✅ Total descargado: ${events.length} eventos de ${querySnapshot.docs.length} lotes');
       return events;
 
     } catch (e) {
-      print('❌ Error descargando de Firestore: $e');
+      print('❌ Error descargando lotes diarios: $e');
       rethrow;
     }
   }
-  List<Map<String, dynamic>> _getAllEventsFromDocs(List<QueryDocumentSnapshot> docs) {
-    final allEvents = <Map<String, dynamic>>[];
-    for (final doc in docs) {
-      final batchData = doc.data() as Map<String, dynamic>;
-      final eventos = (batchData['eventos'] as List<dynamic>?)
-          ?.map((e) => Map<String, dynamic>.from(e as Map))
-          .toList() ?? [];
-      allEvents.addAll(eventos);
+
+  // ========== LÓGICA DE DÍAS ==========
+
+  /// 📅 Calcular días desde última sincronización
+  Future<int> _getDaysSinceLastSync() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastSyncString = prefs.getString(_lastSyncKey);
+
+    if (lastSyncString == null) {
+      print('🔄 Primera sincronización');
+      return 1; // Solo 1 lote para primera sync diaria
     }
-    return allEvents;
+
+    final lastSync = DateTime.parse(lastSyncString);
+    final now = DateTime.now();
+
+    // Calcular diferencia en días
+    final daysDifference = now.difference(lastSync).inDays;
+
+    // Mínimo 1 día (para sync diario normal)
+    return daysDifference < 1 ? 1 : daysDifference;
   }
+
   // ========== SYNC TIMING LOGIC ==========
 
   /// 🕐 Verificar si necesita sincronización (1 AM logic + ventana 00:00-01:00)
@@ -116,13 +100,13 @@ class FirestoreClient {
     }
 
     final lastSync = DateTime.parse(lastSyncString);
-    final hoursSinceLastSync = now.difference(lastSync).inHours; // NUEVO
+    final hoursSinceLastSync = now.difference(lastSync).inHours;
 
-    // NUEVO: Ventana excepcional 00:00-01:00
-    if (now.hour == 0 && hoursSinceLastSync >= 24) { // NUEVO
-      print('🌙 Sincronización en ventana excepcional 00:00-01:00'); // NUEVO
-      return true; // NUEVO
-    } // NUEVO
+    // Ventana excepcional 00:00-01:00
+    if (now.hour == 0 && hoursSinceLastSync >= 24) {
+      print('🌙 Sincronización en ventana excepcional 00:00-01:00');
+      return true;
+    }
 
     // Verificar si ya sincronizó hoy
     final today = DateTime(now.year, now.month, now.day);
@@ -150,12 +134,19 @@ class FirestoreClient {
     await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
   }
 
-  // ========== UTILIDADES INTERNAS ==========
+  // ========== UTILIDADES ==========
 
-  /// Obtener versión actual del lote
-  Future<String> _getCurrentBatchVersion() async {
-    final syncInfo = await _eventRepository.getSyncInfo();
-    return syncInfo?['batch_version'] as String? ?? '';
+  /// 🔧 Extraer eventos de documentos Firestore
+  List<Map<String, dynamic>> _getAllEventsFromDocs(List<QueryDocumentSnapshot> docs) {
+    final allEvents = <Map<String, dynamic>>[];
+    for (final doc in docs) {
+      final batchData = doc.data() as Map<String, dynamic>;
+      final eventos = (batchData['eventos'] as List<dynamic>?)
+          ?.map((e) => Map<String, dynamic>.from(e as Map))
+          .toList() ?? [];
+      allEvents.addAll(eventos);
+    }
+    return allEvents;
   }
 
   // ========== STATUS METHODS ==========
@@ -167,6 +158,7 @@ class FirestoreClient {
     final syncInfo = await _eventRepository.getSyncInfo();
     final totalEvents = await _eventRepository.getTotalEvents();
     final totalFavorites = await _eventRepository.getTotalFavorites();
+    final daysMissed = await _getDaysSinceLastSync();
 
     return {
       'lastSync': lastSyncString,
@@ -174,6 +166,7 @@ class FirestoreClient {
       'totalEvents': totalEvents,
       'totalFavorites': totalFavorites,
       'needsSync': await shouldSync(),
+      'daysMissed': daysMissed, // ← NUEVO: útil para debug
     };
   }
 

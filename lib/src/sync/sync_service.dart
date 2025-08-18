@@ -53,7 +53,7 @@ class SyncService {
       print('🔄 Iniciando sync diario - delegando filtrado a FirestoreClient...');
 
       // Delegar toda la lógica al nuevo enfoque de FirestoreClient
-      final events = await _firestoreClient.downloadBatch(specificBatches: ['sync_diario']);
+      final events = await _firestoreClient.downloadDailyBatches();
 
       if (events.isEmpty) {
         print('🔭 No hay eventos nuevos disponibles');

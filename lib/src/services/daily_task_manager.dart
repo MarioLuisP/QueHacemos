@@ -115,7 +115,6 @@ class DailyTaskManager {
       await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
       await Future.delayed(Duration(milliseconds: 500));
 
-      // 2. Verificar si es primera instalación
 // Programar WorkManager inmediatamente
       await _scheduleWorkManagerTasks();
 
