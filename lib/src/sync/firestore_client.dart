@@ -6,7 +6,7 @@ import '../data/repositories/event_repository.dart';
 import '../mock/mock_events.dart';
 
 /// 🔒 CAPA 1 AISLADA - Solo External Data Sources
-/// Responsabilidad única: Descargar datos de Firestore/Mock
+/// Responsabilidad única: Descargar datos de Firestore
 /// BLINDAJE: No puede tocar SQLite, UI, ni coordinación
 class FirestoreClient {
   static final FirestoreClient _instance = FirestoreClient._internal();
@@ -18,9 +18,9 @@ class FirestoreClient {
 
   // ========== EXTERNAL DATA DOWNLOAD ==========
 
-  /// 🔥 CORE: Descargar lotes desde Firestore/Mock
+  /// 🔥 CORE: Descargar lotes desde Firestore
   /// Único método que toca external sources
-  Future<List<Map<String, dynamic>>> downloadBatch({bool isMultipleLots = false, List<String>? specificBatches}) async { // CAMBIO
+  Future<List<Map<String, dynamic>>> downloadBatch({bool isMultipleLots = false, List<String>? specificBatches}) async {
     try {
       print('📥 Descargando lote desde mock (luego firestore)...');
 
@@ -32,7 +32,7 @@ class FirestoreClient {
       final querySnapshot = await FirebaseFirestore.instance
         .collection('eventos_lotes')
         .orderBy('metadata.fecha_subida', descending: true)
-        .limit(isMultipleLots ? 10 : 1)
+        .limit(isMultipleLots ? 10 : 5)
         .get();
 
       if (querySnapshot.docs.isEmpty) {
@@ -40,72 +40,44 @@ class FirestoreClient {
         return [];
       }
 
-      final latestBatch = querySnapshot.docs.first;
-      final batchData = latestBatch.data();
+      // Si se especifican lotes específicos, usar nuevo enfoque eficiente
+      if (specificBatches != null && specificBatches.isNotEmpty) {
+        print('🔦 Sync diario - descargando 5 lotes más recientes...');
 
-
-      print('🔍 Campos disponibles en batchData: ${batchData.keys.toList()}');
-      print('🔍 Total eventos en metadata: ${batchData['metadata']?['total_eventos']}');
-
-      // Verificar si es un lote nuevo (solo para 1 lote)
-      if (!isMultipleLots) {
         final currentBatchVersion = await _getCurrentBatchVersion();
-        final newBatchVersion = batchData['metadata']?['nombre_lote'] as String? ?? 'unknown';
-        final totalEventsInDB = await _eventRepository.getTotalEvents();
 
-        if (currentBatchVersion == newBatchVersion && totalEventsInDB > 0) {
-          print('📄 Mismo lote, no hay actualizaciones');
+        // Filtrar solo lotes nuevos
+        final newBatches = querySnapshot.docs.where((doc) {
+          final batchName = doc.data()['metadata']?['nombre_lote'] as String? ?? '';
+          return batchName.compareTo(currentBatchVersion) > 0;
+        }).toList();
+
+        if (newBatches.isEmpty) {
+          print('📄 No hay lotes nuevos disponibles');
           return [];
         }
-      }
-// Extraer eventos del lote
-      final baseEvents = (batchData['eventos'] as List<dynamic>?)
-          ?.map((e) => Map<String, dynamic>.from(e as Map))
-          .toList() ?? [];
 
-      // NUEVO: Si se especifican lotes específicos, descargar cada uno
-      if (specificBatches != null && specificBatches.isNotEmpty) {
-        print('📦 Descargando ${specificBatches.length} lotes específicos: ${specificBatches.take(3).join(", ")}...');
+        // Procesar eventos de todos los lotes nuevos
+        final allEvents = _getAllEventsFromDocs(newBatches);
 
-        final allEvents = <Map<String, dynamic>>[];
+        // Actualizar con el más reciente
+        final latestBatchVersion = newBatches.first.data()['metadata']?['nombre_lote'] as String? ?? 'unknown';
+        await _eventRepository.updateSyncInfo(
+          batchVersion: latestBatchVersion,
+          totalEvents: allEvents.length,
+        );
 
-        for (final batchName in specificBatches) {
-          final querySnapshot = await FirebaseFirestore.instance
-              .collection('eventos_lotes')
-              .where('metadata.nombre_lote', isEqualTo: batchName)
-              .limit(1)
-              .get();
-
-          if (querySnapshot.docs.isNotEmpty) {
-            final batchData = querySnapshot.docs.first.data();
-            final batchEvents = (batchData['eventos'] as List<dynamic>?)
-                ?.map((e) => Map<String, dynamic>.from(e as Map))
-                .toList() ?? [];
-            allEvents.addAll(batchEvents);
-            print('✅ Lote $batchName: ${batchEvents.length} eventos');
-          } else {
-            print('⚠️ Lote $batchName no encontrado');
-          }
-        }
-
-        // Actualizar batch_version al primero de la lista (más reciente)
-        if (specificBatches.isNotEmpty) {
-          await _eventRepository.updateSyncInfo(
-            batchVersion: specificBatches.first,
-            totalEvents: allEvents.length,
-          );
-        }
-
-        print('📦 Total descargado: ${allEvents.length} eventos de ${specificBatches.length} lotes');
+        print('✅ Total descargado: ${allEvents.length} eventos de ${newBatches.length} lotes nuevos');
         return allEvents;
       }
 
-// 🎯 USAR EVENTOS REALES DE FIRESTORE
-      final events = baseEvents;
-      print('📦 Descargados ${events.length} eventos');
 
-      // Actualizar versión del lote
-      final newBatchVersion = batchData['metadata']?['nombre_lote'] as String? ?? 'unknown';
+// 🎯 PRIMERA INSTALACIÓN - Procesar todos los lotes descargados
+      final events = _getAllEventsFromDocs(querySnapshot.docs);
+      print('🔦 Primera instalación: ${events.length} eventos de ${querySnapshot.docs.length} lotes');
+
+      // Actualizar versión del lote más reciente
+      final newBatchVersion = querySnapshot.docs.first.data()['metadata']?['nombre_lote'] as String? ?? 'multiple';
       await _eventRepository.updateSyncInfo(
         batchVersion: newBatchVersion,
         totalEvents: events.length,
@@ -118,7 +90,17 @@ class FirestoreClient {
       rethrow;
     }
   }
-
+  List<Map<String, dynamic>> _getAllEventsFromDocs(List<QueryDocumentSnapshot> docs) {
+    final allEvents = <Map<String, dynamic>>[];
+    for (final doc in docs) {
+      final batchData = doc.data() as Map<String, dynamic>;
+      final eventos = (batchData['eventos'] as List<dynamic>?)
+          ?.map((e) => Map<String, dynamic>.from(e as Map))
+          .toList() ?? [];
+      allEvents.addAll(eventos);
+    }
+    return allEvents;
+  }
   // ========== SYNC TIMING LOGIC ==========
 
   /// 🕐 Verificar si necesita sincronización (1 AM logic + ventana 00:00-01:00)
@@ -167,30 +149,7 @@ class FirestoreClient {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
   }
-  /// 📋 Obtener lista de lotes disponibles desde servidor // NUEVO
-  Future<List<String>> getAvailableBatches() async { // NUEVO
-    try { // NUEVO
-      print('📋 Obteniendo lista de lotes disponibles...'); // NUEVO
 
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('eventos_lotes')
-          .orderBy('metadata.fecha_subida', descending: true)
-          .limit(20)  // ← Solo traer últimos 20 lotes
-          .get();
-
-      final availableBatches = querySnapshot.docs
-          .map((doc) => doc.data()['metadata']['nombre_lote'] as String)  // ✅ CORRECTO
-          .toList();
-  // NUEVO
-
-      print('📋 Lotes disponibles: ${availableBatches.length}'); // NUEVO
-      return availableBatches; // NUEVO
-
-    } catch (e) { // NUEVO
-      print('❌ Error obteniendo lista de lotes: $e'); // NUEVO
-      return []; // NUEVO
-    } // NUEVO
-  } // NUEVO
   // ========== UTILIDADES INTERNAS ==========
 
   /// Obtener versión actual del lote
