@@ -87,9 +87,6 @@ class _AppContent extends StatefulWidget {
 class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
   bool _isInitialized = false;
 
-  // 🆕 NUEVO: Estado para primera instalación
-  bool _isFirstInstallCompleted = false;
-  bool _isFirstInstallRunning = false;
 
   @override
   void initState() {
@@ -101,43 +98,19 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
     });
   }
 
-  // 🆕 NUEVO: Método principal de inicialización con FirstInstallService
   Future<void> _initializeApp() async {
     try {
-      // 🆕 PASO 1: Verificar si necesita primera instalación
+      // Solo verificar flag permanente - sin tracking manual
       final firstInstallService = FirstInstallService();
       final needsFirstInstall = await firstInstallService.needsFirstInstall();
 
       if (needsFirstInstall) {
         print('🚀 Primera instalación detectada - ejecutando FirstInstallService...');
-        setState(() {
-          _isFirstInstallRunning = true;
-        });
-
-        // 🆕 Ejecutar primera instalación completa
-        final result = await firstInstallService.performFirstInstall();
-
-        if (result.success) {
-          print('✅ Primera instalación completada exitosamente');
-          setState(() {
-            _isFirstInstallCompleted = true;
-            _isFirstInstallRunning = false;
-          });
-        } else {
-          print('❌ Primera instalación falló: ${result.error}');
-          setState(() {
-            _isFirstInstallRunning = false;
-          });
-          // Continuar con flujo normal aunque haya fallado
-        }
-      } else {
-        print('✅ Primera instalación ya completada previamente');
-        setState(() {
-          _isFirstInstallCompleted = true;
-        });
+        // Ejecutar y olvidar - FirstInstallService maneja todo
+        await firstInstallService.performFirstInstall();
       }
 
-      // 🆕 PASO 2: Inicialización normal (como siempre)
+      // Inicialización normal unificada
       await _performNormalInitialization();
 
     } catch (e) {
@@ -208,62 +181,10 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    // 🆕 NUEVO: Mostrar loading específico durante primera instalación
-    if (_isFirstInstallRunning) {
-      return MaterialApp(
-        home: Scaffold(
-          backgroundColor: Colors.blueGrey[50],
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
-                ),
-                SizedBox(height: 24),
-                Text(
-                  '🎭 Configurando eventos de Córdoba...',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.deepPurple[700],
-                  ),
-                ),
-                SizedBox(height: 12),
-                Text(
-                  'Descargando contenido inicial',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        debugShowCheckedModeBanner: false,
-      );
-    }
-
-    // 🆕 NUEVO: Loading normal para el resto de la inicialización
     if (!_isInitialized) {
       return MaterialApp(
         home: Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                if (_isFirstInstallCompleted) ...[
-                  SizedBox(height: 16),
-                  Text(
-                    '✅ Configuración completada',
-                    style: TextStyle(color: Colors.green[700]),
-                  ),
-                ]
-              ],
-            ),
-          ),
+          body: Center(child: CircularProgressIndicator()),
         ),
         debugShowCheckedModeBanner: false,
       );
