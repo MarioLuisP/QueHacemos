@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:quehacemos_cba/src/providers/simple_home_provider.dart';
 import './../utils/dimens.dart';
 import './../utils/colors.dart';
+import '../services/notification_service.dart';
+import '../models/user_preferences.dart';
 // 🔥 IMPORTS SOLO PARA DESARROLLADOR - ELIMINAR EN PRODUCCIÓN
 import '../data/repositories/event_repository.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -86,76 +88,63 @@ class SettingsPage extends StatelessWidget {
               ),
 
 // ========== CARD 1.5: NOTIFICACIONES ==========
-              const SizedBox(height: AppDimens.paddingMedium),
-              Card(
-                elevation: AppDimens.cardElevation,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppDimens.borderRadius),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppDimens.paddingMedium),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '🔔 Notificaciones',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: AppDimens.paddingMedium),
-                      FutureBuilder<Map<String, dynamic>>(
-                        future: _getNotificationStatus(),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) {
-                            return const CircularProgressIndicator();
-                          }
-
-                          final status = snapshot.data!;
-                          final isEnabled = status['enabled'] as bool;
-                          final statusText = status['text'] as String;
-                          final statusIcon = status['icon'] as String;
-                          final buttonText = status['buttonText'] as String;
-                          final buttonEnabled = status['buttonEnabled'] as bool;
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(statusIcon, style: const TextStyle(fontSize: 20)),
-                                  const SizedBox(width: 8),
-                                  Text(statusText, style: Theme.of(context).textTheme.bodyMedium),
-                                ],
-                              ),
-                              const SizedBox(height: AppDimens.paddingSmall),
-                              Text(
-                                'Recibí recordatorios de tus eventos favoritos cada día',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                                ),
-                              ),
-                              const SizedBox(height: AppDimens.paddingMedium),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: buttonEnabled ? () => _handleNotificationAction(context) : null,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: isEnabled
-                                        ? Theme.of(context).colorScheme.surfaceVariant
-                                        : Theme.of(context).colorScheme.primary,
-                                  ),
-                                  child: Text(buttonText),
-                                ),
-                              ),
-                            ],
+          const SizedBox(height: AppDimens.paddingMedium),
+          Card(
+            elevation: AppDimens.cardElevation,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppDimens.borderRadius),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppDimens.paddingMedium),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '🔔 Notificaciones',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: AppDimens.paddingMedium),
+                  Builder(
+                    builder: (context) {
+                      return FutureBuilder<bool>(
+                        future: UserPreferences.getNotificationsReady(),
+                        builder: (context, snap) {
+                          final ready = snap.data ?? false;
+                          return SwitchListTile(
+                            title: const Text('Notificaciones diarias'),
+                            subtitle: const Text('Recordatorios de tus favoritos'),
+                            value: ready,
+                            onChanged: (value) async {
+                              if (value) {
+                                final android = NotificationService.resolveAndroid();
+                                bool ok = true;
+                                if (android != null) {
+                                  ok = await android.requestNotificationsPermission() ?? false;
+                                }
+                                if (ok) {
+                                  await NotificationService.initialize();
+                                  await UserPreferences.setNotificationsReady(true);
+                                  DailyTaskManager().initialize();
+                                }
+                              } else {
+                                await Workmanager().cancelAll();
+                                await UserPreferences.setNotificationsReady(false);
+                              }
+                              (context as Element).markNeedsBuild();
+                            },
                           );
                         },
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                ),
+                ],
               ),
+            ),
+          ),
+
 
               // ========== CARD 2: CATEGORÍAS ==========
               const SizedBox(height: AppDimens.paddingMedium),

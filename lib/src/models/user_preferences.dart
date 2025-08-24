@@ -59,5 +59,14 @@ class UserPreferences {
     final prefs = await SharedPreferences.getInstance();       // NUEVO: instancia SharedPrefs
     await prefs.setInt('favorite_cleanup_days', days);         // NUEVO: guardar valor
   }
+  static Future<bool> getNotificationsReady() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('notifications_ready') ?? false;
+  }
+
+  static Future<void> setNotificationsReady(bool ready) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_ready', ready);
+  }
 
 }

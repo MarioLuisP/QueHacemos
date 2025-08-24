@@ -1,3 +1,5 @@
+///notification_service.dart
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:app_badge_plus/app_badge_plus.dart';
@@ -8,6 +10,12 @@ import 'package:flutter/material.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  static AndroidFlutterLocalNotificationsPlugin? resolveAndroid() {
+    if (Platform.isAndroid) {
+      return _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    }
+    return null;
+  }
   static bool _initialized = false;
 
   /// Inicializar el servicio de notificaciones

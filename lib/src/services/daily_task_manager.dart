@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import '../sync/sync_service.dart';
 import '../providers/favorites_provider.dart';
-
+import '../models/user_preferences.dart';
 // ========== TASK TYPES ENUM ==========
 enum TaskType {
   sync('daily-sync', 'last_sync_timestamp', 1, 0, 6),           // 1:00 AM, recovery después 6:00 AM
@@ -99,7 +99,11 @@ class DailyTaskManager {
       // Inicializar WorkManager
       await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
       await Future.delayed(Duration(milliseconds: 500));
-
+      final ready = await UserPreferences.getNotificationsReady();
+      if (!ready) {
+        print('🚫 Notificaciones desactivadas por usuario');
+        return;
+      }
       // Programar tareas
       await _scheduleAllTasks();
 
