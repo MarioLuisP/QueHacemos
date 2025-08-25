@@ -39,12 +39,6 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
-// Fix para Android 13+ - Solicitar permisos explícitamente
-    if (Platform.isAndroid) {
-      final androidImplementation = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      await androidImplementation?.requestNotificationsPermission();
-    }
-
     // Cleanup inteligente: limpiar badge si es nuevo día
     await _cleanupBadgeIfNewDay();
 

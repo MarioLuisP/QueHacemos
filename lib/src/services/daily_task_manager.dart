@@ -98,7 +98,6 @@ class DailyTaskManager {
     try {
       // Inicializar WorkManager
       await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
-      await Future.delayed(Duration(milliseconds: 500));
       final ready = await UserPreferences.getNotificationsReady();
       if (!ready) {
         print('🚫 Notificaciones desactivadas por usuario');

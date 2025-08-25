@@ -115,7 +115,9 @@ class SettingsPage extends StatelessWidget {
                           final ready = snap.data ?? false;
                           return SwitchListTile(
                             title: const Text('Notificaciones diarias'),
-                            subtitle: const Text('Recordatorios de tus favoritos'),
+                            subtitle: Text(ready
+                                ? '✅ Notificaciones activadas'
+                                : 'Recordatorios de tus favoritos'),  // ← ESTA LÍNEA
                             value: ready,
                             onChanged: (value) async {
                               if (value) {
@@ -130,8 +132,13 @@ class SettingsPage extends StatelessWidget {
                                   DailyTaskManager().initialize();
                                 }
                               } else {
+                                print('Desactivando notificaciones...');
                                 await Workmanager().cancelAll();
+                                print('WorkManager cancelado');
                                 await UserPreferences.setNotificationsReady(false);
+                                print('Flag seteado a false');
+                                final check = await UserPreferences.getNotificationsReady();
+                                print('Verificación: flag = $check');
                               }
                               (context as Element).markNeedsBuild();
                             },

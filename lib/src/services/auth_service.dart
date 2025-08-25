@@ -67,7 +67,7 @@ class AuthService {
 
 // NUEVO: Notificación de bienvenida
       await NotificationsProvider.instance.addNotification( // NUEVO
-        title: '🎈 ¡Ya estás dentro!', // NUEVO
+        title: '🤗 ¡Ya estás dentro!', // NUEVO
         message: 'Bienvenido ${result.user?.displayName ?? result.user?.email}', // NUEVO
         type: 'login_success', // NUEVO
       ); // NUEVO
@@ -132,7 +132,7 @@ class AuthService {
 
       print('✅ Apple Sign-In exitoso: ${result.user?.displayName ?? result.user?.email}');
       await NotificationsProvider.instance.addNotification( // NUEVO
-        title: '🎈 ¡Ya estás dentro!', // NUEVO
+        title: '🤗 ¡Ya estás dentro!', // NUEVO
         message: 'Bienvenido ${result.user?.displayName ?? result.user?.email}', // NUEVO
         type: 'login_success', // NUEVO
       );
