@@ -371,6 +371,21 @@ class SettingsPage extends StatelessWidget {
                           ),
                         ],
                       ),
+                      _buildDebugButton(
+                        context,
+                        'TEST NOTIFIC WM (+2MIN)',           // ← Cambio 1
+                        '🧪 Programar one-off notifications en WorkManager',  // ← Cambio 2
+                        Colors.purple,
+                            () => _testNotificationsWorkManager(context),  // ← Cambio 3
+                      ),
+
+                      _buildDebugButton(
+                        context,
+                        'MARCAR NOTIFIC VENCIDA',            // ← Cambio 1
+                        '⏰ Setear timestamp -25h para forzar recovery',
+                        Colors.teal,
+                            () => _markNotificationsExpired(context),  // ← Cambio 2
+                      ),
                       const SizedBox(height: AppDimens.paddingSmall),
                       _buildDebugButton(
                         context,
@@ -1035,6 +1050,19 @@ class SettingsPage extends StatelessWidget {
       );
     }
   }
+    Future<void> _testNotificationsWorkManager(BuildContext context) async {
+      await Workmanager().registerOneOffTask(
+        'test-notifications-wm',
+        'daily-notifications',  // ← Solo cambiar este string
+        initialDelay: const Duration(minutes: 2),
+      );
+      // Resto igual
+    }
+
+    Future<void> _markNotificationsExpired(BuildContext context) async {
+      await DailyTaskManager().markTaskAsExpired(TaskType.notifications);  // ← Solo cambiar TaskType
+      // Resto igual
+    }
 // 🔥 FIN MÉTODOS DESARROLLADOR - ELIMINAR HASTA AQUÍ 🔥
 }
 
