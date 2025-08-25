@@ -12,8 +12,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/daily_task_manager.dart';
 import 'package:workmanager/workmanager.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  _SettingsPageState createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  Future<bool>? _notificationsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationsFuture = UserPreferences.getNotificationsReady();
+  }
   static const Map<String, Map<String, String>> _settingsUiDisplay = {
     'musica': {'label': 'Música', 'emoji': '🎶'},
     'teatro': {'label': 'Teatro', 'emoji': '🎭'},
@@ -110,16 +123,18 @@ class SettingsPage extends StatelessWidget {
                   Builder(
                     builder: (context) {
                       return FutureBuilder<bool>(
-                        future: UserPreferences.getNotificationsReady(),
+                        future: _notificationsFuture,
                         builder: (context, snap) {
+                          print('FutureBuilder - hasData: ${snap.hasData}, data: ${snap.data}, error: ${snap.error}');
                           final ready = snap.data ?? false;
                           return SwitchListTile(
                             title: const Text('Notificaciones diarias'),
                             subtitle: Text(ready
                                 ? '✅ Notificaciones activadas'
-                                : 'Recordatorios de tus favoritos'),  // ← ESTA LÍNEA
+                                : 'Recordatorios Desactivados'),  // ← ESTA LÍNEA
                             value: ready,
                             onChanged: (value) async {
+                              print('SWITCH TOCADO - value: $value');
                               if (value) {
                                 final android = NotificationService.resolveAndroid();
                                 bool ok = true;
@@ -139,8 +154,10 @@ class SettingsPage extends StatelessWidget {
                                 print('Flag seteado a false');
                                 final check = await UserPreferences.getNotificationsReady();
                                 print('Verificación: flag = $check');
-                              }
-                              (context as Element).markNeedsBuild();
+                                }
+                                setState(() {
+                                  _notificationsFuture = UserPreferences.getNotificationsReady();
+                                });
                             },
                           );
                         },
