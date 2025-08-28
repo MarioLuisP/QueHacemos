@@ -66,6 +66,7 @@ Future<bool> _executeWorkManagerTask(TaskType taskType) async {
 }
 
 /// ⚡ Ejecutar task específico según tipo
+@pragma('vm:entry-point')
 Future<bool> _performTask(TaskType taskType) async {
   switch (taskType) {
     case TaskType.sync:

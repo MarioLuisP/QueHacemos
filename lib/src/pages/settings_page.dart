@@ -1074,19 +1074,59 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     }
   }
-    Future<void> _testNotificationsWorkManager(BuildContext context) async {
+  Future<void> _testNotificationsWorkManager(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🔔 Programando test de notificaciones en +2min...')),
+      );
+
       await Workmanager().registerOneOffTask(
         'test-notifications-wm',
-        'daily-notifications',  // ← Solo cambiar este string
+        'daily-notifications',
         initialDelay: const Duration(minutes: 2),
       );
-      // Resto igual
-    }
 
-    Future<void> _markNotificationsExpired(BuildContext context) async {
-      await DailyTaskManager().markTaskAsExpired(TaskType.notifications);  // ← Solo cambiar TaskType
-      // Resto igual
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⏰ Test de notificaciones programado - Ejecutará en 2 minutos'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+
+      print('🔔 TEST WM: One-off de notificaciones programado para +2min');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error programando test de notificaciones: $e')),
+      );
+      print('❌ ERROR TEST NOTIFICATIONS WM: $e');
     }
+  }
+
+
+  Future<void> _markNotificationsExpired(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⏳ Marcando notificaciones como vencidas...')),
+      );
+
+      await DailyTaskManager().markTaskAsExpired(TaskType.notifications);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Notificaciones marcadas como vencidas - Mata app y abre para probar recovery'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+
+      print('✅ EXPIRED: Notificaciones marcadas como vencidas');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error marcando notificaciones vencidas: $e')),
+      );
+      print('❌ ERROR EXPIRED NOTIFICATIONS: $e');
+    }
+  }
+
 // 🔥 FIN MÉTODOS DESARROLLADOR - ELIMINAR HASTA AQUÍ 🔥
 }
 
