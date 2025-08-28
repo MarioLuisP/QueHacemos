@@ -19,31 +19,42 @@ class NotificationService {
   static bool _initialized = false;
 
   /// Inicializar el servicio de notificaciones
-  static Future<void> initialize() async {
-    if (_initialized) return;
+  static Future<bool> initialize() async {
+    if (_initialized) return true;
 
-    const androidSettings = AndroidInitializationSettings('@drawable/ic_notification');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+    try {
+      const androidSettings = AndroidInitializationSettings('@drawable/ic_notification');
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
 
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
+      const initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
 
-    await _notifications.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    );
+      final success = await _notifications.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: _onNotificationTapped,
+      );
 
-    // Cleanup inteligente: limpiar badge si es nuevo día
-    await _cleanupBadgeIfNewDay();
-
-    _initialized = true;
-    print('🔔 NotificationService inicializado');
+      if (success == true) {
+        await _cleanupBadgeIfNewDay();
+        _initialized = true;
+        print('🔔 NotificationService inicializado correctamente');
+        return true;
+      } else {
+        _initialized = false;
+        print('❌ NotificationService falló al inicializar');
+        return false;
+      }
+    } catch (e) {
+      _initialized = false;
+      print('❌ Error inicializando NotificationService: $e');
+      return false;
+    }
   }
 
   /// Callback cuando usuario toca una notificación
@@ -59,7 +70,7 @@ class NotificationService {
     required String message,
     String? payload,
   }) async {
-    await initialize();
+    if (!_initialized) return;
 
     const androidDetails = AndroidNotificationDetails(
       'general',
@@ -89,7 +100,7 @@ class NotificationService {
     required DateTime scheduledDate,
     String? payload,
   }) async {
-    await initialize();
+    if (!_initialized) return;
 
     const androidDetails = AndroidNotificationDetails(
       'reminders',

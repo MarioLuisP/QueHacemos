@@ -116,6 +116,85 @@ lib/src/
 │
 └── utils/ themes/ models/ # ✅ MANTENER TODO
 
+C:\Users\Mario\AndroidStudioProjects\QueHacemos\lib>tree /f /a
+Listado de rutas de carpetas
+El número de serie del volumen es C62D-0816
+C:.
+|   firebase_options.dart
+|   main.dart
+|
+\---src
++---cache
+|       cache_models.dart
+|       event_cache_service.dart
+|
++---data
+|   +---database
+|   |       database_helper.dart
+|   |
+|   \---repositories
+|           event_repository.dart
+|
++---mock
+|       mock_events.dart
+|
++---models
+|       user_preferences.dart
+|
++---navigation
+|       bottom_nav.dart
+|
++---pages
+|       calendar_page.dart
+|       explore_page.dart
+|       favorites_page.dart
+|       home_page.dart
+|       pages.dart
+|       settings_page.dart
+|
++---providers
+|       auth_provider.dart
+|       favorites_provider.dart
+|       notifications_provider.dart
+|       simple_home_provider.dart
+|
++---services
+|       auth_service.dart
+|       daily_task_manager.dart
+|       first_install_service.dart
+|       notification_service.dart
+|
++---sync
+|       firestore_client.dart
+|       sync_service.dart
+|
++---themes
+|       themes.dart
+|
++---utils
+|       colors.dart
+|       dimens.dart
+|       styles.dart
+|
+\---widgets
+|   contact_modal.dart
+|
++---app_bars
+|   |   main_app_bar.dart
+|   |
+|   \---components
+|           notifications_bell.dart
+|           user_avatar_mock.dart
+|
++---cards
+|       event_card_widget.dart
+|       event_detail_modal.dart
+|
+\---chips
+event_chip_widget.dart
+filter_chips_widget.dart
+
+
 
 $ flutter build apk --release --split-per-abi --target lib/src/main.dart
 

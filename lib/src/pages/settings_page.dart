@@ -142,9 +142,18 @@ class _SettingsPageState extends State<SettingsPage> {
                                   ok = await android.requestNotificationsPermission() ?? false;
                                 }
                                 if (ok) {
-                                  await NotificationService.initialize();
-                                  await UserPreferences.setNotificationsReady(true);
-                                  DailyTaskManager().initialize();
+                                  // Delay para Android 13+ en release
+                                  await Future.delayed(const Duration(milliseconds: 500));
+
+                                  final initialized = await NotificationService.initialize();
+                                  if (initialized) {
+                                    await UserPreferences.setNotificationsReady(true);
+                                    DailyTaskManager().initialize();
+                                    print('✅ Sistema de notificaciones activado');
+                                  } else {
+                                    print('❌ Fallo al inicializar notificaciones');
+                                    // No setear el flag si falló
+                                  }
                                 }
                               } else {
                                 print('Desactivando notificaciones...');

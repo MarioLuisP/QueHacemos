@@ -74,6 +74,11 @@ Future<bool> _performTask(TaskType taskType) async {
       return syncResult.success;
 
     case TaskType.notifications:
+      final ready = await UserPreferences.getNotificationsReady();
+      if (!ready) {
+        print('🔕 Notificaciones desactivadas - skip task');
+        return true;
+      }
       final favoritesProvider = FavoritesProvider();
       await favoritesProvider.scheduleNotificationsForToday();
       return true;
@@ -99,11 +104,7 @@ class DailyTaskManager {
     try {
       // Inicializar WorkManager
       await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
-      final ready = await UserPreferences.getNotificationsReady();
-      if (!ready) {
-        print('🚫 Notificaciones desactivadas por usuario');
-        return;
-      }
+
       // Programar tareas
       await _scheduleAllTasks();
 
