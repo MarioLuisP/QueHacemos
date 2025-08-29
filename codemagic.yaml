@@ -1,0 +1,23 @@
+workflows:
+  ios-simulator:
+    name: iOS Simulator Build
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Build iOS for simulator
+        script: flutter build ios --debug --simulator --no-codesign
+    artifacts:
+      - build/ios/iphonesimulator/Runner.app
+    publishing:
+      email:
+        recipients:
+          - tester.passalia@gmail.com
+        notify:
+          success: true
+          failure: false
