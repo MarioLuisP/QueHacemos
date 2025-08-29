@@ -5,8 +5,6 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:app_badge_plus/app_badge_plus.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
-
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
@@ -255,28 +253,25 @@ class NotificationService {
         print('📅 No hay eventos para $date, no se programa notificación');
         return;
       }
-
-      // Calcular horario óptimo
-      final notificationTime = calculateNotificationTime(date, events);
+      // Verificar si es recovery (hora actual >= 11:00)
       final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day, 11, 0);
-
-      // Verificar si debe ser notificación inmediata (eventos ≥12:00)
-      if (notificationTime.hour == 11 && notificationTime.minute == 0) {
-        // Notificación inmediata para eventos ≥12:00
+      if (now.hour >= 11) {
+        // Recovery: notificación inmediata
         final notificationId = "daily_$date".hashCode;
         final message = generateDailyMessage(events);
 
         await showNotification(
           id: notificationId,
-          title: '❤️ Favoritos de hoy ⭐',
+          title: '❤️ Favoritos de hoy ⭐' ,
           message: message,
           payload: 'daily_reminder:$date',
         );
 
-        print('✅ Notificación inmediata enviada para $date (eventos ≥12:00)');
+        print('âœ… Notificación inmediata (recovery) enviada para $date');
         return;
       }
+      // Calcular horario óptimo
+      final notificationTime = calculateNotificationTime(date, events);
 
       // Solo programar si es en el futuro (eventos <12:00)
       if (notificationTime.isBefore(now)) {
@@ -299,7 +294,7 @@ class NotificationService {
         payload: 'daily_reminder:$date',
       );
 
-      print('✅ Notificación programada para $date a las ${notificationTime.hour}:${notificationTime.minute.toString().padLeft(2, '0')} (eventos <12:00)');
+      print('✅ Notificación programada para $date a las ${notificationTime.hour}:${notificationTime.minute.toString().padLeft(2, '0')} (eventos');
 
     } catch (e) {
       print('❌ Error programando notificación diaria para $date: $e');
