@@ -79,8 +79,17 @@ Future<bool> _performTask(TaskType taskType) async {
         print('🔕 Notificaciones desactivadas - skip task');
         return true;
       }
+
+      final now = DateTime.now();
       final favoritesProvider = FavoritesProvider();
-      await favoritesProvider.scheduleNotificationsForToday();
+
+      if (now.hour >= 11) {
+        // Recovery: disparo inmediato
+        await favoritesProvider.sendImmediateNotificationForToday();
+      } else {
+        // Programación normal
+        await favoritesProvider.scheduleNotificationsForToday();
+      }
       return true;
   }
 }
@@ -204,7 +213,15 @@ class DailyTaskManager {
   /// 🔄 Verificar y ejecutar recovery para todas las tareas
   Future<void> _performRecoveryCheck() async {
     final now = DateTime.now();
+    /// debug
+    print('🔍 Recovery check: hora=${now.hour}, día=${_getTodayString()}');
 
+    for (final taskType in TaskType.values) {
+      final lastExec = await _getLastExecutionTimestamp(taskType);
+      final needs = await _needsExecutionToday(taskType);
+      print('🔍 ${taskType.workManagerId}: lastExec=$lastExec, needs=$needs');
+    }
+    ///debug
     for (final taskType in TaskType.values) {
       // Solo recovery si ya pasó la hora mínima
       if (now.hour >= taskType.recoveryMinHour && await _needsExecutionToday(taskType)) {

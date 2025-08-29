@@ -71,6 +71,41 @@ class FavoritesProvider with ChangeNotifier {
     }
   }
 
+  /// Enviar notificación inmediata para recovery (>11 AM)
+  Future<void> sendImmediateNotificationForToday() async {
+    try {
+      final favorites = await _repository.getAllFavorites();
+      if (favorites.isEmpty) return;
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+      final List<Map<String, dynamic>> todayFavorites = [];
+      for (final favorite in favorites) {
+        final dateStr = favorite['date']?.toString().split('T')[0];
+        if (dateStr != null && dateStr == todayStr) {
+          todayFavorites.add(favorite);
+        }
+      }
+
+      if (todayFavorites.isNotEmpty) {
+        final message = NotificationService.generateDailyMessage(todayFavorites);
+        await NotificationService.showNotification(
+          id: "daily_$todayStr".hashCode,
+          title: '❤️ Favoritos de hoy ⭐',
+          message: message,
+          payload: 'daily_reminder:$todayStr',
+        );
+        await NotificationService.setBadge();
+        print('📨 Recovery: Notificación inmediata enviada (${todayFavorites.length} eventos)');
+      }
+    } catch (e) {
+      print('❌ Error en recovery de notificaciones: $e');
+    }
+  }
+
+
   /// Cargar favoritos desde SQLite al startup
   Future<void> _loadFavoritesFromRepository() async {
     try {
