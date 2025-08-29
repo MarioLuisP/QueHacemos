@@ -1,2 +1,2 @@
 #include "Generated.xcconfig"
-        IOSDEPLOYMENTTARGET = 14.0
+        IOSDEPLOYMENTTARGET = 15.0
