@@ -23,3 +23,5 @@ workflows:
         script: flutter pub get
       - name: Build iOS for simulator
         script: flutter build ios --debug --simulator --no-codesign
+    artifacts:
+      - build/ios/iphonesimulator/Runner.app
