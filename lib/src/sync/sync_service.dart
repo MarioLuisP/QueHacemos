@@ -6,15 +6,21 @@ import '../data/database/database_helper.dart';
 import '../providers/notifications_provider.dart';
 import 'firestore_client.dart'; // 🔥 NUEVA DEPENDENCIA
 import 'package:shared_preferences/shared_preferences.dart';
+import '../providers/simple_home_provider.dart'; // 🔥 Para usar SimpleHomeProvider
 
 /// 🏗️ SYNC SERVICE LIMPIO - Solo CAPA 2 + Coordinación
 /// Responsabilidades: Processing, Cleanup, Notifications, Orchestration
 /// BLINDAJE: No puede tocar external sources - depende de FirestoreClient
 class SyncService {
+  SimpleHomeProvider? _homeProvider;
   static final SyncService _instance = SyncService._internal();
   factory SyncService() => _instance;
   SyncService._internal();
-
+  /// Inyectar el provider de UI para poder refrescar la cache después del sync
+  void setHomeProvider(SimpleHomeProvider provider) {
+    _homeProvider = provider;
+    print('🔗 SyncService: SimpleHomeProvider inyectado. Cache actual: ${_homeProvider?.eventCount ?? 0} eventos');
+  }
   // StreamController para notificar cuando termina sync
   static final StreamController<SyncResult> _syncCompleteController =
   StreamController<SyncResult>.broadcast();
@@ -78,7 +84,11 @@ class SyncService {
       final realNewEvents = events.length - cleanupResults.duplicatesRemoved;
       await _sendSyncNotifications(realNewEvents, cleanupResults);
       await _maintainNotificationSchedules();
-
+      // 🔁 Refrescar UI si hay nuevos eventos y el provider está inyectado
+      if (_homeProvider != null && events.isNotEmpty) {
+        print('🔁 SyncService: refrescando UI con ${events.length} nuevos eventos...');
+        _homeProvider!.refresh(); // ⚡ sin await → no bloquea el sync
+      }
       print('✅ Sincronización automática completada: ${events.length} eventos nuevos');
       final result = SyncResult.success(
         eventsAdded: events.length,
