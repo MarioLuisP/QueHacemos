@@ -50,8 +50,8 @@ class SyncService {
 
       if (events.isEmpty) {
         _notificationsProvider.addNotification(
-          title: 'âœ… Todo actualizado',
-          message: 'La app estÃ¡ al dÃ­a, no hay eventos nuevos',
+          title: '✅ Todo actualizado',
+          message: 'La app está al día, no hay eventos nuevos',
           type: 'sync_up_to_date',
         );
         return SyncResult.noNewData();

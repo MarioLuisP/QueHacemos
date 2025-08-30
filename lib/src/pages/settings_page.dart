@@ -20,7 +20,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  Future<bool>? _notificationsFuture;
+  late Future<bool> _notificationsFuture;
 
   @override
   void initState() {
@@ -133,6 +133,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 ? '✅ Notificaciones activadas'
                                 : 'Recordatorios Desactivados'),  // ← ESTA LÍNEA
                             value: ready,
+
                             onChanged: (value) async {
                               print('SWITCH TOCADO - value: $value');
                               if (value) {
@@ -142,9 +143,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                   ok = await android.requestNotificationsPermission() ?? false;
                                 }
                                 if (ok) {
-                                  // Delay para Android 13+ en release
-                                  await Future.delayed(const Duration(milliseconds: 500));
-
                                   final initialized = await NotificationService.initialize();
                                   if (initialized) {
                                     await UserPreferences.setNotificationsReady(true);
@@ -152,7 +150,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                     print('✅ Sistema de notificaciones activado');
                                   } else {
                                     print('❌ Fallo al inicializar notificaciones');
-                                    // No setear el flag si falló
                                   }
                                 }
                               } else {
@@ -163,10 +160,12 @@ class _SettingsPageState extends State<SettingsPage> {
                                 print('Flag seteado a false');
                                 final check = await UserPreferences.getNotificationsReady();
                                 print('Verificación: flag = $check');
-                                }
-                                setState(() {
-                                  _notificationsFuture = UserPreferences.getNotificationsReady();
-                                });
+                              }
+
+                              await Future.microtask(() {});
+                              setState(() {
+                                _notificationsFuture = UserPreferences.getNotificationsReady();
+                              });
                             },
                           );
                         },
