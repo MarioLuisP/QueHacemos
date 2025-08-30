@@ -17,6 +17,9 @@ import 'src/services/daily_task_manager.dart';
 import 'src/services/first_install_service.dart'; // 🆕 NUEVO IMPORT
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'src/sync/sync_service.dart';
+import 'src/models/user_preferences.dart';
+import 'src/services/notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'es_ES';
@@ -129,7 +132,12 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
     try {
       await simpleHomeProvider.initialize();
       await favoritesProvider.init();
-
+// Inicializar NotificationService si está configurado
+      final isNotificationsConfigured = await UserPreferences.getNotificationsReady();
+      if (isNotificationsConfigured) {
+        await NotificationService.initialize();
+        print('Notificaciones inicializadas - sistema listo');
+      }
       final dailyTaskManager = DailyTaskManager();
       await dailyTaskManager.initialize();
       // ⌛ REMOVER: DailyTaskManager().checkOnAppOpen();
