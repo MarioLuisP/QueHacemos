@@ -4,6 +4,7 @@ import 'package:quehacemos_cba/src/providers/simple_home_provider.dart';
 import './../utils/dimens.dart';
 import './../utils/colors.dart';
 import '../services/notification_service.dart';
+import '../widgets/notification_card_widget.dart';
 import '../models/user_preferences.dart';
 // 🔥 IMPORTS SOLO PARA DESARROLLADOR - ELIMINAR EN PRODUCCIÓN
 import '../data/repositories/event_repository.dart';
@@ -100,83 +101,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
 
-// ========== CARD 1.5: NOTIFICACIONES ==========
-          const SizedBox(height: AppDimens.paddingMedium),
-          Card(
-            elevation: AppDimens.cardElevation,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppDimens.borderRadius),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(AppDimens.paddingMedium),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '🔔 Notificaciones',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: AppDimens.paddingMedium),
-                  Builder(
-                    builder: (context) {
-                      return FutureBuilder<bool>(
-                        future: _notificationsFuture,
-                        builder: (context, snap) {
-                          print('FutureBuilder - hasData: ${snap.hasData}, data: ${snap.data}, error: ${snap.error}');
-                          final ready = snap.data ?? false;
-                          return SwitchListTile(
-                            title: const Text('Notificaciones diarias'),
-                            subtitle: Text(ready
-                                ? '✅ Notificaciones activadas'
-                                : 'Recordatorios Desactivados'),  // ← ESTA LÍNEA
-                            value: ready,
-
-                            onChanged: (value) async {
-                              print('SWITCH TOCADO - value: $value');
-                              if (value) {
-                                final android = NotificationService.resolveAndroid();
-                                bool ok = true;
-                                if (android != null) {
-                                  ok = await android.requestNotificationsPermission() ?? false;
-                                }
-                                if (ok) {
-                                  final initialized = await NotificationService.initialize();
-                                  if (initialized) {
-                                    await UserPreferences.setNotificationsReady(true);
-                                    DailyTaskManager().initialize();
-                                    print('✅ Sistema de notificaciones activado');
-                                  } else {
-                                    print('❌ Fallo al inicializar notificaciones');
-                                  }
-                                }
-                              } else {
-                                print('Desactivando notificaciones...');
-                                await Workmanager().cancelAll();
-                                print('WorkManager cancelado');
-                                await UserPreferences.setNotificationsReady(false);
-                                print('Flag seteado a false');
-                                final check = await UserPreferences.getNotificationsReady();
-                                print('Verificación: flag = $check');
-                              }
-
-                              await Future.microtask(() {});
-                              setState(() {
-                                _notificationsFuture = UserPreferences.getNotificationsReady();
-                              });
-                            },
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-
+              // ========== CARD 1.5: NOTIFICACIONES ==========
+              const SizedBox(height: AppDimens.paddingMedium),
+              const NotificationCard(),
 
               // ========== CARD 2: CATEGORÍAS ==========
               const SizedBox(height: AppDimens.paddingMedium),
