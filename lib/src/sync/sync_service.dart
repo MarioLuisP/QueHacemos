@@ -1,95 +1,90 @@
-// lib/src/sync/sync_service.dart
-
 import 'dart:async';
 import '../data/repositories/event_repository.dart';
 import '../data/database/database_helper.dart';
 import '../providers/notifications_provider.dart';
-import 'firestore_client.dart'; // 🔥 NUEVA DEPENDENCIA
+import 'firestore_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../providers/simple_home_provider.dart'; // 🔥 Para usar SimpleHomeProvider
+import '../providers/simple_home_provider.dart';
 
-/// 🏗️ SYNC SERVICE LIMPIO - Solo CAPA 2 + Coordinación
-/// Responsabilidades: Processing, Cleanup, Notifications, Orchestration
-/// BLINDAJE: No puede tocar external sources - depende de FirestoreClient
 class SyncService {
   SimpleHomeProvider? _homeProvider;
   static final SyncService _instance = SyncService._internal();
   factory SyncService() => _instance;
   SyncService._internal();
-  /// Inyectar el provider de UI para poder refrescar la cache después del sync
+
   void setHomeProvider(SimpleHomeProvider provider) {
     _homeProvider = provider;
-    print('🔗 SyncService: SimpleHomeProvider inyectado. Cache actual: ${_homeProvider?.eventCount ?? 0} eventos');
   }
-  // StreamController para notificar cuando termina sync
+
   static final StreamController<SyncResult> _syncCompleteController =
   StreamController<SyncResult>.broadcast();
 
-  // Stream público para escuchar completions de sync
   static Stream<SyncResult> get onSyncComplete => _syncCompleteController.stream;
 
   final EventRepository _eventRepository = EventRepository();
-  final FirestoreClient _firestoreClient = FirestoreClient(); // 🔥 CAPA 1 AISLADA
+  final FirestoreClient _firestoreClient = FirestoreClient();
   NotificationsProvider get _notificationsProvider => NotificationsProvider.instance;
 
-  // Flags para evitar múltiples sincronizaciones
   bool _isSyncing = false;
   static bool _globalSyncInProgress = false;
 
-  // ========== MÉTODOS PRINCIPALES DE SYNC ==========
-
-  /// 🔄 Sincronización automática diaria - Solo 1 lote
   Future<SyncResult> performAutoSync() async {
     if (_isSyncing) {
-      print('⏭️ Sincronización ya en progreso, omitiendo...');
       return SyncResult.notNeeded();
     }
 
-    // 🔥 USAR FIRESTORE CLIENT - Verificar timing
     if (!await _firestoreClient.shouldSync()) {
-      print('⏭️ Sincronización no necesaria aún');
       return SyncResult.notNeeded();
     }
-    print('🐛 DEBUG shouldSync: ${await _firestoreClient.shouldSync()}');
+
     _isSyncing = true;
     _globalSyncInProgress = true;
 
     try {
+      // Guardar batchVersion actual ANTES de descargar
+      final syncStatus = await _firestoreClient.getSyncStatus();
+      final currentBatchVersion = syncStatus['batchVersion'] as String?;
 
-      print('🔄 Iniciando sync diario - delegando filtrado a FirestoreClient...');
-
-      // Delegar toda la lógica al nuevo enfoque de FirestoreClient
       final events = await _firestoreClient.downloadDailyBatches();
 
+
       if (events.isEmpty) {
-        print('🔭 No hay eventos nuevos disponibles');
         _notificationsProvider.addNotification(
-          title: '✅ Todo actualizado',
-          message: 'La app está al día, no hay eventos nuevos',
+          title: 'âœ… Todo actualizado',
+          message: 'La app estÃ¡ al dÃ­a, no hay eventos nuevos',
           type: 'sync_up_to_date',
         );
         return SyncResult.noNewData();
       }
 
-      print('📦 Descargados ${events.length} eventos nuevos');
 
-      // Processing interno (CAPA 2)
       await _processEvents(events);
       final cleanupResults = await _performCleanup();
 
-      // Update timestamp via FirestoreClient
       await _firestoreClient.updateSyncTimestamp();
 
-      // Notifications y maintenance
-      final realNewEvents = events.length - cleanupResults.duplicatesRemoved;
-      await _sendSyncNotifications(realNewEvents, cleanupResults);
-      await _maintainNotificationSchedules();
-      // 🔁 Refrescar UI si hay nuevos eventos y el provider está inyectado
-      if (_homeProvider != null && events.isNotEmpty) {
-        print('🔁 SyncService: refrescando UI con ${events.length} nuevos eventos...');
-        _homeProvider!.refresh(); // ⚡ sin await → no bloquea el sync
+// Obtener batchVersion actualizado DESPUÉS de updateSyncTimestamp
+      final newBatchVersion = await _getNewBatchVersion();
+      final isSameBatch = currentBatchVersion != null &&
+          newBatchVersion != null &&
+          currentBatchVersion == newBatchVersion;
+
+      if (isSameBatch) {
+        _notificationsProvider.addNotification(
+          title: '✅ Todo actualizado',
+          message: 'La app está al día, no hay eventos nuevos',
+          type: 'sync_up_to_date',
+        );
+      } else {
+        final realNewEvents = events.length - cleanupResults.duplicatesRemoved;
+        await _sendSyncNotifications(realNewEvents, cleanupResults);
       }
-      print('✅ Sincronización automática completada: ${events.length} eventos nuevos');
+      await _maintainNotificationSchedules();
+
+      if (_homeProvider != null) {
+        _homeProvider!.refresh();
+      }
+
       final result = SyncResult.success(
         eventsAdded: events.length,
         eventsRemoved: cleanupResults.eventsRemoved,
@@ -99,9 +94,6 @@ class SyncService {
       return result;
 
     } catch (e) {
-      print('❌ Error en sincronización automática: $e');
-
-      // Notificar error en sync automático
       _notificationsProvider.addNotification(
         title: '⚠️ Error al actualizar contenido',
         message: 'Problema de conexión - usando contenido guardado',
@@ -114,59 +106,39 @@ class SyncService {
       _globalSyncInProgress = false;
     }
   }
-  /// 💪 Force sync para desarrollo - ejecuta sync automático
+
   Future<SyncResult> forceSync() async {
-    print('🔧 DEV: Force sync ejecutando sync automático...');
     return await performAutoSync();
   }
-  // ========== PROCESSING INTERNO (CAPA 2) ==========
 
-  /// ⚙️ Procesar eventos descargados (inserción masiva a SQLite)
   Future<void> _processEvents(List<Map<String, dynamic>> events) async {
-    print('⚙️ Agregando ${events.length} eventos nuevos...');
     await _eventRepository.insertEvents(events);
-    print('✅ ${events.length} eventos agregados a SQLite');
   }
 
-  /// 🧹 Realizar limpieza automática completa
   Future<CleanupResult> _performCleanup() async {
-    print('🧹 Realizando limpieza automática...');
-
     final cleanupStats = await _eventRepository.cleanOldEvents();
     final duplicatesRemoved = await _eventRepository.removeDuplicatesByCodes();
-
-    print('🗑️ Limpieza completada: ${cleanupStats['normalEvents']} eventos normales, ${cleanupStats['favoriteEvents']} favoritos, $duplicatesRemoved duplicados');
 
     return CleanupResult(
       eventsRemoved: cleanupStats['normalEvents']! + duplicatesRemoved,
       favoritesRemoved: cleanupStats['favoriteEvents']!,
-      duplicatesRemoved: duplicatesRemoved, // ← AGREGAR
+      duplicatesRemoved: duplicatesRemoved,
     );
   }
 
-  // ========== UTILIDADES PÚBLICAS ==========
-
-  /// 📊 Obtener información de sincronización para UI
   Future<Map<String, dynamic>> getSyncStatus() async {
-    // 🔥 DELEGAR A FIRESTORE CLIENT
     return await _firestoreClient.getSyncStatus();
   }
 
-  /// 🧹 Forzar limpieza manual (solo para debug/settings)
   Future<CleanupResult> forceCleanup() async {
     return await _performCleanup();
   }
 
-  /// 🔄 Reset completo (solo para debug)
   Future<void> resetSync() async {
     await _firestoreClient.resetSyncState();
     await _eventRepository.clearAllData();
-    print('🗑️ Sync completamente reseteado');
   }
 
-  // ========== NOTIFICACIONES (CAPA 3) ==========
-
-  /// 📱 Enviar notificaciones automáticas post-sincronización
   Future<void> _sendSyncNotifications(int newEventsCount, CleanupResult cleanupResults) async {
     try {
       if (newEventsCount > 0) {
@@ -193,22 +165,12 @@ class SyncService {
             type: 'cleanup',
           );
         }
-
-        print('📱 Notificaciones de sync enviadas: $newEventsCount eventos');
       }
-
-    } catch (e) {
-      print('⚠️ Error enviando notificaciones de sync: $e');
-    }
+    } catch (e) {}
   }
 
-  // ========== MAINTENANCE ==========
-
-  /// 🔔 Mantenimiento automático de recordatorios programados
   Future<void> _maintainNotificationSchedules() async {
     try {
-      print('🔔 Manteniendo recordatorios programados...');
-
       final pendingNotifications = await _eventRepository.getPendingScheduledNotifications();
 
       int updated = 0;
@@ -230,7 +192,6 @@ class SyncService {
         if (eventResults.isEmpty) {
           await _eventRepository.deleteNotification(notification['id'] as int);
           removed++;
-          print('🗑️ Recordatorio cancelado: evento $eventCode ya no existe');
           continue;
         }
 
@@ -240,8 +201,8 @@ class SyncService {
 
         if (notificationScheduled != null) {
           final newScheduledTime = _calculateScheduledTime(
-              currentEventDate,
-              notification['type'] as String
+            currentEventDate,
+            notification['type'] as String,
           );
 
           if (newScheduledTime != notificationScheduled) {
@@ -252,21 +213,12 @@ class SyncService {
               whereArgs: [notification['id']],
             );
             updated++;
-            print('📅 Recordatorio actualizado: $eventCode nueva fecha $newScheduledTime');
           }
         }
       }
-
-      if (updated > 0 || removed > 0) {
-        print('🔔 Mantenimiento completado: $updated actualizados, $removed removidos');
-      }
-
-    } catch (e) {
-      print('⚠️ Error en mantenimiento de recordatorios: $e');
-    }
+    } catch (e) {}
   }
 
-  /// 📅 Calcular scheduled_datetime basado en fecha de evento y tipo
   String? _calculateScheduledTime(String eventDate, String notificationType) {
     try {
       final eventDateTime = DateTime.parse(eventDate);
@@ -282,13 +234,14 @@ class SyncService {
           return null;
       }
     } catch (e) {
-      print('⚠️ Error calculando scheduled_time: $e');
       return null;
     }
   }
+  Future<String?> _getNewBatchVersion() async {
+    final syncStatus = await _firestoreClient.getSyncStatus();
+    return syncStatus['batchVersion'] as String?;
+  }
 }
-
-// ========== MODELOS DE RESULTADO ==========
 
 class SyncResult {
   final bool success;
@@ -311,13 +264,14 @@ class SyncResult {
     required int eventsAdded,
     required int eventsRemoved,
     required int favoritesRemoved,
-  }) => SyncResult._(
-    success: true,
-    eventsAdded: eventsAdded,
-    eventsRemoved: eventsRemoved,
-    favoritesRemoved: favoritesRemoved,
-    type: SyncResultType.success,
-  );
+  }) =>
+      SyncResult._(
+        success: true,
+        eventsAdded: eventsAdded,
+        eventsRemoved: eventsRemoved,
+        favoritesRemoved: favoritesRemoved,
+        type: SyncResultType.success,
+      );
 
   factory SyncResult.notNeeded() => SyncResult._(
     success: true,
@@ -341,11 +295,11 @@ enum SyncResultType { success, notNeeded, noNewData, error }
 class CleanupResult {
   final int eventsRemoved;
   final int favoritesRemoved;
-  final int duplicatesRemoved; // ← AGREGAR
+  final int duplicatesRemoved;
 
   CleanupResult({
     required this.eventsRemoved,
     required this.favoritesRemoved,
-    required this.duplicatesRemoved, // ← AGREGAR
+    required this.duplicatesRemoved,
   });
 }

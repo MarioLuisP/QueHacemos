@@ -1,5 +1,3 @@
-///notification_service.dart
-
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:app_badge_plus/app_badge_plus.dart';
@@ -16,7 +14,6 @@ class NotificationService {
   }
   static bool _initialized = false;
 
-  /// Inicializar el servicio de notificaciones
   static Future<bool> initialize() async {
     if (_initialized) return true;
 
@@ -41,27 +38,19 @@ class NotificationService {
       if (success == true) {
         await _cleanupBadgeIfNewDay();
         _initialized = true;
-        print('🔔 NotificationService inicializado correctamente');
         return true;
       } else {
         _initialized = false;
-        print('❌ NotificationService falló al inicializar');
         return false;
       }
     } catch (e) {
       _initialized = false;
-      print('❌ Error inicializando NotificationService: $e');
       return false;
     }
   }
 
-  /// Callback cuando usuario toca una notificación
-  static void _onNotificationTapped(NotificationResponse response) {
-    print('🔔 Notificación tocada: ${response.payload}');
-    // TODO: Navegar a detalle del evento si es necesario
-  }
+  static void _onNotificationTapped(NotificationResponse response) {}
 
-  /// Mostrar notificación inmediata (para campanita de favoritos)
   static Future<void> showNotification({
     required int id,
     required String title,
@@ -77,7 +66,7 @@ class NotificationService {
       importance: Importance.high,
       priority: Priority.high,
       icon: '@drawable/ic_notification',
-      color: Colors.orange,  // Esto sí funciona con const
+      color: Colors.orange,
     );
 
     const iosDetails = DarwinNotificationDetails();
@@ -90,7 +79,6 @@ class NotificationService {
     await _notifications.show(id, title, message, details, payload: payload);
   }
 
-  /// Programar notificación para fecha específica (método base)
   static Future<void> scheduleNotification({
     required int id,
     required String title,
@@ -127,27 +115,18 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
     );
-
-    print('⏰ Notificación programada: $title para ${scheduledDate.toString()}');
   }
 
-  /// Cancelar notificación específica
   static Future<void> cancelNotification(int id) async {
     await _notifications.cancel(id);
-    print('❌ Notificación cancelada: $id');
   }
 
-  // ========== NUEVO SISTEMA DE NOTIFICACIONES DIARIAS ==========
-
-  /// Calcular horario óptimo para notificación diaria
   static DateTime calculateNotificationTime(String date, List<Map<String, dynamic>> events) {
     if (events.isEmpty) {
-      // No hay eventos, usar horario base
       final targetDate = DateTime.parse(date);
       return DateTime(targetDate.year, targetDate.month, targetDate.day, 11, 0);
     }
 
-    // Encontrar el evento más temprano
     DateTime? earliestEvent;
     for (final event in events) {
       final eventDateStr = event['date'] ?? event['startTime'];
@@ -157,44 +136,37 @@ class NotificationService {
           if (earliestEvent == null || eventDateTime.isBefore(earliestEvent)) {
             earliestEvent = eventDateTime;
           }
-        } catch (e) {
-          print('❌ Error parseando fecha del evento: $e');
-        }
+        } catch (e) {}
       }
     }
 
     if (earliestEvent == null) {
-      // No se pudo parsear ningún evento, usar horario base
       final targetDate = DateTime.parse(date);
       return DateTime(targetDate.year, targetDate.month, targetDate.day, 11, 0);
     }
 
     final targetDate = DateTime.parse(date);
 
-    // NUEVA LÓGICA: Si evento más temprano es ≥ 12:00, notificar a las 11:00
     if (earliestEvent.hour >= 12) {
       return DateTime(targetDate.year, targetDate.month, targetDate.day, 11, 0);
     }
 
-    // Si evento es < 12:00, calcular 1 hora antes con límites
     final oneHourBefore = earliestEvent.subtract(const Duration(hours: 1));
     final minTime = DateTime(targetDate.year, targetDate.month, targetDate.day, 6, 0);
     final maxTime = DateTime(targetDate.year, targetDate.month, targetDate.day, 11, 0);
 
     if (oneHourBefore.isBefore(minTime)) {
-      return minTime; // 6:00 AM mínimo
+      return minTime;
     } else if (oneHourBefore.isAfter(maxTime)) {
-      return maxTime; // 11:00 AM máximo
+      return maxTime;
     } else {
-      return oneHourBefore; // Horario calculado
+      return oneHourBefore;
     }
   }
 
-  /// Generar mensaje inteligente para notificación diaria
   static String generateDailyMessage(List<Map<String, dynamic>> events) {
     if (events.isEmpty) return '';
 
-    // Ordenar eventos por hora
     final sortedEvents = List<Map<String, dynamic>>.from(events);
     sortedEvents.sort((a, b) {
       try {
@@ -226,7 +198,6 @@ class NotificationService {
     }
   }
 
-  /// Formatear hora del evento para el mensaje
   static String _formatEventTime(Map<String, dynamic> event) {
     try {
       final dateStr = event['date'] ?? event['startTime'];
@@ -246,148 +217,72 @@ class NotificationService {
     }
   }
 
-  /// Programar notificación diaria para una fecha específica
   static Future<void> scheduleDailyNotification(String date, List<Map<String, dynamic>> events) async {
     try {
-      if (events.isEmpty) {
-        print('📅 No hay eventos para $date, no se programa notificación');
-        return;
-      }
-      // Verificar si es recovery (hora actual >= 11:00)
+      if (events.isEmpty) return;
+
       final now = DateTime.now();
       if (now.hour >= 11) {
-        // Recovery: notificación inmediata
         final notificationId = "daily_$date".hashCode;
         final message = generateDailyMessage(events);
 
         await showNotification(
           id: notificationId,
-          title: '❤️ Favoritos de hoy ⭐' ,
+          title: '❤️ Favoritos de hoy ⭐',
           message: message,
           payload: 'daily_reminder:$date',
         );
-
-        print('âœ… Notificación inmediata (recovery) enviada para $date');
         return;
       }
-      // Calcular horario óptimo
+
       final notificationTime = calculateNotificationTime(date, events);
 
-      // Solo programar si es en el futuro (eventos <12:00)
-      if (notificationTime.isBefore(now)) {
-        print('⏰ Horario de notificación es pasado ($notificationTime), no se programa');
-        return;
-      }
+      if (notificationTime.isBefore(now)) return;
 
-      // Generar ID único para la fecha
       final notificationId = "daily_$date".hashCode;
-
-      // Generar mensaje
       final message = generateDailyMessage(events);
 
-      // Programar notificación
       await scheduleNotification(
         id: notificationId,
-        title: '❤️ Favoritos de hoy ⭐' ,
+        title: '❤️ Favoritos de hoy ⭐',
         message: message,
         scheduledDate: notificationTime,
         payload: 'daily_reminder:$date',
       );
-
-      print('✅ Notificación programada para $date a las ${notificationTime.hour}:${notificationTime.minute.toString().padLeft(2, '0')} (eventos');
-
-    } catch (e) {
-      print('❌ Error programando notificación diaria para $date: $e');
-    }
+    } catch (e) {}
   }
 
-  /// Cancelar notificación diaria para una fecha específica
   static Future<void> cancelDailyNotification(String date) async {
     try {
       final notificationId = "daily_$date".hashCode;
       await cancelNotification(notificationId);
-      print('✅ Notificación diaria cancelada para $date');
-    } catch (e) {
-      print('❌ Error cancelando notificación diaria para $date: $e');
-    }
+    } catch (e) {}
   }
 
-  // ========== GESTIÓN DE BADGE ==========
-
-  /// Establecer badge rojo (sin número)
   static Future<void> setBadge() async {
     try {
-      // Cleanup preventivo: verificar si debe limpiarse antes de establecer
       await _cleanupBadgeIfNewDay();
-
-      await AppBadgePlus.updateBadge(1); // 1 = badge rojo visible
-      await _saveBadgeTimestamp(); // Guardar cuándo se estableció
-      print('🔴 Badge establecido');
-    } catch (e) {
-      print('❌ Error estableciendo badge: $e');
-    }
+      await AppBadgePlus.updateBadge(1);
+      await _saveBadgeTimestamp();
+    } catch (e) {}
   }
 
-  /// Limpiar badge
   static Future<void> clearBadge() async {
     try {
-      await AppBadgePlus.updateBadge(0); // 0 = sin badge
-      await _clearBadgeTimestamp(); // Limpiar timestamp
-      print('⚪ Badge limpiado');
-    } catch (e) {
-      print('❌ Error limpiando badge: $e');
-    }
+      await AppBadgePlus.updateBadge(0);
+      await _clearBadgeTimestamp();
+    } catch (e) {}
   }
 
-  /// Limpiar badge si es un nuevo día (sin background tasks)
   static Future<void> _cleanupBadgeIfNewDay() async {
     try {
-      // TODO: Implementar lógica de verificación de nuevo día
-      // Por ahora, cleanup simple en startup
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-
-      // Si es startup del día, limpiar badge
-      print('🧹 Cleanup badge para nuevo día: ${today.toString().split(' ')[0]}');
       await AppBadgePlus.updateBadge(0);
-
-    } catch (e) {
-      print('❌ Error en cleanup badge: $e');
-    }
+    } catch (e) {}
   }
 
-  /// Guardar timestamp cuando se estableció badge
-  static Future<void> _saveBadgeTimestamp() async {
-    // TODO: Implementar con SharedPreferences si es necesario
-    print('💾 Badge timestamp guardado');
-  }
+  static Future<void> _saveBadgeTimestamp() async {}
 
-  /// Limpiar timestamp de badge
-  static Future<void> _clearBadgeTimestamp() async {
-    // TODO: Implementar con SharedPreferences si es necesario
-    print('🗑️ Badge timestamp limpiado');
-  }
-
-
-
-  // ========== MÉTODOS OBSOLETOS (MANTENER TEMPORALMENTE PARA COMPATIBILITY) ==========
-
-  /// Programar los 3 recordatorios para un evento favorito
-  /// @deprecated - Usar scheduleDailyNotification en su lugar
-  static Future<void> scheduleFavoriteReminders({
-    required String eventId,
-    required Map<String, dynamic> eventDetails,
-  }) async {
-    print('⚠️ scheduleFavoriteReminders está deprecated - usar scheduleDailyNotification');
-    // Método mantenido para evitar breaking changes durante migración
-    // TODO: Remover después de migración completa
-  }
-
-  /// Cancelar todos los recordatorios de un evento favorito
-  /// @deprecated - Usar cancelDailyNotification en su lugar
-  static Future<void> cancelFavoriteReminders(String eventId) async {
-    print('⚠️ cancelFavoriteReminders está deprecated - usar cancelDailyNotification');
-    // Método mantenido para evitar breaking changes durante migración
-    // TODO: Remover después de migración completa
-  }
+  static Future<void> _clearBadgeTimestamp() async {}
 }
