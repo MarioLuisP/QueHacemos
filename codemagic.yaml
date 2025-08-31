@@ -25,3 +25,45 @@ workflows:
         script: flutter build ios --debug --simulator --no-codesign
     artifacts:
       - build/ios/iphonesimulator/Runner.app
+
+  ios-device:
+    name: iOS Device Build (7-day IPA)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      groups:
+        - firebase_config
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: development
+        bundle_identifier: com.quehacemos.quehacemosCba
+    scripts:
+      - name: Create .env file
+        script: |
+          cat > .env << EOF
+          FIREBASE_API_KEY=$FIREBASE_API_KEY
+          FIREBASE_APP_ID_IOS=$FIREBASE_APP_ID_IOS
+          FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID
+          FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID
+          FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET
+          EOF
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Build iOS for device
+        script: flutter build ios --release
+      - name: Create IPA
+        script: |
+          xcodebuild -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination generic/platform=iOS \
+            -archivePath build/ios/Runner.xcarchive \
+            archive
+          xcodebuild -exportArchive \
+            -archivePath build/ios/Runner.xcarchive \
+            -exportPath build/ios/ipa \
+            -exportOptionsPlist ios/ExportOptions.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
