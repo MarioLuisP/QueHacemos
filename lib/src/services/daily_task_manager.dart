@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
+import 'notification_service.dart';
 import '../sync/sync_service.dart';
+import 'dart:async';
 import '../providers/favorites_provider.dart';
 import '../models/user_preferences.dart';
 
@@ -60,6 +62,9 @@ Future<bool> _performTask(TaskType taskType) async {
       if (!ready) {
         return true;
       }
+
+      // Esperar a que NotificationService termine de inicializarse
+      await NotificationService.waitForInitialization();
 
       final now = DateTime.now();
       final favoritesProvider = FavoritesProvider();

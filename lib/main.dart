@@ -132,12 +132,15 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
     try {
       await simpleHomeProvider.initialize();
       await favoritesProvider.init();
-// Inicializar NotificationService si está configurado
-      final isNotificationsConfigured = await UserPreferences.getNotificationsReady();
-      if (isNotificationsConfigured) {
-        await NotificationService.initialize();
-        print('Notificaciones inicializadas - sistema listo');
-      }
+    // Programar inicialización de notificaciones DESPUÉS del primer frame
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final isConfigured = await UserPreferences.getNotificationsReady();
+        if (isConfigured) {
+          await NotificationService.initialize();
+          print('Notificaciones inicializadas en background - sistema listo');
+        }
+      });
+
       final dailyTaskManager = DailyTaskManager();
       await dailyTaskManager.initialize();
       // ⌛ REMOVER: DailyTaskManager().checkOnAppOpen();

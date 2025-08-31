@@ -122,8 +122,9 @@ El número de serie del volumen es C62D-0816
 C:.
 |   firebase_options.dart
 |   main.dart
-|R
-\---src
+|
+src>
+
 +---cache
 |       cache_models.dart
 |       event_cache_service.dart
@@ -162,6 +163,7 @@ C:.
 |       auth_service.dart
 |       daily_task_manager.dart
 |       first_install_service.dart
+|       notification_config_service.dart
 |       notification_service.dart
 |
 +---sync
@@ -178,6 +180,7 @@ C:.
 |
 \---widgets
 |   contact_modal.dart
+|   notification_card_widget.dart
 |
 +---app_bars
 |   |   main_app_bar.dart
@@ -191,6 +194,8 @@ C:.
 |       event_detail_modal.dart
 |
 \---chips
+event_chip_widget.dart
+filter_chips_widget.dart
 event_chip_widget.dart
 filter_chips_widget.dart
 

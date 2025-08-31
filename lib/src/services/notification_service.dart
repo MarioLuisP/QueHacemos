@@ -2,6 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:app_badge_plus/app_badge_plus.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 class NotificationService {
@@ -13,7 +14,8 @@ class NotificationService {
     return null;
   }
   static bool _initialized = false;
-
+  static Completer<void>? _initCompleter;
+  static bool get isInitialized => _initialized;
   static Future<bool> initialize() async {
     if (_initialized) return true;
 
@@ -38,6 +40,7 @@ class NotificationService {
       if (success == true) {
         await _cleanupBadgeIfNewDay();
         _initialized = true;
+        _initCompleter?.complete();
         return true;
       } else {
         _initialized = false;
@@ -45,6 +48,7 @@ class NotificationService {
       }
     } catch (e) {
       _initialized = false;
+      _initCompleter?.completeError(e);
       return false;
     }
   }
@@ -215,6 +219,12 @@ class NotificationService {
     } catch (e) {
       return '';
     }
+  }
+  static Future<void> waitForInitialization() {
+    if (_initialized) return Future.value();
+
+    _initCompleter ??= Completer<void>();
+    return _initCompleter!.future;
   }
 
   static Future<void> scheduleDailyNotification(String date, List<Map<String, dynamic>> events) async {
