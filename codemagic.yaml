@@ -27,7 +27,7 @@ workflows:
       - build/ios/iphonesimulator/Runner.app
 
   ios-device:
-    name: iOS Device Build (7-day IPA)
+    name: iOS Device Build (Free 7-day IPA)
     max_build_duration: 120
     instance_type: mac_mini_m2
     environment:
@@ -36,9 +36,6 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
-      ios_signing:
-        distribution_type: development
-        bundle_identifier: com.quehacemos.quehacemosCba
     scripts:
       - name: Create .env file
         script: |
