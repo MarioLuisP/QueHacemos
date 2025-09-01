@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'notification_service.dart';
 import '../sync/sync_service.dart';
-import 'dart:async';
 import '../providers/favorites_provider.dart';
 import '../models/user_preferences.dart';
 
@@ -104,7 +103,7 @@ class DailyTaskManager {
       _isInitialized = true; // Marcar como inicializado aunque falle
     }
   }
-
+// 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
   Future<void> _scheduleAllTasks() async {
     try {
       final prefs = await SharedPreferences.getInstance();

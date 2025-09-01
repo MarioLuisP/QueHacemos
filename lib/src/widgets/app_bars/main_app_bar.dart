@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../contact_modal.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/notifications_provider.dart';
 import 'components/notifications_bell.dart';
 
 class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -99,7 +98,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Calcular tamaño de fuente eficientemente
   double _getTitleFontSize(String title) {
     if (title.length > 20) return 20.0;
-    if (title.length > 15) return 17.0;
+    if (title.length > 15) return 19.0;
     return 22.0;
   }
 
@@ -173,7 +172,7 @@ class _ContactButtonSimple extends StatelessWidget {
           border: Border.all(color: color.withAlpha(77), width: 1),
         ),
         child: Icon(
-          Icons.add_circle_outline,
+          Icons.phone_forwarded,
           color: color,
           size: 18,
         ),

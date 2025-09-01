@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../cache/event_cache_service.dart';
 import '../cache/cache_models.dart';
 import '../utils/colors.dart';
-import '../sync/sync_service.dart';
 import 'favorites_provider.dart';  // AGREGAR ESTE IMPORT
 import '../data/repositories/event_repository.dart';
 

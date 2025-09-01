@@ -1,18 +1,16 @@
 // lib/src/cache/event_cache_service.dart
 
 import 'cache_models.dart';
-//import '../mock/mock_events.dart';
 import '../data/repositories/event_repository.dart';
 
 /// Servicio de cache en memoria - Corazón del sistema
-/// Maneja 203KB de eventos para scroll 90Hz
-/// CONSOLIDADO: Incluye funcionalidades migradas desde MemoryFilterService
+
 class EventCacheService {
   static final EventCacheService _instance = EventCacheService._internal();
   factory EventCacheService() => _instance;
   EventCacheService._internal();
 
-  // Cache en memoria (203KB max)
+  // Cache en memoria
   List<EventCacheItem> _cache = [];
   bool _isLoaded = false;
   DateTime? _lastLoadTime;
@@ -40,8 +38,6 @@ class EventCacheService {
       // TODO: En futuro será desde SQLite
       final repository = EventRepository();
       final mockData = await repository.getAllEvents();
-      // Por ahora: mock data
-      //final mockData = MockEvents.cacheEvents;
 
       // Convertir a EventCacheItem
       _cache = mockData.map((map) => EventCacheItem.fromMap(map, theme: theme)).toList();

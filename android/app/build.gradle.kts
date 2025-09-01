@@ -40,7 +40,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             // AGREGAR ESTAS LÍNEAS PARA DIAGNÓSTICO
             isMinifyEnabled = true     // Deshabilitar minification
-            isShrinkResources = false    // Deshabilitar shrinking
+            isShrinkResources = true    // Deshabilitar shrinking
         }
     }
 }

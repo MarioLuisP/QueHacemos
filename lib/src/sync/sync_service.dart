@@ -3,7 +3,6 @@ import '../data/repositories/event_repository.dart';
 import '../data/database/database_helper.dart';
 import '../providers/notifications_provider.dart';
 import 'firestore_client.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/simple_home_provider.dart';
 
 class SyncService {
