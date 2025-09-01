@@ -64,23 +64,26 @@ class FirstInstallService {
       // 2. Preparación técnica
       await _prepareTechnicalSetup();
 
-      // 3. Descarga con reintentos
-      final events = await _downloadInitialContent();
+      // 3. Descarga con reintentos (ahora retorna documentos completos)
+      final completeBatches = await _downloadInitialContent();
 
-      // 4. Procesamiento de datos
-      await _processInitialData(events);
+      // 4. Procesamiento de datos (ahora secuencial por lote)
+      await _processInitialData(completeBatches);
 
       // 5. Finalización exitosa
       await _markFirstInstallCompleted();
-      await _notifySuccess(events.length);
-      /// 📅 Marcar sync como recién hecho (evitar recovery inmediato)
-      Future<void> _setInitialSyncTimestamp() async {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('last_sync_timestamp', DateTime.now().toIso8601String());
-        print('⏰ Timestamp de sync inicial seteado');
-      }
+      await _setInitialSyncTimestamp(); // ← MOVIDO AQUÍ
+
+      // Contar total de eventos para notificación
+      final totalEvents = completeBatches.fold<int>(0, (sum, batch) {
+        final eventos = (batch['eventos'] as List<dynamic>?) ?? [];
+        return sum + eventos.length;
+      });
+
+      await _notifySuccess(totalEvents);
+
       print('🎉 Primera instalación completada exitosamente');
-      return FirstInstallResult.success(eventsDownloaded: events.length);
+      return FirstInstallResult.success(eventsDownloaded: totalEvents);
 
     } catch (e) {
       print('❌ Error en primera instalación: $e');
@@ -91,6 +94,12 @@ class FirstInstallService {
     }
   }
 
+  /// 📅 Marcar sync como recién hecho (evitar recovery inmediato)
+  Future<void> _setInitialSyncTimestamp() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_sync_timestamp', DateTime.now().toIso8601String());
+    print('⏰ Timestamp de sync inicial seteado');
+  }
   // ========== MÉTODOS INTERNOS ==========
 
   /// 🔧 Preparación técnica inicial
@@ -119,7 +128,7 @@ class FirstInstallService {
           throw Exception('No se encontraron eventos en el servidor');
         }
 
-        print('✅ Descarga exitosa: ${events.length} eventos');
+        print('✅ Descarga exitosa: ${events.length} lotes');
         return events;
 
       } catch (e) {
@@ -137,7 +146,7 @@ class FirstInstallService {
     throw Exception('Error inesperado en descarga');
   }
 
-  /// 📥 Descarga directa desde Firestore (movido de FirestoreClient)
+  /// 📥 Descarga directa desde Firestore (retorna documentos completos)
   Future<List<Map<String, dynamic>>> _downloadFromFirestore() async {
     try {
       final querySnapshot = await FirebaseFirestore.instance
@@ -147,22 +156,32 @@ class FirstInstallService {
           .get();
 
       if (querySnapshot.docs.isEmpty) {
-        print('📭 No hay lotes disponibles en Firestore');
+        print('🔭 No hay lotes disponibles en Firestore');
         return [];
       }
 
-      // Procesar eventos de todos los lotes descargados
-      final events = _getAllEventsFromDocs(querySnapshot.docs);
-      print('📦 Primera instalación: ${events.length} eventos de ${querySnapshot.docs.length} lotes');
+      // Retornar documentos completos con metadata + eventos
+      final completeBatches = querySnapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
 
-      // Actualizar versión del lote más reciente
-      final newBatchVersion = querySnapshot.docs.first.data()['metadata']?['nombre_lote'] as String? ?? 'multiple';
+      print('📦 Primera instalación: ${completeBatches.length} lotes descargados');
+
+      // Actualizar versión del lote más reciente (como antes)
+      final newBatchVersion = completeBatches.first['metadata']?['nombre_lote'] as String? ?? 'multiple';
+
+      // Contar total de eventos de todos los lotes
+      final totalEvents = completeBatches.fold<int>(0, (sum, batch) {
+        final eventos = (batch['eventos'] as List<dynamic>?) ?? [];
+        return sum + eventos.length;
+      });
+
       await _eventRepository.updateSyncInfo(
         batchVersion: newBatchVersion,
-        totalEvents: events.length,
+        totalEvents: totalEvents,
       );
 
-      return events;
+      return completeBatches;
 
     } catch (e) {
       print('❌ Error descargando de Firestore: $e');
@@ -170,35 +189,82 @@ class FirstInstallService {
     }
   }
 
-  /// 🔧 Extraer eventos de documentos Firestore
-  List<Map<String, dynamic>> _getAllEventsFromDocs(List<QueryDocumentSnapshot> docs) {
-    final allEvents = <Map<String, dynamic>>[];
-    for (final doc in docs) {
-      final batchData = doc.data() as Map<String, dynamic>;
-      final eventos = (batchData['eventos'] as List<dynamic>?)
+  /// ⚙️ Procesamiento de datos iniciales (secuencial por lote)
+  Future<void> _processInitialData(List<Map<String, dynamic>> completeBatches) async {
+    if (completeBatches.isEmpty) {
+      print('⚙️ No hay lotes para procesar');
+      return;
+    }
+
+    // Ordenar lotes por fecha ascendente (del más antiguo al más nuevo)
+    completeBatches.sort((a, b) {
+      final fechaA = a['metadata']?['fecha_subida'] as String? ?? '';
+      final fechaB = b['metadata']?['fecha_subida'] as String? ?? '';
+      return fechaA.compareTo(fechaB);
+    });
+
+    print('⚙️ Procesando ${completeBatches.length} lotes en orden cronológico...');
+
+    int totalEventosInsertados = 0;
+    int totalDuplicadosRemovidos = 0;
+    int totalEventosLimpiados = 0;
+    int totalFavoritosLimpiados = 0;
+
+    // Procesar cada lote secuencialmente (simulando comportamiento diario)
+    for (int i = 0; i < completeBatches.length; i++) {
+      final batch = completeBatches[i];
+      final metadata = batch['metadata'] as Map<String, dynamic>?;
+      final eventos = (batch['eventos'] as List<dynamic>?)
           ?.map((e) => Map<String, dynamic>.from(e as Map))
           .toList() ?? [];
-      allEvents.addAll(eventos);
+
+      final nombreLote = metadata?['nombre_lote'] ?? 'lote_${i + 1}';
+      final fechaSubida = metadata?['fecha_subida'] ?? 'unknown';
+
+      print('📦 Procesando lote ${i + 1}/${completeBatches.length}: $nombreLote');
+      print('   📅 Fecha: $fechaSubida');
+      print('   📊 Eventos: ${eventos.length}');
+
+      if (eventos.isEmpty) {
+        print('   ⚠️ Lote vacío, saltando...');
+        continue;
+      }
+
+      // 1. Insertar eventos del lote actual
+      await _eventRepository.insertEvents(eventos);
+      totalEventosInsertados += eventos.length;
+      print('   ✅ Eventos insertados: ${eventos.length}');
+
+      // 2. Remover duplicados (igual que sync diario)
+      final duplicadosRemovidos = await _eventRepository.removeDuplicatesByCodes();
+      totalDuplicadosRemovidos += duplicadosRemovidos;
+      if (duplicadosRemovidos > 0) {
+        print('   🔄 Duplicados removidos: $duplicadosRemovidos');
+      }
+
+      // 3. Limpiar eventos viejos (igual que sync diario)
+      final cleanupResults = await _eventRepository.cleanOldEvents();
+      final eventosLimpiados = cleanupResults['normalEvents'] ?? 0;
+      final favoritosLimpiados = cleanupResults['favoriteEvents'] ?? 0;
+
+      totalEventosLimpiados += eventosLimpiados;
+      totalFavoritosLimpiados += favoritosLimpiados;
+
+      if (eventosLimpiados > 0 || favoritosLimpiados > 0) {
+        print('   🧹 Limpieza: $eventosLimpiados eventos, $favoritosLimpiados favoritos');
+      }
+
+      print('   ✅ Lote $nombreLote procesado completamente\n');
     }
-    return allEvents;
-  }
 
-  /// ⚙️ Procesamiento de datos iniciales
-  Future<void> _processInitialData(List<Map<String, dynamic>> events) async {
-    print('⚙️ Procesando ${events.length} eventos iniciales...');
+    // Resumen final
+    print('🎯 Procesamiento secuencial completado:');
+    print('   📊 Total eventos insertados: $totalEventosInsertados');
+    print('   🔄 Total duplicados removidos: $totalDuplicadosRemovidos');
+    print('   🧹 Total eventos limpiados: $totalEventosLimpiados');
+    print('   ❤️ Total favoritos limpiados: $totalFavoritosLimpiados');
 
-    // Inserción masiva
-    await _eventRepository.insertEvents(events);
-    print('✅ Eventos insertados en SQLite');
-
-    // Limpieza automática (eventos viejos + duplicados)
-    final cleanupResults = await _eventRepository.cleanOldEvents();
-    final duplicatesRemoved = await _eventRepository.removeDuplicatesByCodes();
-
-    print('🧹 Limpieza completada:');
-    print('   - Eventos normales removidos: ${cleanupResults['normalEvents']}');
-    print('   - Favoritos removidos: ${cleanupResults['favoriteEvents']}');
-    print('   - Duplicados removidos: $duplicatesRemoved');
+    // Actualizar cache
     await _refreshSimpleHomeProvider();
   }
 
