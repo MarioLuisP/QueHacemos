@@ -19,7 +19,7 @@ class FirestoreClient {
     try {
       final daysMissed = await _getDaysSinceLastSync();
       final lotesToDownload = (daysMissed * LOTES_POR_DIA).clamp(1, MAX_LOTES);
-
+      // Cambiar para descargar + de 1 lote x dia 💥💥💥💥💥💥💥💥💥💥💥💥
       final querySnapshot = await FirebaseFirestore.instance
           .collection('eventos_lotes')
           .orderBy('metadata.fecha_subida', descending: true)
@@ -30,17 +30,27 @@ class FirestoreClient {
         return [];
       }
 
-      final events = _getAllEventsFromDocs(querySnapshot.docs);
+      // Retornar documentos completos con metadata + eventos
+      final completeBatches = querySnapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
 
       if (querySnapshot.docs.isNotEmpty) {
-        final latestBatchVersion = querySnapshot.docs.first.data()['metadata']?['nombre_lote'] as String? ?? 'unknown';
+        final latestBatchVersion = completeBatches.first['metadata']?['nombre_lote'] as String? ?? 'unknown';
+
+        // Contar total de eventos de todos los lotes
+        final totalEvents = completeBatches.fold<int>(0, (sum, batch) {
+          final eventos = (batch['eventos'] as List<dynamic>?) ?? [];
+          return sum + eventos.length;
+        });
+
         await _eventRepository.updateSyncInfo(
           batchVersion: latestBatchVersion,
-          totalEvents: events.length,
+          totalEvents: totalEvents,
         );
       }
 
-      return events;
+      return completeBatches;
 
     } catch (e) {
       rethrow;
@@ -98,17 +108,6 @@ class FirestoreClient {
     await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
   }
 
-  List<Map<String, dynamic>> _getAllEventsFromDocs(List<QueryDocumentSnapshot> docs) {
-    final allEvents = <Map<String, dynamic>>[];
-    for (final doc in docs) {
-      final batchData = doc.data() as Map<String, dynamic>;
-      final eventos = (batchData['eventos'] as List<dynamic>?)
-          ?.map((e) => Map<String, dynamic>.from(e as Map))
-          .toList() ?? [];
-      allEvents.addAll(eventos);
-    }
-    return allEvents;
-  }
 
   Future<Map<String, dynamic>> getSyncStatus() async {
     final prefs = await SharedPreferences.getInstance();

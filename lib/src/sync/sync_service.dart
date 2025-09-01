@@ -110,8 +110,56 @@ class SyncService {
     return await performAutoSync();
   }
 
-  Future<void> _processEvents(List<Map<String, dynamic>> events) async {
-    await _eventRepository.insertEvents(events);
+  Future<void> _processEvents(List<Map<String, dynamic>> completeBatches) async {
+    if (completeBatches.length > 1) {
+      // Procesamiento secuencial para múltiples lotes (como FirstInstallService)
+      print('🔄 Procesando ${completeBatches.length} lotes secuencialmente...');
+
+      // Ordenar lotes por fecha ascendente (del más antiguo al más nuevo)
+      completeBatches.sort((a, b) {
+        final fechaA = a['metadata']?['fecha_subida'] as String? ?? '';
+        final fechaB = b['metadata']?['fecha_subida'] as String? ?? '';
+        return fechaA.compareTo(fechaB);
+      });
+
+      // Procesar cada lote individualmente
+      for (int i = 0; i < completeBatches.length; i++) {
+        final batch = completeBatches[i];
+        final eventos = (batch['eventos'] as List<dynamic>?)
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList() ?? [];
+
+        final nombreLote = batch['metadata']?['nombre_lote'] ?? 'lote_${i + 1}';
+        print('📦 Procesando lote ${i + 1}/${completeBatches.length}: $nombreLote (${eventos.length} eventos)');
+
+        if (eventos.isNotEmpty) {
+          // 1. Insertar eventos del lote actual
+          await _eventRepository.insertEvents(eventos);
+
+          // 2. Remover duplicados (igual que sync diario)
+          await _eventRepository.removeDuplicatesByCodes();
+
+          // 3. Limpiar eventos viejos (igual que sync diario)
+          await _eventRepository.cleanOldEvents();
+        }
+      }
+      print('✅ Procesamiento secuencial completado');
+
+    } else {
+      // Procesamiento masivo para un solo lote (comportamiento actual)
+      print('📦 Procesando 1 lote con inserción directa...');
+
+      final allEvents = <Map<String, dynamic>>[];
+      for (final batch in completeBatches) {
+        final eventos = (batch['eventos'] as List<dynamic>?)
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList() ?? [];
+        allEvents.addAll(eventos);
+      }
+
+      await _eventRepository.insertEvents(allEvents);
+      print('✅ Inserción directa completada: ${allEvents.length} eventos');
+    }
   }
 
   Future<CleanupResult> _performCleanup() async {
