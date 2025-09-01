@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'notification_service.dart';
@@ -89,11 +90,19 @@ class DailyTaskManager {
   Future<void> initialize() async {
     if (_isInitialized) return;
 
+    // Skip WorkManager en simulador/debug para evitar crashes
+    if (kDebugMode) {
+      _isInitialized = true;
+      return;
+    }
+
     try {
       await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
       await _scheduleAllTasks();
       _isInitialized = true;
-    } catch (e) {}
+    } catch (e) {
+      _isInitialized = true; // Marcar como inicializado aunque falle
+    }
   }
 
   Future<void> _scheduleAllTasks() async {
