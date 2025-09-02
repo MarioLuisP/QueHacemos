@@ -56,13 +56,15 @@ class SyncService {
         return SyncResult.noNewData();
       }
 
+      // Contar eventos ANTES del procesamiento
+      final eventCountBefore = await _eventRepository.getTotalEvents();
 
       await _processEvents(events);
       final cleanupResults = await _performCleanup();
 
       await _firestoreClient.updateSyncTimestamp();
 
-// Obtener batchVersion actualizado DESPUÉS de updateSyncTimestamp
+      // Obtener batchVersion actualizado DESPUÉS de updateSyncTimestamp
       final newBatchVersion = await _getNewBatchVersion();
       final isSameBatch = currentBatchVersion != null &&
           newBatchVersion != null &&
@@ -75,10 +77,20 @@ class SyncService {
           type: 'sync_up_to_date',
         );
       } else {
-        final realNewEvents = events.length - cleanupResults.duplicatesRemoved;
-        await _sendSyncNotifications(realNewEvents, cleanupResults);
+        // Contar eventos DESPUÉS del procesamiento y calcular diferencia real
+        final eventCountAfter = await _eventRepository.getTotalEvents();
+        final netChange = eventCountAfter - eventCountBefore;
+
+        if (netChange > 0) {
+          await _sendSyncNotifications(netChange, cleanupResults);
+        } else {
+          _notificationsProvider.addNotification(
+            title: '✅ Todo actualizado',
+            message: 'La app está al día, no hay eventos nuevos',
+            type: 'sync_up_to_date',
+          );
+        }
       }
-      await _maintainNotificationSchedules();
 
       if (_homeProvider != null) {
         _homeProvider!.refresh();

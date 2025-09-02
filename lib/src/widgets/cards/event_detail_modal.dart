@@ -222,7 +222,22 @@ class EventDetailContent extends StatelessWidget {
                     imageUrl: data.imageUrl,
                     fit: BoxFit.cover,
                     width: double.infinity,
-                    errorWidget: (context, url, error) => Container(
+                    placeholder: (context, url) => Container(     // ← PLACEHOLDER (mientras carga)
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [data.baseColor, data.darkColor],
+                        ),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white70,
+                          strokeWidth: 3.0,
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(  // ← ERROR (si falla)
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
