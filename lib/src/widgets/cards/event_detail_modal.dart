@@ -21,6 +21,11 @@ class EventDetailData {
   final String location;
   final String district;
   final String price;
+  final Color onSurfaceColor;
+  final Color surfaceColor;
+  final Color outlineColor;
+  final TextStyle? bodyLargeStyle;
+  final TextStyle? headlineSmallStyle;
 
   // Datos adicionales de SQLite (pre-procesados)
   final String imageUrl;
@@ -51,14 +56,23 @@ class EventDetailData {
     required this.lat,
     required this.lng,
     required this.shareMessage,
+    required this.onSurfaceColor,
+    required this.surfaceColor,
+    required this.outlineColor,
+    required this.bodyLargeStyle,
+    required this.headlineSmallStyle,
   });
 
   /// Factory para crear desde cache + datos SQLite
   factory EventDetailData.fromCacheAndDb(
       EventCacheItem cacheEvent,
       Map<String, dynamic> fullEvent,
+      BuildContext context,
       ) {
     // Pre-calcular descripción truncada
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     final fullDesc = fullEvent['description'] ?? '';
     const maxLength = 150;
     final truncatedDesc = fullDesc.length > maxLength
@@ -92,6 +106,11 @@ class EventDetailData {
       lat: (fullEvent['lat'] as num?)?.toDouble() ?? 0.0,
       lng: (fullEvent['lng'] as num?)?.toDouble() ?? 0.0,
       shareMessage: shareMsg,
+      onSurfaceColor: colorScheme.onSurface,
+      surfaceColor: colorScheme.surface,
+      outlineColor: colorScheme.outline,
+      bodyLargeStyle: textTheme.bodyLarge,
+      headlineSmallStyle: textTheme.headlineSmall,
     );
   }
 }
@@ -103,7 +122,7 @@ class EventDetailModal {
       Map<String, dynamic> fullEvent,
       ) {
     // Pre-calcular TODOS los datos antes de abrir el modal
-    final detailData = EventDetailData.fromCacheAndDb(cacheEvent, fullEvent);
+    final detailData = EventDetailData.fromCacheAndDb(cacheEvent, fullEvent, context);
 
     showModalBottomSheet(
       context: context,
@@ -195,70 +214,42 @@ class EventDetailContent extends StatelessWidget {
     );
   }
 
-  Widget _buildHeroImageSection(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          height: 250,
-          width: double.infinity,
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [data.baseColor, data.darkColor],
-            ),
-          ),
-          child: GestureDetector(
-            onTap: () => _openImageFullscreen(context),
-            child: ClipRect(
-              child: Align(
-                alignment: const Alignment(0.0, -0.4),
-                heightFactor: 0.55, // Muestra 15%-70%
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: CachedNetworkImage(
-                    imageUrl: data.imageUrl,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    placeholder: (context, url) => Container(     // ← PLACEHOLDER (mientras carga)
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [data.baseColor, data.darkColor],
-                        ),
-                      ),
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Colors.white70,
-                          strokeWidth: 3.0,
-                        ),
-                      ),
+          Widget _buildHeroImageSection(BuildContext context) {
+            return Stack(
+              children: [
+                Container(
+                  height: 250,
+                  width: double.infinity,
+                  margin: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [data.baseColor, data.darkColor],
                     ),
-                    errorWidget: (context, url, error) => Container(  // ← ERROR (si falla)
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [data.baseColor, data.darkColor],
+                  ),
+                  child: GestureDetector(
+                    onTap: () => _openImageFullscreen(context),
+                    child: ClipRRect(  // <- SOLO UN CLIP
+                      borderRadius: BorderRadius.circular(16),
+                      child: CachedNetworkImage(
+                        imageUrl: data.imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: 250,
+                        alignment: Alignment(0.0, -0.4),  // <- Alignment directo aquí
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(color: Colors.white70),
                         ),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.event,
-                          size: 64,
-                          color: Colors.white70,
+                        errorWidget: (context, url, error) => const Center(
+                          child: Icon(Icons.event, size: 64, color: Colors.white70),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ),
-        ),
+
 
         // Botón de favorito con Selector optimizado
         Positioned(
@@ -295,9 +286,9 @@ class EventDetailContent extends StatelessWidget {
         // Título
         Text(
           data.title,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          style: data.headlineSmallStyle?.copyWith(
             fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
+            color: data.onSurfaceColor,
           ),
         ),
         const SizedBox(height: 8),
@@ -329,6 +320,8 @@ class EventDetailContent extends StatelessWidget {
         fullDescription: data.fullDescription,
         truncatedDescription: data.truncatedDescription,
         baseColor: data.baseColor,
+        onSurfaceColor: data.onSurfaceColor,
+        bodyLargeStyle: data.bodyLargeStyle,
       ),
     );
   }
@@ -336,9 +329,9 @@ class EventDetailContent extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: data.surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
+        border: Border.all(color: data.outlineColor),
       ),
       child: Column(
         children: [
@@ -383,14 +376,14 @@ class EventDetailContent extends StatelessWidget {
                     text: data.location,
                     style: TextStyle(
                       fontSize: 16,
-                      color: Theme.of(context).colorScheme.onSurface,
+                      color: data.onSurfaceColor,
                     ),
                   ),
                   TextSpan(
                     text: '\n${data.district}',
                     style: TextStyle(
                       fontSize: 18,
-                      color: Theme.of(context).colorScheme.onSurface,
+                      color: data.onSurfaceColor,
                     ),
                   ),
                 ],
@@ -429,8 +422,8 @@ class EventDetailContent extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 value,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: isLink ? linkColor : Theme.of(context).colorScheme.onSurface,
+                style: data.bodyLargeStyle?.copyWith(
+                  color: isLink ? linkColor : data.onSurfaceColor,
                   decoration: isLink ? TextDecoration.underline : null,
                 ),
               ),
@@ -594,12 +587,16 @@ class ExpandableDescription extends StatefulWidget {
   final String fullDescription;
   final String truncatedDescription;
   final Color baseColor;
+  final Color onSurfaceColor;     // ← AGREGAR
+  final TextStyle? bodyLargeStyle;
 
   const ExpandableDescription({
     super.key,
     required this.fullDescription,
     required this.truncatedDescription,
     required this.baseColor,
+    required this.onSurfaceColor,     // ← AGREGAR
+    required this.bodyLargeStyle,
   });
 
   @override
@@ -622,11 +619,11 @@ class _ExpandableDescriptionState extends State<ExpandableDescription> {
         children: [
           Text(
             _isExpanded ? widget.fullDescription : widget.truncatedDescription,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            style: widget.bodyLargeStyle?.copyWith(
               height: 1.5,
-              color: Theme.of(context).colorScheme.onSurface,
+              color: widget.onSurfaceColor,
             ),
-            textAlign: TextAlign.justify,
+            textAlign: TextAlign.start,
           ),
           const SizedBox(height: 8),
           GestureDetector(
