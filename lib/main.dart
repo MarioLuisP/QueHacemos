@@ -153,7 +153,8 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
 
       // ✅ AGREGAR: Ejecutar después del build
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        dailyTaskManager.checkOnAppOpen();
+        print('🔧 Ejecutando DailyTaskManager recovery check...');
+        DailyTaskManager().checkOnAppOpen();
       });
 
       print('🎉 App completamente inicializada');
