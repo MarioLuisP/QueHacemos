@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../contact_modal.dart';
 import '../../providers/auth_provider.dart';
 import 'components/notifications_bell.dart';
+import '../login_modal.dart';
 
 class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? title;
@@ -312,7 +313,7 @@ class _UserAvatarReal extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => _LoginModal(authProvider: authProvider), // NUEVO
+      builder: (context) => LoginModal(authProvider: authProvider),
     );
   }
 
@@ -325,100 +326,6 @@ class _UserAvatarReal extends StatelessWidget {
     );
   }
 
-}
-/// Modal de Login - Atractivo y motivacional // NUEVO
-class _LoginModal extends StatelessWidget { // NUEVO
-  final AuthProvider authProvider;
-
-  const _LoginModal({required this.authProvider}); // NUEVO
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Título principal // NUEVO
-          Text(
-            'Iniciar sesión',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Descripción motivacional // NUEVO
-          Text(
-              '🚀 Ayudá a que esta app crezca\n✨ Pronto vas a acceder a\n🎁 increibles beneficios 😎🎁',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Colors.grey[600],
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-
-          // Botón Google // NUEVO
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: authProvider.isLoading ? null : () async {
-                final success = await authProvider.signInWithGoogle();
-                if (success && context.mounted) {
-                  Navigator.pop(context);
-                }
-              },
-              icon: const Icon(Icons.login, size: 20),
-              label: authProvider.isLoading
-                  ? const Text('Conectando...')
-                  : const Text('Continuar con Google'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Botón Apple (solo iOS) // NUEVO
-          if (Theme.of(context).platform == TargetPlatform.iOS) ...[
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: authProvider.isLoading ? null : () async {
-                  final success = await authProvider.signInWithApple();
-                  if (success && context.mounted) {
-                    Navigator.pop(context);
-                  }
-                },
-                icon: const Icon(Icons.apple, size: 20),
-                label: authProvider.isLoading
-                    ? const Text('Conectando...')
-                    : const Text('Continuar con Apple'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // Botón cancelar // NUEVO
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Quizás más tarde'),
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
 }
 
 /// Modal de Logout - Simple y directo // NUEVO

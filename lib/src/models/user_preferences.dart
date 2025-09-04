@@ -68,5 +68,24 @@ class UserPreferences {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notifications_ready', ready);
   }
+// Prompt management for weekly reminders
+  static Future<String> getLoginPromptData() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('login_prompt_data') ?? '0_0';
+  }
 
+  static Future<void> setLoginPromptData(String data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('login_prompt_data', data);
+  }
+
+  static Future<String> getNotificationPromptData() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('notification_prompt_data') ?? '0_0';
+  }
+
+  static Future<void> setNotificationPromptData(String data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('notification_prompt_data', data);
+  }
 }

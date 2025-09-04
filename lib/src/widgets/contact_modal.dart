@@ -92,7 +92,7 @@ class _ContactModalContent extends StatelessWidget {
     final url = 'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}';
 
     if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       if (context.mounted) Navigator.pop(context);
     } else {
       if (context.mounted) {

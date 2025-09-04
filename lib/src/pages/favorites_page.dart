@@ -4,9 +4,99 @@ import '../providers/simple_home_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../widgets/cards/event_card_widget.dart';
 import '../widgets/app_bars/main_app_bar.dart';
+import 'dart:async';
+import '../services/weekly_prompt_service.dart';
+import '../providers/auth_provider.dart';
+import '../widgets/login_modal.dart';
+import '../services/notification_config_service.dart';
 
-class FavoritesPage extends StatelessWidget {
+class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
+
+  @override
+  State<FavoritesPage> createState() => _FavoritesPageState();
+}
+
+class _FavoritesPageState extends State<FavoritesPage> {
+  @override
+  void initState() {
+    super.initState();
+    _checkWeeklyPrompts();
+  }
+
+  void _checkWeeklyPrompts() {
+    Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        _evaluatePrompts();
+      }
+    });
+  }
+
+  Future<void> _evaluatePrompts() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Evaluar si mostrar prompt de login
+    final shouldShowLogin = await WeeklyPromptService.shouldShowLoginPrompt(authProvider);
+
+    if (shouldShowLogin) {
+      _showLoginPromptModal(authProvider);
+    }
+
+// Evaluar notificaciones siempre
+    final shouldShowNotifications = await WeeklyPromptService.shouldShowNotificationPrompt();
+    if (shouldShowNotifications) {
+      // Delay mayor si ya se mostró login
+      final delay = shouldShowLogin ? 5 : 2;
+      Timer(Duration(seconds: delay), () {
+        if (mounted) {
+          _showNotificationPromptModal();
+        }
+      });
+    }
+  }
+
+  void _showLoginPromptModal(AuthProvider authProvider) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => LoginModal(authProvider: authProvider),
+    ).then((result) async {
+      // Si cerró sin loguear, contar como decline
+      if (!authProvider.isLoggedIn) {
+        await WeeklyPromptService.recordLoginDecline();
+      }
+    });
+  }
+
+  void _showNotificationPromptModal() {
+    // Reutilizar modal del NotificationCard o crear uno simple
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('📱 Notificaciones'),
+        content: const Text('¿Querés activar las notificaciones para estar al día con los eventos?'),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await WeeklyPromptService.recordNotificationDecline();
+              Navigator.pop(context);
+            },
+            child: const Text('Quizás más tarde'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await NotificationConfigurationService.configureNotifications();
+            },
+            child: const Text('Activar'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -174,4 +264,6 @@ class FavoritesPage extends StatelessWidget {
       ),
     );
   }
+
+
 }
