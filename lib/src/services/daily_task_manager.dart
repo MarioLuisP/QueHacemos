@@ -85,9 +85,18 @@ class DailyTaskManager {
 
   bool _isInitialized = false;
   static const String _workManagerCheckKey = 'workmanager_daily_check';
+  Timer? _retryTimer;
+  StreamSubscription<SyncResult>? _syncSubscription;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
+
+    // Suscribirse al stream de sync para cancelar timer en caso de éxito
+    _syncSubscription ??= SyncService.onSyncComplete.listen((result) {
+      if (result.success) {
+        _cancelRetryTimer();
+      }
+    });
 
     // Skip WorkManager en simulador/debug para evitar crashes
     if (kDebugMode) {
@@ -138,8 +147,13 @@ class DailyTaskManager {
       taskType.workManagerId,
       frequency: const Duration(hours: 24),
       initialDelay: delay,
+      backoffPolicy: BackoffPolicy.exponential,
+      backoffPolicyDelay: const Duration(minutes: 1),
       constraints: taskType == TaskType.sync ? Constraints(
         networkType: NetworkType.connected,
+        requiresStorageNotLow: false,
+        requiresDeviceIdle: false,
+        requiresCharging: false,
       ) : null,
     );
   }
@@ -182,8 +196,13 @@ class DailyTaskManager {
 
       if (success) {
         await _saveSuccessfulExecutionGlobal(taskType);
+        _cancelRetryTimer();
+      } else {
+        _startRetryTimer();
       }
-    } catch (e) {}
+    } catch (e) {
+      _startRetryTimer();
+    }
   }
 
 
@@ -215,8 +234,23 @@ class DailyTaskManager {
       'today': _getTodayStringGlobal(),
     };
   }
+  void _startRetryTimer() {
+    _cancelRetryTimer(); // Cancelar timer existente si hay uno
 
-  void dispose() {}
+    _retryTimer = Timer.periodic(const Duration(minutes: 30), (timer) async {
+      await _performRecoveryCheck();
+    });
+  }
+
+  void _cancelRetryTimer() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+  }
+  void dispose() {
+    _cancelRetryTimer();
+    _syncSubscription?.cancel();
+    _syncSubscription = null;
+  }
 }
 
 Future<bool> _wasExecutedTodayGlobal(TaskType taskType) async {

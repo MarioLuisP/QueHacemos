@@ -105,11 +105,6 @@ class SyncService {
       return result;
 
     } catch (e) {
-      _notificationsProvider.addNotification(
-        title: '⚠️ Error al actualizar contenido',
-        message: 'Problema de conexión - usando contenido guardado',
-        type: 'auto_sync_error',
-      );
 
       return SyncResult.error(e.toString());
     } finally {
@@ -219,7 +214,7 @@ class SyncService {
 
         if (cleanupResults.eventsRemoved > 5) {
           notificationsProvider.addNotification(
-            title: '🧹 Base de datos optimizada',
+            title: '🗑️ Base de datos optimizada',
             message: 'Se limpiaron ${cleanupResults.eventsRemoved} eventos pasados',
             type: 'cleanup',
           );

@@ -190,24 +190,20 @@ class NotificationConfigurationService {
       return NotificationConfigState.errorInitializationFailed;
     }
   }
-  
-  /// PASO 4: Configura WorkManager y DailyTaskManager
+
+  /// PASO 4: Asegurar que DailyTaskManager esté inicializado
   static Future<NotificationConfigState> _configureWorkManager() async {
     try {
-      print('🔄 PASO 4: Configurando WorkManager...');
-      
-      // Primero cancelar cualquier tarea previa
-      await Workmanager().cancelAll();
-      print('🧹 WorkManager: tareas previas canceladas');
-      
-      // Inicializar DailyTaskManager
+      print('🔄 PASO 4: Asegurando DailyTaskManager...');
+
+      // Asegurar que DailyTaskManager esté inicializado
       final dailyTaskManager = DailyTaskManager();
-      dailyTaskManager.initialize();
-      print('✅ DailyTaskManager inicializado');
-      
+      await dailyTaskManager.initialize();
+      print('✅ DailyTaskManager verificado');
+
       return NotificationConfigState.savingPreferences;
     } catch (e) {
-      print('💥 ERROR configurando WorkManager: $e');
+      print('💥 ERROR inicializando DailyTaskManager: $e');
       return NotificationConfigState.errorWorkManagerFailed;
     }
   }
@@ -252,10 +248,7 @@ class NotificationConfigurationService {
   static Future<void> disableNotifications() async {
     try {
       print('\n🔴 === DESACTIVANDO NOTIFICACIONES ===');
-      
-      print('🧹 Cancelando todas las tareas de WorkManager...');
-      await Workmanager().cancelAll();
-      
+
       print('💾 Guardando estado: notificationsReady = false');
       await UserPreferences.setNotificationsReady(false);
       
