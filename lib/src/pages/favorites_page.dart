@@ -26,10 +26,15 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
   void _checkWeeklyPrompts() {
     Timer(const Duration(seconds: 3), () {
-      if (mounted) {
+      if (mounted && _isPageVisible()) {
         _evaluatePrompts();
       }
     });
+  }
+
+  bool _isPageVisible() {
+    final route = ModalRoute.of(context);
+    return route?.isCurrent == true;
   }
 
   Future<void> _evaluatePrompts() async {

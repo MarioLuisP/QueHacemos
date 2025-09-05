@@ -175,7 +175,7 @@ class DailyTaskManager {
     final now = DateTime.now();
 
     try {
-      if (now.hour >= 6) {
+      if (now.hour >= 2) {
         await _performRecoveryCheck();
       }
     } catch (e) {}
