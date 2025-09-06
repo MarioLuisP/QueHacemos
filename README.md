@@ -1,120 +1,46 @@
 # myapp
 
-lib
-├── l10n
-│   ├── intl_en.arb
-│   ├── intl_messages.arb
-│   ├── intl_messages_all.dart
-│   └── intl_messages_messages.dart
-├── main.dart
-└── src
-    ├── data
-    │   ├── database
-    │   │   └── database_helper.dart
-    │   └── repositories
-    │       └── event_repository.dart
-    ├── main.dart
-    ├── models
-    │   ├── events.dart
-    │   ├── models.dart
-    │   └── user_preferences.dart
-    ├── navigation
-    │   └── bottom_nav.dart
-    ├── pages
-    │   ├── calendar_page.dart
-    │   ├── explore_page.dart
-    │   ├── favorites_page.dart
-    │   ├── home_page.dart
-    │   ├── pages.dart
-    │   └── settings_page.dart
-    ├── providers
-    │   ├── auth_provider.dart
-    │   ├── category_constants.dart
-    │   ├── event_data_builder.dart
-    │   ├── event_filter_logic.dart
-    │   ├── favorites_provider.dart
-    │   ├── filter_criteria.dart
-    │   ├── home_viewmodel.dart
-    │   ├── mock_auth_provider.dart
-    │   ├── notifications_provider.dart
-    │   ├── preferences_provider.dart
-    │   └── provider_config.dart
-    ├── services
-    │   ├── auth_service.dart
-    │   ├── event_service.dart
-    │   ├── mock_auth_service.dart
-    │   ├── services.dart
-    │   └── sync_service.dart
-    ├── themes
-    │   └── themes.dart
-    ├── utils
-    │   ├── colors.dart
-    │   ├── dimens.dart
-    │   ├── styles.dart
-    │   └── utils.dart
-    └── widgets
-        ├── app_bars
-        │   ├── main_app_bar.dart
-        │   └── components
-        │       ├── contact_button.dart
-        │       ├── notifications_bell.dart
-        │       └── user_avatar_widget.dart
-        ├── cards
-        │   ├── fast_event_card.dart
-        │   ├── gold_shimmer_manager.dart
-        │   ├── gold_shimmer_painter.dart
-        │   ├── platinum_particles_manager.dart
-        │   ├── platinum_particles_painter.dart
-        │   └── unified_event_card_painter.dart
-        ├── chips
-        │   ├── event_chip_widget.dart
-        │   └── filter_chips_widget.dart
-        ├── contact_modal.dart
-        ├── event_detail_modal.dart
-        └── widgets.dart
+Tech Stack - QuehaCeMos Córdoba
+Frontend:
 
-ahora
+Flutter 3.32.6
+Dart 3.8.1
+Provider (state management)
+Material Design 3
 
+Backend & Data:
 
-lib/src/
-├── cache/ # NUEVO: Gestión de cache
-│ ├── event_cache_service.dart # Cache 203KB en memoria
-│ ├── memory_filter_service.dart # Filtros sobre arrays puros
-│ └── cache_models.dart # Structs optimizados
-│
-├── sync/ # NUEVO: Sync independiente
-│ ├── clean_sync_service.dart # Job 1 vez/día, zero UI deps
-│ ├── firestore_client.dart # Conexión Firebase limpia
-│ └── sync_scheduler.dart # Timing y condiciones
-│
-├── providers/ # SIMPLIFICADOS
-│ ├── simple_home_provider.dart # Reemplazo HomeViewModel (50 líneas)
-│ ├── cache_provider.dart # Estado del cache
-│ ├── favorites_provider.dart # ✅ MANTENER existente
-│ └── preferences_provider.dart # 🔧 FIX: quitar auto-notify
-│
-├── data/ # MEJORADOS
-│ ├── repositories/
-│ │ ├── event_repository.dart # 🔧 + getCacheData()
-│ │ └── cache_repository.dart # NUEVO: Queries optimizadas
-│ └── database/
-│ └── database_helper.dart # ✅ MANTENER schema
-│
-├── pages/ # NUEVOS + MIGRADOS
-│ ├── clean_home_page.dart # NUEVO: ListView simple
-│ ├── calendar_page.dart # ✅ MIGRAR con nuevo provider
-│ ├── explore_page.dart # ✅ MIGRAR con nuevo provider
-│ ├── favorites_page.dart # ✅ MIGRAR con nuevo provider
-│ └── settings_page.dart # ✅ MANTENER
-│
-├── widgets/ # JOYAS EXISTENTES
-│ ├── cards/
-│ │ ├── fast_event_card.dart # ✨ MANTENER: cambiar data source
-│ │ └── unified_*.dart # ✨ MANTENER: son joyas
-│ ├── event_detail_modal.dart # ✨ MANTENER: cambiar query
-│ └── ... # ✅ MANTENER todo lo demás
-│
-└── utils/ themes/ models/ # ✅ MANTENER TODO
+Firebase Firestore (cloud database)
+SQLite (local cache)
+Firebase Auth + Google Sign-In
+Firebase Analytics
+
+Key Dependencies:
+
+cached_network_image (image handling)
+shared_preferences (local storage)
+flutter_local_notifications (push notifications)
+url_launcher (external links)
+share_plus (content sharing)
+
+Architecture:
+
+Repository pattern (data layer)
+Provider pattern (state management)
+Event-driven cache system
+Daily sync with offline-first approach
+
+Development:
+
+Android Studio
+Java 21
+Android SDK 35
+Git version control
+
+Deployment:
+
+Google Play Store
+Firebase Console (backend management)
 
 C:\Users\Mario\AndroidStudioProjects\QueHacemos\lib>tree /f /a
 Listado de rutas de carpetas

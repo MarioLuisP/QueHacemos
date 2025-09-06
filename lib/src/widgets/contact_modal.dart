@@ -87,7 +87,7 @@ class _ContactModalContent extends StatelessWidget {
 
   /// Abrir WhatsApp
   static Future<void> _launchWhatsApp(BuildContext context) async {
-    const phoneNumber = '5493511234567';
+    const phoneNumber = '5493515504921';
     const message = 'Hola! Me gustaría publicar un evento en QuehaCeMos Córdoba\n¿Cuáles son los requisitos?';
     final uri = Uri.parse('https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}');
 
