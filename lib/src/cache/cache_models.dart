@@ -6,6 +6,7 @@ import '../utils/colors.dart';           // NUEVO: Para EventCardColorPalette y 
 /// Solo 9 campos esenciales para scroll rápido (203 bytes por evento)
 class EventCacheItem {
   final int id;
+  final String spacecode;
   final String title;
   final String type;
   final String location;
@@ -26,6 +27,7 @@ class EventCacheItem {
 
   const EventCacheItem({
     required this.id,
+    required this.spacecode,
     required this.title,
     required this.type,
     required this.location,
@@ -61,6 +63,7 @@ class EventCacheItem {
     //print('🎨 Assigned color: ${optimizedColors.base}');
     return EventCacheItem(
       id: map['id'] as int,
+      spacecode: map['code'] as String? ?? '',
       title: map['title'] as String? ?? '',
       type: typeString,
       location: map['location'] as String? ?? '',
@@ -134,6 +137,7 @@ class EventCacheItem {
   /// Copy with para updates (favoritos)
   EventCacheItem copyWith({
     int? id,
+    String? spacecode,
     String? title,
     String? type,
     String? location,
@@ -157,6 +161,7 @@ class EventCacheItem {
 
       return EventCacheItem(
         id: id ?? this.id,
+        spacecode: spacecode ?? this.spacecode,
         title: title ?? this.title,
         type: newType,
         location: location ?? this.location,
@@ -179,6 +184,7 @@ class EventCacheItem {
       // CAMBIO: Solo cambios simples, mantener campos precalculados
       return EventCacheItem(
         id: id ?? this.id,
+        spacecode: spacecode ?? this.spacecode,
         title: title ?? this.title,
         type: this.type,
         location: location ?? this.location,

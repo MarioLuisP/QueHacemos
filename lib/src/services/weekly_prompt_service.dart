@@ -1,3 +1,5 @@
+//lib/src/services/weekly_prompt_service.dart
+
 import '../models/user_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../services/notification_config_service.dart';

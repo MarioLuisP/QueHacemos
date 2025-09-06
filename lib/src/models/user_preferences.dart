@@ -40,24 +40,24 @@ class UserPreferences {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('activeFilterCategories', categories.toList());
   }
-  static Future<int> getEventCleanupDays() async {          // NUEVO: obtener días eventos
-    final prefs = await SharedPreferences.getInstance();    // NUEVO: instancia SharedPrefs
-    return prefs.getInt('event_cleanup_days') ?? 3;         // NUEVO: default 3 días
+  static Future<int> getEventCleanupDays() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('event_cleanup_days') ?? 3;
   }
 
-  static Future<void> setEventCleanupDays(int days) async { // NUEVO: guardar días eventos
-    final prefs = await SharedPreferences.getInstance();    // NUEVO: instancia SharedPrefs
-    await prefs.setInt('event_cleanup_days', days);         // NUEVO: guardar valor
+  static Future<void> setEventCleanupDays(int days) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('event_cleanup_days', days);
   }
 
-  static Future<int> getFavoriteCleanupDays() async {       // NUEVO: obtener días favoritos
-    final prefs = await SharedPreferences.getInstance();    // NUEVO: instancia SharedPrefs
-    return prefs.getInt('favorite_cleanup_days') ?? 7;      // NUEVO: default 7 días
+  static Future<int> getFavoriteCleanupDays() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('favorite_cleanup_days') ?? 7;
   }
 
-  static Future<void> setFavoriteCleanupDays(int days) async { // NUEVO: guardar días favoritos
-    final prefs = await SharedPreferences.getInstance();       // NUEVO: instancia SharedPrefs
-    await prefs.setInt('favorite_cleanup_days', days);         // NUEVO: guardar valor
+  static Future<void> setFavoriteCleanupDays(int days) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('favorite_cleanup_days', days);
   }
   static Future<bool> getNotificationsReady() async {
     final prefs = await SharedPreferences.getInstance();
@@ -71,7 +71,7 @@ class UserPreferences {
 // Prompt management for weekly reminders
   static Future<String> getLoginPromptData() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('login_prompt_data') ?? '0_0';
+    return prefs.getString('login_prompt_data') ?? '${DateTime.now().millisecondsSinceEpoch}_0';
   }
 
   static Future<void> setLoginPromptData(String data) async {
@@ -81,7 +81,7 @@ class UserPreferences {
 
   static Future<String> getNotificationPromptData() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('notification_prompt_data') ?? '0_0';
+    return prefs.getString('notification_prompt_data') ?? '${DateTime.now().millisecondsSinceEpoch}_0';
   }
 
   static Future<void> setNotificationPromptData(String data) async {

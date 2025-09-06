@@ -4,9 +4,10 @@ import 'package:provider/provider.dart';
 import '../../providers/simple_home_provider.dart';
 import '../../cache/cache_models.dart';
 import '../../utils/dimens.dart';
-import '../../data/repositories/event_repository.dart';  // NUEVO: Import para acceso directo a DB
-import '../../providers/favorites_provider.dart';  // ✅ AGREGAR
-import 'event_detail_modal.dart';  // CAMBIO: Misma carpeta widgets/cards/
+import '../../data/repositories/event_repository.dart';
+import '../../providers/favorites_provider.dart';
+import 'event_detail_modal.dart';
+import '../../services/analytics_service.dart';
 
 class EventCardWidget extends StatelessWidget {
   final EventCacheItem event;
@@ -125,6 +126,7 @@ class EventCardWidget extends StatelessWidget {
                             color: isFavorite ? Colors.red : event.textColor,
                           ),
                           onPressed: () {
+                            AnalyticsService.trackFavoriteToggle(event.spacecode);
                             context.read<FavoritesProvider>().toggleFavorite(event.id.toString());
                           },
                         );

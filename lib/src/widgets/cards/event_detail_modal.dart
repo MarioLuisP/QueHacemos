@@ -7,11 +7,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quehacemos_cba/src/providers/favorites_provider.dart';
 import '../../cache/cache_models.dart';
+import '../../services/analytics_service.dart';
 
 /// Modelo inmutable con todos los datos pre-calculados para el modal
 class EventDetailData {
   // Datos del cache (ya pre-calculados)
   final String id;
+  final String spacecode;
   final String title;
   final Color baseColor;
   final Color darkColor;
@@ -39,6 +41,7 @@ class EventDetailData {
 
   const EventDetailData({
     required this.id,
+    required this.spacecode,
     required this.title,
     required this.baseColor,
     required this.darkColor,
@@ -89,6 +92,7 @@ class EventDetailData {
 
     return EventDetailData(
       id: cacheEvent.id.toString(),
+      spacecode: cacheEvent.spacecode,
       title: cacheEvent.title,
       baseColor: cacheEvent.baseColor,
       darkColor: cacheEvent.darkColor,
@@ -123,6 +127,7 @@ class EventDetailModal {
       ) {
     // Pre-calcular TODOS los datos antes de abrir el modal
     final detailData = EventDetailData.fromCacheAndDb(cacheEvent, fullEvent, context);
+    AnalyticsService.trackDetailView(cacheEvent.spacecode);
 
     showModalBottomSheet(
       context: context,
@@ -269,7 +274,10 @@ class EventDetailContent extends StatelessWidget {
                     color: isFavorite ? Colors.red : Colors.white,
                     size: 28,
                   ),
-                  onPressed: () => context.read<FavoritesProvider>().toggleFavorite(data.id),
+                    onPressed: () {
+                      AnalyticsService.trackFavoriteToggle(data.spacecode);
+                      context.read<FavoritesProvider>().toggleFavorite(data.id);
+                    }
                 ),
               );
             },

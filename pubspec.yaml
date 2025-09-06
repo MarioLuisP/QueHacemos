@@ -37,6 +37,7 @@ dependencies:
   # Firebase core (ya debe estar)
   firebase_core: ^4.0.0
   cloud_firestore: ^6.0.0
+  firebase_analytics: ^12.0.1
 
   # Para auth futuro (opcional ahora)
   firebase_auth: ^6.0.0
