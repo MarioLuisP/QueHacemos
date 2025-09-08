@@ -19,7 +19,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'src/sync/sync_service.dart';
 import 'src/models/user_preferences.dart';
 import 'src/services/notification_service.dart';
-
+import 'src/services/notification_manager.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'es_ES';
@@ -155,6 +155,8 @@ class _AppContentState extends State<_AppContent> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         print('🔧 Ejecutando DailyTaskManager recovery check...');
         DailyTaskManager().checkOnAppOpen();
+        print('🔔 Ejecutando NotificationManager recovery check...');
+        NotificationManager().checkOnAppOpen(); // ← ESTA LÍNEA
       });
 
       print('🎉 App completamente inicializada');

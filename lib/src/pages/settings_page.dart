@@ -334,12 +334,25 @@ class _SettingsPageState extends State<SettingsPage> {
 
                       _buildDebugButton(
                         context,
-                        'TEST NOTIFIC RECOVERY',                        // ← Cambio 1
+                        'TEST NOTIFIC INMEDIATO',                        // ← Cambio 1
                         '🔔 Ejecutar recovery de notificaciones directo',
                         Colors.teal,
                             () => _testNotificationRecovery(context),       // ← Cambio 2
                       ),
                       const SizedBox(height: AppDimens.paddingSmall),
+
+                      _buildDebugButton(
+                        context,
+                        'MARCAR NOTIF VENCIDA',
+                        '🔄 Resetear para testing recovery automático',
+                        Colors.purple,
+                            () async {
+                          await NotificationManager().resetRecoveryTimestamp();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('✅ Timestamp reseteado - mata app y reabre para probar')),
+                          );
+                        },
+                      ),
 
 
                       _buildDebugButton(

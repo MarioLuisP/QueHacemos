@@ -7,7 +7,12 @@ import '../data/repositories/event_repository.dart';
 import '../providers/notifications_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../cache/event_cache_service.dart';
-import '../sync/sync_service.dart'; // ← AÑADIR ESTE// ← NUEVO// ← NUEVO
+import '../sync/sync_service.dart';
+import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../models/user_preferences.dart';
 
 /// 🚀 SERVICIO AUTÓNOMO DE PRIMERA INSTALACIÓN
 /// Responsabilidad única: Setup técnico completo de la app
@@ -108,6 +113,31 @@ class FirstInstallService {
 
     // Inicializar base de datos (auto-creación de tablas)
     await _eventRepository.getTotalEvents(); // Trigger database creation
+// Inicializar OneSignal para Android <13 (permisos automáticos)
+    if (Platform.isAndroid) {
+      final deviceInfo = DeviceInfoPlugin();
+      final androidInfo = await deviceInfo.androidInfo;
+
+      if (androidInfo.version.sdkInt < 33) {
+        print('📱 Android <13 detectado - inicializando OneSignal...');
+        try {
+          OneSignal.initialize(dotenv.env['ONESIGNAL_APP_ID']!);
+
+          // Obtener y mostrar el token
+          final userId = OneSignal.User.pushSubscription.id;
+          final token = OneSignal.User.pushSubscription.token;
+
+          print('🔑 OneSignal User ID: $userId');
+          print('🎯 OneSignal Token: $token');
+
+          await UserPreferences.setOneSignalInitialized(true);
+          print('✅ OneSignal inicializado en primera instalación');
+        } catch (e) {
+          print('⚠️ Error inicializando OneSignal: $e');
+        }
+      }
+    }
+
 
     print('✅ Base de datos SQLite inicializada');
   }

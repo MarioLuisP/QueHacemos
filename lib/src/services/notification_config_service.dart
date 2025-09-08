@@ -3,7 +3,8 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'notification_service.dart';
 import '../models/user_preferences.dart';
 import 'notification_manager.dart';
-
+import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 enum NotificationConfigState {
   idle,
   detectingPlatform,
@@ -63,7 +64,11 @@ class NotificationConfigurationService {
       if (prefsResult != NotificationConfigState.success) {
         return _finishWithState(prefsResult);
       }
-      
+      // PASO 6: Inicializar OneSignal (solo una vez)
+      final oneSignalResult = await _initializeOneSignal();
+      if (oneSignalResult != NotificationConfigState.success) {
+        return _finishWithState(oneSignalResult);
+      }
       print('✅ === CONFIGURACIÓN COMPLETADA EXITOSAMENTE ===\n');
       return _finishWithState(NotificationConfigState.success);
       
@@ -229,7 +234,37 @@ class NotificationConfigurationService {
       return NotificationConfigState.errorUnknown;
     }
   }
-  
+  /// PASO 6: Inicializar OneSignal una sola vez
+  static Future<NotificationConfigState> _initializeOneSignal() async {
+    try {
+      print('🔔 PASO 6: Verificando OneSignal...');
+
+      // Verificar si ya fue inicializado
+      final alreadyInitialized = await UserPreferences.getOneSignalInitialized();
+      if (alreadyInitialized) {
+        print('✅ OneSignal ya inicializado, saltando');
+        return NotificationConfigState.success;
+      }
+
+      print('📡 Inicializando OneSignal...');
+      final appId = dotenv.env['ONESIGNAL_APP_ID'];
+      if (appId == null) {
+        print('❌ ONESIGNAL_APP_ID no encontrado en .env');
+        return NotificationConfigState.errorUnknown;
+      }
+
+      OneSignal.initialize(appId);
+
+      // Marcar como inicializado
+      await UserPreferences.setOneSignalInitialized(true);
+      print('✅ OneSignal inicializado correctamente');
+
+      return NotificationConfigState.success;
+    } catch (e) {
+      print('💥 ERROR inicializando OneSignal: $e');
+      return NotificationConfigState.errorUnknown;
+    }
+  }
   /// Verifica si las notificaciones ya están configuradas
   static Future<bool> isAlreadyConfigured() async {
     try {

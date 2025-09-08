@@ -88,4 +88,13 @@ class UserPreferences {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('notification_prompt_data', data);
   }
+  static Future<bool> getOneSignalInitialized() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('onesignal_initialized') ?? false;
+  }
+
+  static Future<void> setOneSignalInitialized(bool initialized) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onesignal_initialized', initialized);
+  }
 }

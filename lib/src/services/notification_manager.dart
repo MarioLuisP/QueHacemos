@@ -1,8 +1,9 @@
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 import '../providers/favorites_provider.dart';
 import '../models/user_preferences.dart';
-
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 class NotificationManager {
   static final NotificationManager _instance = NotificationManager._internal();
   factory NotificationManager() => _instance;
@@ -14,8 +15,46 @@ class NotificationManager {
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-    // Inicialización si es necesaria en el futuro
+    // Verificar si OneSignal está disponible y configurar listeners
+    final oneSignalReady = await UserPreferences.getOneSignalInitialized();
+    if (oneSignalReady) {
+      // Configurar listeners OneSignal
+      OneSignal.Notifications.addForegroundWillDisplayListener((event) {
+        print("📱 Push recibido - app en foreground");
+        // Ejecutar recovery automático (con lógica de horarios intacta)
+        executeRecovery();
+        event.preventDefault(); // No mostrar push genérico
+      });
+
+      OneSignal.Notifications.addClickListener((event) {
+        print("👆 Usuario tocó notificación push");
+        // Recovery se ejecutará en startup cuando abra la app
+      });
+
+      print("✅ Listeners OneSignal configurados");
+    }
+
     _isInitialized = true;
+  }
+
+  /// Verificar recovery en startup de app
+  Future<void> checkOnAppOpen() async {
+    if (!_isInitialized) await initialize();
+
+    final now = DateTime.now();
+
+    try {
+      // Solo después de las 6 AM y si necesita ejecución hoy
+      if (now.hour >= 6 && await _needsExecutionToday()) {
+        print('🔔 Recovery automático necesario, ejecutando...');
+        await executeRecovery();
+        await _markExecutedToday();
+      } else {
+        print('🔔 Recovery no necesario o fuera de horario');
+      }
+    } catch (e) {
+      print('❌ Error en recovery check de NotificationManager: $e');
+    }
   }
 
   /// Ejecuta el recovery de notificaciones
@@ -25,6 +64,7 @@ class NotificationManager {
       // Verificar si las notificaciones están habilitadas
       final ready = await UserPreferences.getNotificationsReady();
       if (!ready) {
+        print('🔔 Notificaciones no habilitadas, saltando recovery');
         return true; // No es error, simplemente no están habilitadas
       }
 
@@ -34,7 +74,7 @@ class NotificationManager {
       final now = DateTime.now();
       final favoritesProvider = FavoritesProvider();
 
-      // Lógica de horarios: después de las 11 AM = inmediato, antes = programado
+      // Lógica de horarios: después de las 11 AM = inmediato, 💥💥💥💥💥💥
       if (now.hour >= 11) {
         await favoritesProvider.sendImmediateNotificationForToday();
       } else {
@@ -50,17 +90,67 @@ class NotificationManager {
     }
   }
 
+  /// Verificar si necesita ejecución hoy
+  Future<bool> _needsExecutionToday() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastExecution = prefs.getString('last_notification_recovery');
+
+      if (lastExecution == null) return true;
+
+      final lastDate = DateTime.parse(lastExecution);
+      final today = DateTime.now();
+
+      return !_isSameDay(lastDate, today);
+    } catch (e) {
+      print('❌ Error verificando timestamp de recovery: $e');
+      return true; // En caso de error, ejecutar por seguridad
+    }
+  }
+
+  /// Marcar como ejecutado hoy
+  Future<void> _markExecutedToday() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_notification_recovery', DateTime.now().toIso8601String());
+      print('✅ Recovery de notificaciones marcado como ejecutado hoy');
+    } catch (e) {
+      print('❌ Error guardando timestamp de recovery: $e');
+    }
+  }
+
+  /// Verificar si dos fechas son el mismo día
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
+  }
+
   /// Método de testing para forzar ejecución
   Future<void> testExecuteRecovery() async {
     await executeRecovery();
   }
 
+  /// Reset timestamp para testing
+  Future<void> resetRecoveryTimestamp() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('last_notification_recovery');
+    print('🔄 Timestamp de recovery reseteado para testing');
+  }
+
   /// Estado de debug para monitoreo
-  Map<String, dynamic> getDebugState() {
+  Future<Map<String, dynamic>> getDebugState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastExecution = prefs.getString('last_notification_recovery');
+    final needsExecution = await _needsExecutionToday();
+
     return {
       'initialized': _isInitialized,
       'current_time': '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-      'notifications_ready': 'check_user_preferences',
+      'notifications_ready': await UserPreferences.getNotificationsReady(),
+      'last_recovery': lastExecution ?? 'never',
+      'needs_execution': needsExecution,
+      'hour_check': DateTime.now().hour >= 6,
     };
   }
 
