@@ -126,10 +126,6 @@ class FirstInstallService {
           // Obtener y mostrar el token
           final userId = OneSignal.User.pushSubscription.id;
           final token = OneSignal.User.pushSubscription.token;
-
-          print('🔑 OneSignal User ID: $userId');
-          print('🎯 OneSignal Token: $token');
-
           await UserPreferences.setOneSignalInitialized(true);
           print('✅ OneSignal inicializado en primera instalación');
         } catch (e) {

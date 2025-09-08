@@ -15,20 +15,27 @@ class NotificationManager {
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-    // Verificar si OneSignal está disponible y configurar listeners
+// Verificar si OneSignal está disponible y configurar listeners
     final oneSignalReady = await UserPreferences.getOneSignalInitialized();
     if (oneSignalReady) {
       // Configurar listeners OneSignal
       OneSignal.Notifications.addForegroundWillDisplayListener((event) {
         print("📱 Push recibido - app en foreground");
-        // Ejecutar recovery automático (con lógica de horarios intacta)
         executeRecovery();
-        event.preventDefault(); // No mostrar push genérico
+        event.preventDefault();
       });
 
-      OneSignal.Notifications.addClickListener((event) {
+      OneSignal.Notifications.addClickListener((event) async {
         print("👆 Usuario tocó notificación push");
-        // Recovery se ejecutará en startup cuando abra la app
+
+        if (await _needsExecutionToday()) {
+          print("🔄 Ejecutando recovery por click - primera vez hoy");
+          await executeRecovery();
+          await _markExecutedToday();
+        } //else {
+         // print("⏭️ Recovery ya ejecutado hoy - solo abriendo app");
+        //}
+        //💥💥💥💥💥💥
       });
 
       print("✅ Listeners OneSignal configurados");
@@ -40,7 +47,14 @@ class NotificationManager {
   /// Verificar recovery en startup de app
   Future<void> checkOnAppOpen() async {
     if (!_isInitialized) await initialize();
-
+    // AGREGAR ESTAS LÍNEAS PARA HOT RELOAD
+    final oneSignalReady = await UserPreferences.getOneSignalInitialized();
+    if (oneSignalReady) {
+      final userId = OneSignal.User.pushSubscription.id;
+      final token = OneSignal.User.pushSubscription.token;
+      print('🔑 HOT RELOAD - OneSignal User ID: $userId');
+      print('🎯 HOT RELOAD - OneSignal Token: $token');
+    }
     final now = DateTime.now();
 
     try {
@@ -75,7 +89,7 @@ class NotificationManager {
       final favoritesProvider = FavoritesProvider();
 
       // Lógica de horarios: después de las 11 AM = inmediato, 💥💥💥💥💥💥
-      if (now.hour >= 11) {
+      if (now.hour >= 1) {
         await favoritesProvider.sendImmediateNotificationForToday();
       } else {
         await favoritesProvider.scheduleNotificationsForToday();
