@@ -2,14 +2,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
-import 'notification_service.dart';
 import '../sync/sync_service.dart';
-import '../providers/favorites_provider.dart';
-import '../models/user_preferences.dart';
 
 enum TaskType {
-  sync('daily-sync', 'last_sync_timestamp', 1, 0, 2),
-  notifications('daily-notifications', 'last_notification_timestamp', 11, 0, 6);
+  sync('daily-sync', 'last_sync_timestamp', 1, 0, 2);
 
   const TaskType(this.workManagerId, this.timestampKey, this.scheduleHour, this.scheduleMinute, this.recoveryMinHour);
 
@@ -56,25 +52,6 @@ Future<bool> _performTask(TaskType taskType) async {
     case TaskType.sync:
       final syncResult = await SyncService().performAutoSync();
       return syncResult.success;
-
-    case TaskType.notifications:
-      final ready = await UserPreferences.getNotificationsReady();
-      if (!ready) {
-        return true;
-      }
-
-      // Esperar a que NotificationService termine de inicializarse
-      await NotificationService.waitForInitialization();
-
-      final now = DateTime.now();
-      final favoritesProvider = FavoritesProvider();
-
-      if (now.hour >= 11) {
-        await favoritesProvider.sendImmediateNotificationForToday();
-      } else {
-        await favoritesProvider.scheduleNotificationsForToday();
-      }
-      return true;
   }
 }
 
@@ -112,7 +89,7 @@ class DailyTaskManager {
       _isInitialized = true; // Marcar como inicializado aunque falle
     }
   }
-// 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+
   Future<void> _scheduleAllTasks() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -124,21 +101,16 @@ class DailyTaskManager {
       }
       await Workmanager().cancelAll();
 
-      for (final taskType in TaskType.values) {
-        await _scheduleTask(taskType, prefs);
-      }
+      // Solo programar sync
+      await _scheduleTask(TaskType.sync, prefs);
 
       await prefs.setString(_workManagerCheckKey, today);
     } catch (e) {}
   }
 
   Future<void> _scheduleTask(TaskType taskType, SharedPreferences prefs) async {
-    final hour = taskType == TaskType.sync
-        ? prefs.getInt('wm_sync_hour') ?? taskType.scheduleHour
-        : taskType.scheduleHour;
-    final minute = taskType == TaskType.sync
-        ? prefs.getInt('wm_sync_min') ?? taskType.scheduleMinute
-        : taskType.scheduleMinute;
+    final hour = prefs.getInt('wm_sync_hour') ?? taskType.scheduleHour;
+    final minute = prefs.getInt('wm_sync_min') ?? taskType.scheduleMinute;
 
     final delay = _calculateDelayTo(hour, minute);
 
@@ -149,12 +121,12 @@ class DailyTaskManager {
       initialDelay: delay,
       backoffPolicy: BackoffPolicy.exponential,
       backoffPolicyDelay: const Duration(minutes: 1),
-      constraints: taskType == TaskType.sync ? Constraints(
+      constraints: Constraints(
         networkType: NetworkType.connected,
         requiresStorageNotLow: false,
         requiresDeviceIdle: false,
         requiresCharging: false,
-      ) : null,
+      ),
     );
   }
 
@@ -184,12 +156,12 @@ class DailyTaskManager {
   Future<void> _performRecoveryCheck() async {
     final now = DateTime.now();
 
-    for (final taskType in TaskType.values) {
-      if (now.hour >= taskType.recoveryMinHour && await _needsExecutionToday(taskType)) {
-        await _executeRecovery(taskType);
-      }
+    // Solo verificar sync (TaskType.sync)
+    if (now.hour >= TaskType.sync.recoveryMinHour && await _needsExecutionToday(TaskType.sync)) {
+      await _executeRecovery(TaskType.sync);
     }
   }
+
   Future<void> _executeRecovery(TaskType taskType) async {
     try {
       final success = await _performTask(taskType);
@@ -204,7 +176,6 @@ class DailyTaskManager {
       _startRetryTimer();
     }
   }
-
 
   Future<bool> _needsExecutionToday(TaskType taskType) async {
     return !(await _wasExecutedTodayGlobal(taskType));
@@ -232,8 +203,10 @@ class DailyTaskManager {
       'workmanager_active': true,
       'current_time': '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
       'today': _getTodayStringGlobal(),
+      'task_type': 'sync_only',
     };
   }
+
   void _startRetryTimer() {
     _cancelRetryTimer(); // Cancelar timer existente si hay uno
 
@@ -246,6 +219,7 @@ class DailyTaskManager {
     _retryTimer?.cancel();
     _retryTimer = null;
   }
+
   void dispose() {
     _cancelRetryTimer();
     _syncSubscription?.cancel();

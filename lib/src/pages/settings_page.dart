@@ -5,7 +5,13 @@ import './../utils/dimens.dart';
 import './../utils/colors.dart';
 import '../widgets/notification_card_widget.dart';
 import '../models/user_preferences.dart';
+// 🔥 IMPORTS SOLO PARA DESARROLLADOR - ELIMINAR EN PRODUCCIÓN
+import '../data/repositories/event_repository.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/daily_task_manager.dart';
+import '../services/notification_manager.dart';
+import 'package:workmanager/workmanager.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -214,6 +220,139 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
 
+              // 🔥 ========== CARD 4: DESARROLLADOR ========== 🔥
+              // 🔥 BLOQUE COMPLETO PARA ELIMINAR EN PRODUCCIÓN 🔥
+              const SizedBox(height: AppDimens.paddingMedium),
+              Card(
+                elevation: AppDimens.cardElevation,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppDimens.borderRadius),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppDimens.paddingMedium),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '🔧 Desarrollador',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: AppDimens.paddingMedium),
+                      _buildDebugButton(
+                        context,
+                        'RESET PRIMERA INSTALACIÓN',
+                        '🔄 Marcar app como no inicializada (4 SP keys)',
+                        Colors.blue,
+                            () => _resetFirstInstallation(context),
+                      ),
+                      const SizedBox(height: AppDimens.paddingSmall),
+                      _buildDebugButton(
+                        context,
+                        'LIMPIAR BASE DE DATOS',
+                        '⚠️ Borra todos los eventos guardados',
+                        Colors.red,
+                            () => _clearDatabase(context),
+                      ),
+                      const SizedBox(height: AppDimens.paddingSmall),
+                      _buildDebugButton(
+                        context,
+                        'VER BASE DE DATOS',
+                        '📊 Mostrar eventos guardados y estado de sync',
+                        Colors.green,
+                            () => _showDatabaseInfo(context),
+                      ),
+                      const SizedBox(height: AppDimens.paddingSmall),
+                      _buildDebugButton(
+                        context,
+                        'ESTADÍSTICAS',
+                        '📈 Conteo por categorías y resumen',
+                        Colors.orange,
+                            () => _showEventStats(context),
+                      ),
+
+                      _buildDebugButton(
+                        context,
+                        'TEST SYNC WM (+2MIN)',
+                        '🧪 Programar one-off sync en WorkManager',
+                        Colors.purple,
+                            () => _testSyncWorkManager(context),  // ← Ya tienes este método
+                      ),
+
+                      _buildDebugButton(
+                        context,
+                        'MARCAR SYNC VENCIDA',
+                        '⏰ Setear timestamp -25h para forzar recovery',
+                        Colors.teal,
+                            () => _markSyncExpired(context),  // ← Ya tienes este método
+                      ),
+
+
+                      const SizedBox(height: AppDimens.paddingSmall),
+                      _buildDebugButton(
+                        context,
+                        'FORZAR REPROGRAMACIÓN WM',
+                        '🔄 Remove daily_check + reprogram WorkManager',
+                        Colors.indigo,
+                            () => _forceRescheduleWorkManager(context),
+                      ),
+                      const SizedBox(height: AppDimens.paddingMedium),
+// Picker de hora para sync
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              'Hora Sync:',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: FutureBuilder<String>(
+                              future: _getSyncTime(),
+                              builder: (context, snapshot) {
+                                final currentTime = snapshot.data ?? '01:00';
+                                return TextFormField(
+                                  initialValue: currentTime,
+                                  decoration: const InputDecoration(
+                                    hintText: 'HH:MM',
+                                    border: OutlineInputBorder(),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  ),
+                                  onChanged: (value) => _setSyncTime(value),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+
+
+                      _buildDebugButton(
+                        context,
+                        'TEST NOTIFIC RECOVERY',                        // ← Cambio 1
+                        '🔔 Ejecutar recovery de notificaciones directo',
+                        Colors.teal,
+                            () => _testNotificationRecovery(context),       // ← Cambio 2
+                      ),
+                      const SizedBox(height: AppDimens.paddingSmall),
+
+
+                      _buildDebugButton(
+                        context,
+                        'APLICAR HORARIO SYNC',
+                        '⏰ Usar hora del picker para reprogramar WM',
+                        Colors.teal,
+                            () => _applySyncSchedule(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               // 🔥 FIN CARD DESARROLLADOR - ELIMINAR HASTA AQUÍ 🔥
             ],
           ),
@@ -497,5 +636,431 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  // 🔥 ========== MÉTODOS CARD 4: DESARROLLADOR ========== 🔥
+  // 🔥 ELIMINAR TODOS ESTOS MÉTODOS EN PRODUCCIÓN 🔥
+  Widget _buildDebugButton(
+      BuildContext context,
+      String title,
+      String subtitle,
+      Color color,
+      VoidCallback onPressed,
+      ) {
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: color.withAlpha(26),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onPressed,
+          child: Container(
+            padding: const EdgeInsets.all(AppDimens.paddingMedium),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: color, width: 1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: color.withAlpha(179), fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _resetFirstInstallation(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🔄 Reseteando primera instalación...')),
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+
+      // Borrar las keys principales
+      await prefs.remove('first_install_completed');
+      print('🔄 Flag primera instalación borrado');
+      await prefs.remove('last_sync_timestamp');
+      await prefs.remove('last_notification_timestamp');
+      await prefs.remove('workmanager_daily_check');
+      await prefs.setBool('app_initialized', false);
+
+      print('🔄 Flag primera instalación borrado');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Reset completo - Mata app y abre para probar primera instalación'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+
+      print('🧪 RESET: App marcada como no inicializada');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error en reset: $e')),
+      );
+    }
+  }
+
+  Future<void> _clearDatabase(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('⚠️ Limpiar Base de Datos'),
+          content: const Text(
+            '¿Estás seguro? Se borrarán todos los eventos guardados. Esta acción no se puede deshacer.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Borrar Todo'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      try {
+        final repository = EventRepository();
+        await repository.clearAllData();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Base de datos limpiada')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Error limpiando: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showDatabaseInfo(BuildContext context) async {
+    try {
+      final repository = EventRepository();
+      final eventos = await repository.getAllEvents();
+      final syncInfo = await repository.getSyncInfo();
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('📊 Estado de la Base de Datos'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('📦 Total eventos: ${eventos.length}'),
+                Text(
+                  '🕐 Última sync: ${syncInfo?['last_sync'] ?? 'Nunca'}',
+                ),
+                Text(
+                  '🏷️ Versión lote: ${syncInfo?['batch_version'] ?? 'N/A'}',
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '📋 Últimos 5 eventos:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...eventos
+                    .take(5)
+                    .map(
+                      (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text('• ${e['title']} (${e['date']})'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error: $e')),
+      );
+    }
+  }
+
+  Future<void> _showEventStats(BuildContext context) async {
+    try {
+      final repository = EventRepository();
+      final eventos = await repository.getAllEvents();
+      final favoritos = await repository.getAllFavorites();
+
+      final stats = <String, int>{};
+      for (var evento in eventos) {
+        final tipo = evento['type'] ?? 'sin_tipo';
+        stats[tipo] = (stats[tipo] ?? 0) + 1;
+      }
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('📈 Estadísticas'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('📊 Total eventos: ${eventos.length}'),
+                Text('⭐ Favoritos: ${favoritos.length}'),
+                const SizedBox(height: 16),
+                const Text(
+                  '📋 Por categoría:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...stats.entries.map(
+                      (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text('• ${entry.key}: ${entry.value} eventos'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error: $e')),
+      );
+    }
+  }
+
+  // Justo después de _showEventStats() y antes de los comentarios finales:
+
+  Future<void> _testSyncWorkManager(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🧪 Programando test sync WM en +2min...')),
+      );
+
+      // Programar one-off task que se ejecuta en 2 minutos
+      await Workmanager().registerOneOffTask(
+        'test-sync-wm',
+        'daily-sync',  // Usa el mismo callback que sync real
+        initialDelay: const Duration(minutes: 2),
+        constraints: Constraints(
+          networkType: NetworkType.connected,
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⏰ Test sync programado - Ejecutará en 2 minutos'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+
+      print('🧪 TEST WM: One-off sync task programada para +2min');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error programando test: $e')),
+      );
+      print('🧪 ERROR TEST WM: $e');
+    }
+  }
+
+  Future<void> _markSyncExpired(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⏰ Marcando sync como vencida...')),
+      );
+
+      await DailyTaskManager().markTaskAsExpired(TaskType.sync);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Sync marcada como vencida - Mata app y abre para probar recovery'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error marcando sync vencida: $e')),
+      );
+      print('❌ ERROR EXPIRED: $e');
+    }
+  }
+
+  Future<void> _forceRescheduleWorkManager(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🔄 Forzando reprogramación WM...')),
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+
+      // Remove la key que previene reprogramación diaria
+      await prefs.remove('workmanager_daily_check');
+
+      // Llamar al método de testing del DailyTaskManager
+      await DailyTaskManager().testRescheduleWorkManager();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ WorkManager reprogramado forzosamente'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      print('🧪 REPROGRAM: workmanager_daily_check removida + WM reprogramado');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error reprogramando WM: $e')),
+      );
+      print('❌ ERROR REPROGRAM: $e');
+    }
+  }
+
+  Future<String> _getSyncTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hour = prefs.getInt('wm_sync_hour') ?? 1;
+    final minute = prefs.getInt('wm_sync_min') ?? 0;
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _setSyncTime(String timeString) async {
+    try {
+      // Limpiar string
+      timeString = timeString.trim();
+      if (timeString.isEmpty) return;
+
+      final parts = timeString.split(':');
+      if (parts.length == 2) {
+        final hour = int.tryParse(parts[0]) ?? -1;  // ← tryParse es más seguro
+        final minute = int.tryParse(parts[1]) ?? -1;
+
+        if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('wm_sync_hour', hour);
+          await prefs.setInt('wm_sync_min', minute);
+          print('✅ Hora sync actualizada: ${timeString}');
+        } else {
+          print('⚠️ Hora inválida: $timeString (debe ser HH:MM, 00-23:00-59)');
+        }
+      }
+    } catch (e) {
+      print('❌ Error parseando hora: $e');
+    }
+  }
+
+  Future<void> _applySyncSchedule(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⏰ Aplicando horario personalizado...')),
+      );
+
+      // Forzar reprogramación con nueva hora
+      await _forceRescheduleWorkManager(context);
+
+      final currentTime = await _getSyncTime();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Sync reprogramado para las $currentTime'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error aplicando horario: $e')),
+      );
+    }
+  }
+
+
+  Future<void> _testNotificationRecovery(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⏳ Ejecutando recovery de notificaciones...')),
+      );
+
+      await NotificationManager().testExecuteRecovery();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Recovery de notificaciones ejecutado'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
 // 🔥 FIN MÉTODOS DESARROLLADOR - ELIMINAR HASTA AQUÍ 🔥
 }
+
+// 🔥 ========== INSTRUCCIONES PARA PRODUCCIÓN ========== 🔥
+//
+// Para eliminar la Card de Desarrollador en producción:
+//
+// 1. **ELIMINAR IMPORTS** (líneas 6-7):
+//    - import '../services/sync_service.dart';
+//    - import '../data/repositories/event_repository.dart';
+//
+// 2. **ELIMINAR CARD COMPLETA** (buscar comentarios 🔥):
+//    - Desde: "// 🔥 ========== CARD 4: DESARROLLADOR ========== 🔥"
+//    - Hasta: "// 🔥 FIN CARD DESARROLLADOR - ELIMINAR HASTA AQUÍ 🔥"
+//
+// 3. **ELIMINAR MÉTODOS** (buscar comentarios 🔥):
+//    - Desde: "// 🔥 ========== MÉTODOS CARD 4: DESARROLLADOR ========== 🔥"
+//    - Hasta: "// 🔥 FIN MÉTODOS DESARROLLADOR - ELIMINAR HASTA AQUÍ 🔥"
+//
+// 4. **ELIMINAR ESTOS COMENTARIOS** completos al final del archivo
+//
+// ✅ **MANTENER**: Cards 1, 2, 3 y sus métodos asociados
+// ❌ **ELIMINAR**: Todo lo marcado con 🔥
+/*🔥 LO QUE SÍ SE ELIMINA:
+Solo el código dentro de settings_page.dart:
+
+Los imports de SyncService y EventRepository y shared_preferences.dart'
+
+La Card 4 completa (HTML/UI)
+Los 4 métodos helper (_buildDebugButton, _forceSyncDatabase,
+_clearDatabase, _showDatabaseInfo, _showEventStats)
+ */

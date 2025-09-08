@@ -2,8 +2,7 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'notification_service.dart';
 import '../models/user_preferences.dart';
-import '../services/daily_task_manager.dart';
-import 'package:workmanager/workmanager.dart';
+import 'notification_manager.dart';
 
 enum NotificationConfigState {
   idle,
@@ -52,9 +51,9 @@ class NotificationConfigurationService {
       if (initResult != NotificationConfigState.configuringWorkManager) {
         return _finishWithState(initResult);
       }
-      
-      // PASO 4: Configurar WorkManager/DailyTaskManager
-      final workManagerResult = await _configureWorkManager();
+
+      // PASO 4: Configurar NotificationManager
+      final workManagerResult = await _configureNotificationManager();
       if (workManagerResult != NotificationConfigState.savingPreferences) {
         return _finishWithState(workManagerResult);
       }
@@ -191,20 +190,19 @@ class NotificationConfigurationService {
     }
   }
 
-  /// PASO 4: Asegurar que DailyTaskManager esté inicializado
-  static Future<NotificationConfigState> _configureWorkManager() async {
+  /// PASO 4: Inicializar NotificationManager
+  static Future<NotificationConfigState> _configureNotificationManager() async {
     try {
-      print('🔄 PASO 4: Asegurando DailyTaskManager...');
+      print('🔔 PASO 4: Inicializando NotificationManager...');
 
-      // Asegurar que DailyTaskManager esté inicializado
-      final dailyTaskManager = DailyTaskManager();
-      await dailyTaskManager.initialize();
-      print('✅ DailyTaskManager verificado');
+      final notificationManager = NotificationManager();
+      await notificationManager.initialize();
+      print('✅ NotificationManager inicializado');
 
       return NotificationConfigState.savingPreferences;
     } catch (e) {
-      print('💥 ERROR inicializando DailyTaskManager: $e');
-      return NotificationConfigState.errorWorkManagerFailed;
+      print('💥 ERROR inicializando NotificationManager: $e');
+      return NotificationConfigState.errorWorkManagerFailed; // Mantener mismo enum
     }
   }
   
