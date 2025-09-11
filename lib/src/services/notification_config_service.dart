@@ -69,6 +69,13 @@ class NotificationConfigurationService {
       if (oneSignalResult != NotificationConfigState.success) {
         return _finishWithState(oneSignalResult);
       }
+      // PASO 7: Configurar listeners después de que ambos flags estén listos
+      final listenersResult = await _configureListeners();
+      if (listenersResult != NotificationConfigState.success) {
+        return _finishWithState(listenersResult);
+      }
+
+      print('✅ === CONFIGURACIÓN COMPLETADA EXITOSAMENTE ===\n');
       print('✅ === CONFIGURACIÓN COMPLETADA EXITOSAMENTE ===\n');
       return _finishWithState(NotificationConfigState.success);
       
@@ -265,6 +272,27 @@ class NotificationConfigurationService {
       return NotificationConfigState.errorUnknown;
     }
   }
+  static Future<NotificationConfigState> _configureListeners() async {
+    try {
+      print('🔧 PASO 7: Configurando listeners OneSignal...');
+
+      // Debug directo
+      final notificationsEnabled = await UserPreferences.getNotificationsReady();
+      print('🔍 PASO 7 Debug: notificationsReady = $notificationsEnabled');
+
+      if (notificationsEnabled) {
+        print('🔧 PASO 7: Registrando listeners directamente...');
+        // Registrar listeners directamente aquí, sin llamar a initialize()
+      }
+
+      return NotificationConfigState.success;
+    } catch (e) {
+      print('💥 ERROR configurando listeners: $e');
+      return NotificationConfigState.errorUnknown;
+    }
+  }
+
+
   /// Verifica si las notificaciones ya están configuradas
   static Future<bool> isAlreadyConfigured() async {
     try {

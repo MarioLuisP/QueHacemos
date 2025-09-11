@@ -11,34 +11,38 @@ class NotificationManager {
 
   bool _isInitialized = false;
 
+
   /// Inicializa el NotificationManager
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-// Verificar si OneSignal está disponible y configurar listeners
-    final oneSignalReady = await UserPreferences.getOneSignalInitialized();
-    if (oneSignalReady) {
-      // Configurar listeners OneSignal
-      OneSignal.Notifications.addForegroundWillDisplayListener((event) {
-        print("📱 Push recibido - app en foreground");
-        executeRecovery();
-        event.preventDefault();
+// Verificar solo si las notificaciones están habilitadas
+    final notificationsEnabled = await UserPreferences.getNotificationsReady();
+    if (notificationsEnabled) {
+      // Observar estado de OneSignal con API correcta
+      OneSignal.User.pushSubscription.addObserver((state) {
+        print("🔍 OBSERVER - Current ID: ${state.current.id}, Token: ${state.current.token}, OptedIn: ${state.current.optedIn}");
+
+        if (state.current.id != null && state.current.optedIn) {
+          // Registrar listeners solo cuando OneSignal esté listo
+          OneSignal.Notifications.addForegroundWillDisplayListener((event) {
+            print("📱 Push recibido - app en foreground");
+            executeRecovery();
+            event.preventDefault();
+          });
+
+          OneSignal.Notifications.addClickListener((event) async {
+            print("👆 Usuario tocó notificación push");
+            if (await _needsExecutionToday()) {
+              print("🔄 Ejecutando recovery por click - primera vez hoy");
+              await executeRecovery();
+              await _markExecutedToday();
+            }
+          });
+
+          print("✅ Listeners registrados con ID: ${state.current.id}");
+        }
       });
-
-      OneSignal.Notifications.addClickListener((event) async {
-        print("👆 Usuario tocó notificación push");
-
-        if (await _needsExecutionToday()) {
-          print("🔄 Ejecutando recovery por click - primera vez hoy");
-          await executeRecovery();
-          await _markExecutedToday();
-        } //else {
-         // print("⏭️ Recovery ya ejecutado hoy - solo abriendo app");
-        //}
-        //💥💥💥💥💥💥
-      });
-
-      print("✅ Listeners OneSignal configurados");
     }
 
     _isInitialized = true;

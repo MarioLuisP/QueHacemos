@@ -127,6 +127,7 @@ class FirstInstallService {
           final userId = OneSignal.User.pushSubscription.id;
           final token = OneSignal.User.pushSubscription.token;
           await UserPreferences.setOneSignalInitialized(true);
+          await UserPreferences.setNotificationsReady(true);
           print('✅ OneSignal inicializado en primera instalación');
         } catch (e) {
           print('⚠️ Error inicializando OneSignal: $e');

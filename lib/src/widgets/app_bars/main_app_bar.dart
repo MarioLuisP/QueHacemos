@@ -99,7 +99,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Calcular tamaño de fuente eficientemente
   double _getTitleFontSize(String title) {
     if (title.length > 20) return 20.0;
-    if (title.length > 15) return 19.0;
+    if (title.length > 15) return 18.0;
     return 22.0;
   }
 
