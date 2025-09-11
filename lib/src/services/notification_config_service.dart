@@ -75,7 +75,7 @@ class NotificationConfigurationService {
         return _finishWithState(listenersResult);
       }
 
-      print('✅ === CONFIGURACIÓN COMPLETADA EXITOSAMENTE ===\n');
+
       print('✅ === CONFIGURACIÓN COMPLETADA EXITOSAMENTE ===\n');
       return _finishWithState(NotificationConfigState.success);
 
@@ -258,7 +258,8 @@ class NotificationConfigurationService {
       // Solicitar permisos y obtener token
       await FirebaseMessaging.instance.requestPermission();
       final token = await FirebaseMessaging.instance.getToken();
-
+      await FirebaseMessaging.instance.subscribeToTopic('eventos_cordoba');
+      print('🔔 Suscrito a topic: eventos_cordoba');
       // Marcar como inicializado (mantener mismo flag por compatibilidad)
       await UserPreferences.setOneSignalInitialized(true);
       print('✅ FCM inicializado correctamente');

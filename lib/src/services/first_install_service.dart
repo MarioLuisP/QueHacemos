@@ -119,10 +119,12 @@ class FirstInstallService {
       final androidInfo = await deviceInfo.androidInfo;
 
       if (androidInfo.version.sdkInt < 33) {
-        print('📱 Android <13 detectado - inicializando OneSignal...');
+        print('📱 Android <13 detectado - inicializando FCM...');
         try {
           await FirebaseMessaging.instance.requestPermission();
           final token = await FirebaseMessaging.instance.getToken();
+          await FirebaseMessaging.instance.subscribeToTopic('eventos_cordoba');
+          print('🔔 Suscrito a topic: eventos_cordoba');
           await UserPreferences.setOneSignalInitialized(true); // Mantener mismo flag por ahora
           await UserPreferences.setNotificationsReady(true);
           print('✅ FCM inicializado en primera instalación');

@@ -2,7 +2,7 @@ name: quehacemos_cba
 description: "App de eventos culturales Córdoba - Versión cache optimizada"
 publish_to: 'none'
 
-version: 1.0.0+3
+version: 1.0.0+5
 
 environment:
   sdk: ^3.8.0
