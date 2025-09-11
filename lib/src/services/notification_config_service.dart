@@ -3,7 +3,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'notification_service.dart';
 import '../models/user_preferences.dart';
 import 'notification_manager.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 enum NotificationConfigState {
   idle,
@@ -65,9 +65,9 @@ class NotificationConfigurationService {
         return _finishWithState(prefsResult);
       }
       // PASO 6: Inicializar OneSignal (solo una vez)
-      final oneSignalResult = await _initializeOneSignal();
-      if (oneSignalResult != NotificationConfigState.success) {
-        return _finishWithState(oneSignalResult);
+      final fcmResult = await _initializeFCM();
+      if (fcmResult != NotificationConfigState.success) {
+        return _finishWithState(fcmResult);
       }
       // PASO 7: Configurar listeners después de que ambos flags estén listos
       final listenersResult = await _configureListeners();
@@ -78,19 +78,19 @@ class NotificationConfigurationService {
       print('✅ === CONFIGURACIÓN COMPLETADA EXITOSAMENTE ===\n');
       print('✅ === CONFIGURACIÓN COMPLETADA EXITOSAMENTE ===\n');
       return _finishWithState(NotificationConfigState.success);
-      
+
     } catch (e, stackTrace) {
-      print('💥 ERROR INESPERADO en configuración: $e');
+      print('🚧 ERROR INESPERADO en configuración: $e');
       print('📍 Stack trace: $stackTrace');
       return _finishWithState(NotificationConfigState.errorUnknown);
     }
   }
-  
+
   static NotificationConfigState _finishWithState(NotificationConfigState state) {
     _isConfiguring = false;
     return state;
   }
-  
+
   /// PASO 1: Detecta plataforma y versión Android
   static Future<_PlatformInfo?> _detectPlatform() async {
     try {
@@ -241,34 +241,32 @@ class NotificationConfigurationService {
       return NotificationConfigState.errorUnknown;
     }
   }
-  /// PASO 6: Inicializar OneSignal una sola vez
-  static Future<NotificationConfigState> _initializeOneSignal() async {
+  /// PASO 6: Inicializar FCM una sola vez
+  static Future<NotificationConfigState> _initializeFCM() async {
     try {
-      print('🔔 PASO 6: Verificando OneSignal...');
+      print('📡 PASO 6: Verificando FCM...');
 
       // Verificar si ya fue inicializado
       final alreadyInitialized = await UserPreferences.getOneSignalInitialized();
       if (alreadyInitialized) {
-        print('✅ OneSignal ya inicializado, saltando');
+        print('✅ FCM ya inicializado, saltando');
         return NotificationConfigState.success;
       }
 
-      print('📡 Inicializando OneSignal...');
-      final appId = dotenv.env['ONESIGNAL_APP_ID'];
-      if (appId == null) {
-        print('❌ ONESIGNAL_APP_ID no encontrado en .env');
-        return NotificationConfigState.errorUnknown;
-      }
+      print('📡 Inicializando FCM...');
 
-      OneSignal.initialize(appId);
+      // Solicitar permisos y obtener token
+      await FirebaseMessaging.instance.requestPermission();
+      final token = await FirebaseMessaging.instance.getToken();
 
-      // Marcar como inicializado
+      // Marcar como inicializado (mantener mismo flag por compatibilidad)
       await UserPreferences.setOneSignalInitialized(true);
-      print('✅ OneSignal inicializado correctamente');
+      print('✅ FCM inicializado correctamente');
+      print('🔑 FCM Token: $token');
 
       return NotificationConfigState.success;
     } catch (e) {
-      print('💥 ERROR inicializando OneSignal: $e');
+      print('💥 ERROR inicializando FCM: $e');
       return NotificationConfigState.errorUnknown;
     }
   }

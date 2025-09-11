@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 import '../providers/favorites_provider.dart';
 import '../models/user_preferences.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 class NotificationManager {
   static final NotificationManager _instance = NotificationManager._internal();
   factory NotificationManager() => _instance;
@@ -11,38 +11,29 @@ class NotificationManager {
 
   bool _isInitialized = false;
 
-
   /// Inicializa el NotificationManager
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-// Verificar solo si las notificaciones están habilitadas
+    // Verificar solo si las notificaciones están habilitadas
     final notificationsEnabled = await UserPreferences.getNotificationsReady();
     if (notificationsEnabled) {
-      // Observar estado de OneSignal con API correcta
-      OneSignal.User.pushSubscription.addObserver((state) {
-        print("🔍 OBSERVER - Current ID: ${state.current.id}, Token: ${state.current.token}, OptedIn: ${state.current.optedIn}");
+      // Registrar listeners FCM directamente
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        print("📱 Push recibido - app en foreground");
+        executeRecovery();
+      });
 
-        if (state.current.id != null && state.current.optedIn) {
-          // Registrar listeners solo cuando OneSignal esté listo
-          OneSignal.Notifications.addForegroundWillDisplayListener((event) {
-            print("📱 Push recibido - app en foreground");
-            executeRecovery();
-            event.preventDefault();
-          });
-
-          OneSignal.Notifications.addClickListener((event) async {
-            print("👆 Usuario tocó notificación push");
-            if (await _needsExecutionToday()) {
-              print("🔄 Ejecutando recovery por click - primera vez hoy");
-              await executeRecovery();
-              await _markExecutedToday();
-            }
-          });
-
-          print("✅ Listeners registrados con ID: ${state.current.id}");
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
+        print("👆 Usuario tocó notificación push");
+        if (await _needsExecutionToday()) {
+          print("🔄 Ejecutando recovery por click - primera vez hoy");
+          await executeRecovery();
+          await _markExecutedToday();
         }
       });
+
+      print("✅ Listeners FCM registrados");
     }
 
     _isInitialized = true;
@@ -54,10 +45,8 @@ class NotificationManager {
     // AGREGAR ESTAS LÍNEAS PARA HOT RELOAD
     final oneSignalReady = await UserPreferences.getOneSignalInitialized();
     if (oneSignalReady) {
-      final userId = OneSignal.User.pushSubscription.id;
-      final token = OneSignal.User.pushSubscription.token;
-      print('🔑 HOT RELOAD - OneSignal User ID: $userId');
-      print('🎯 HOT RELOAD - OneSignal Token: $token');
+      final token = await FirebaseMessaging.instance.getToken();
+      print('🔑 HOT RELOAD - FCM Token: $token');
     }
     final now = DateTime.now();
 
@@ -92,7 +81,7 @@ class NotificationManager {
       final now = DateTime.now();
       final favoritesProvider = FavoritesProvider();
 
-      // Lógica de horarios: después de las 11 AM = inmediato, 💥💥💥💥💥💥
+      // Lógica de horarios: después de las 11 AM = inmediato, 🚧🚧🚧
       if (now.hour >= 1) {
         await favoritesProvider.sendImmediateNotificationForToday();
       } else {

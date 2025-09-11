@@ -10,7 +10,7 @@ import '../cache/event_cache_service.dart';
 import '../sync/sync_service.dart';
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/user_preferences.dart';
 
@@ -121,16 +121,14 @@ class FirstInstallService {
       if (androidInfo.version.sdkInt < 33) {
         print('📱 Android <13 detectado - inicializando OneSignal...');
         try {
-          OneSignal.initialize(dotenv.env['ONESIGNAL_APP_ID']!);
-
-          // Obtener y mostrar el token
-          final userId = OneSignal.User.pushSubscription.id;
-          final token = OneSignal.User.pushSubscription.token;
-          await UserPreferences.setOneSignalInitialized(true);
+          await FirebaseMessaging.instance.requestPermission();
+          final token = await FirebaseMessaging.instance.getToken();
+          await UserPreferences.setOneSignalInitialized(true); // Mantener mismo flag por ahora
           await UserPreferences.setNotificationsReady(true);
-          print('✅ OneSignal inicializado en primera instalación');
+          print('✅ FCM inicializado en primera instalación');
+          print('🔑 FCM Token: $token');
         } catch (e) {
-          print('⚠️ Error inicializando OneSignal: $e');
+          print('⚠️ Error inicializando FCM: $e');
         }
       }
     }
@@ -139,14 +137,14 @@ class FirstInstallService {
     print('✅ Base de datos SQLite inicializada');
   }
 
-  /// 🔥 Descarga de contenido inicial con reintentos (AUTÓNOMO)
+  /// 🚧 Descarga de contenido inicial con reintentos (AUTÓNOMO)
   Future<List<Map<String, dynamic>>> _downloadInitialContent() async {
     const int maxRetries = 3;
     const Duration retryDelay = Duration(seconds: 2);
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        print('🔥 Intento $attempt/$maxRetries: Descargando 10 lotes iniciales...');
+        print('🚧 Intento $attempt/$maxRetries: Descargando 10 lotes iniciales...');
 
         // NUEVA LÓGICA AUTÓNOMA - Sin FirestoreClient
         final events = await _downloadFromFirestore();
