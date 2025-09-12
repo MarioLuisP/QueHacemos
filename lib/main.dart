@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
@@ -20,6 +21,21 @@ import 'src/sync/sync_service.dart';
 import 'src/models/user_preferences.dart';
 import 'src/services/notification_service.dart';
 import 'src/services/notification_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  if (message.data['action'] == 'daily_recovery') {
+    print("Data message recibido - ejecutando recovery directamente");
+
+    try {
+      await NotificationManager().executeRecovery();
+      print("Recovery ejecutado exitosamente desde background");
+    } catch (e) {
+      print("Error ejecutando recovery desde background: $e");
+    }
+  }
+}
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'es_ES';
@@ -28,15 +44,11 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   // NUEVO: Inicializar autenticación anónima
   await _initializeAnonymousAuth();
 
-  // Inicializar timezone
   tz.initializeTimeZones();
-
-  // Inicializar notificaciones
-  //await NotificationService.initialize();
 
   runApp(const MyApp());
 }

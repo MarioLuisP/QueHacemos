@@ -117,18 +117,30 @@ class FirstInstallService {
     if (Platform.isAndroid) {
       final deviceInfo = DeviceInfoPlugin();
       final androidInfo = await deviceInfo.androidInfo;
-
       if (androidInfo.version.sdkInt < 33) {
         print('📱 Android <13 detectado - inicializando FCM...');
         try {
-          await FirebaseMessaging.instance.requestPermission();
-          final token = await FirebaseMessaging.instance.getToken();
-          await FirebaseMessaging.instance.subscribeToTopic('eventos_cordoba');
-          print('🔔 Suscrito a topic: eventos_cordoba');
-          await UserPreferences.setOneSignalInitialized(true); // Mantener mismo flag por ahora
+          // Verificar si ya tiene token
+          final existingToken = await FirebaseMessaging.instance.getToken();
+
+          if (existingToken != null) {
+            // CASO 1: Ya tiene token - solo actualizar topic
+            print('🔑 Token existente detectado: ${existingToken.substring(0, 20)}...');
+            await FirebaseMessaging.instance.subscribeToTopic('eventos_cordoba');
+            print('🔔 Topic actualizado para token existente');
+          } else {
+            // CASO 2: No tiene token - inicialización completa
+            print('🔡 Sin token previo, inicializando FCM completo...');
+            await FirebaseMessaging.instance.requestPermission();
+            final token = await FirebaseMessaging.instance.getToken();
+            await FirebaseMessaging.instance.subscribeToTopic('eventos_cordoba');
+            print('🔑 Nuevo FCM Token: $token');
+            print('🔔 Suscrito a topic con nuevo token');
+          }
+
+          await UserPreferences.setOneSignalInitialized(true);
           await UserPreferences.setNotificationsReady(true);
           print('✅ FCM inicializado en primera instalación');
-          print('🔑 FCM Token: $token');
         } catch (e) {
           print('⚠️ Error inicializando FCM: $e');
         }

@@ -70,7 +70,7 @@ class NotificationService {
       importance: Importance.high,
       priority: Priority.high,
       icon: '@drawable/ic_notification',
-      color: Colors.orange,
+      color: Color(0xFFFF9800),
     );
 
     const iosDetails = DarwinNotificationDetails();
@@ -99,7 +99,7 @@ class NotificationService {
       importance: Importance.high,
       priority: Priority.high,
       icon: '@drawable/ic_notification',
-      color: Colors.orange,
+      color: Color(0xFFFF9800),
     );
 
     const iosDetails = DarwinNotificationDetails();

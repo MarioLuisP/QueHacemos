@@ -134,25 +134,31 @@ class EventDetailModal {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.3,
-          maxChildSize: 0.95,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Color.lerp(detailData.baseColor, Colors.white, 0.7)!,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque, // <- CLAVE: captura taps transparentes
+          onTap: () => Navigator.pop(context),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.6,
+            minChildSize: 0.3,
+            maxChildSize: 0.95,
+            builder: (context, scrollController) {
+              return GestureDetector(
+                onTap: () {}, // <- Evitar propagación del tap del contenido
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Color.lerp(detailData.baseColor, Colors.white, 0.7)!,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                  ),
+                  child: EventDetailContent(
+                    data: detailData,
+                    scrollController: scrollController,
+                  ),
                 ),
-              ),
-              child: EventDetailContent(
-                data: detailData,
-                scrollController: scrollController,
-              ),
-            );
-          },
-
+              );
+            },
+          ),
         );
       },
     );

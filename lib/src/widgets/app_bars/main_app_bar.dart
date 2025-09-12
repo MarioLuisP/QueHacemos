@@ -77,6 +77,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: elevation,
       backgroundColor: appBarBgColor,
       foregroundColor: appBarFgColor,
+      titleSpacing: 0,
       actions: _buildActions(context, appBarFgColor),
     );
   }
@@ -85,21 +86,32 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget _buildTitle(BuildContext context) {
     if (title == null) return const SizedBox.shrink();
 
+    // Ancho REAL de la pantalla (no del título)
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Text(
       title!,
+      overflow: TextOverflow.visible,
+      softWrap: false,
+      maxLines: 1,
       style: TextStyle(
         fontFamily: 'Nunito',
         fontWeight: FontWeight.bold,
-        fontSize: _getTitleFontSize(title!),
+        fontSize: _getResponsiveFontSize(title!, screenWidth),
         color: foregroundColor ?? Theme.of(context).appBarTheme.foregroundColor,
       ),
     );
   }
 
-  /// Calcular tamaño de fuente eficientemente
-  double _getTitleFontSize(String title) {
-    if (title.length > 20) return 20.0;
-    if (title.length > 15) return 18.0;
+  double _getResponsiveFontSize(String title, double screenWidth) {
+    if (screenWidth < 360) return 16.0;
+
+    if (screenWidth < 430) {
+      if (title.length > 15) return 19.0;
+      return 20.0;
+    }
+
+    if (title.length > 15) return 20.0;
     return 22.0;
   }
 

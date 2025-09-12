@@ -69,13 +69,7 @@ class NotificationConfigurationService {
       if (fcmResult != NotificationConfigState.success) {
         return _finishWithState(fcmResult);
       }
-      // PASO 7: Configurar listeners después de que ambos flags estén listos
-      final listenersResult = await _configureListeners();
-      if (listenersResult != NotificationConfigState.success) {
-        return _finishWithState(listenersResult);
-      }
-
-
+      
       print('✅ === CONFIGURACIÓN COMPLETADA EXITOSAMENTE ===\n');
       return _finishWithState(NotificationConfigState.success);
 
@@ -244,49 +238,35 @@ class NotificationConfigurationService {
   /// PASO 6: Inicializar FCM una sola vez
   static Future<NotificationConfigState> _initializeFCM() async {
     try {
-      print('📡 PASO 6: Verificando FCM...');
+      print('🔡 PASO 6: Verificando FCM...');
 
-      // Verificar si ya fue inicializado
-      final alreadyInitialized = await UserPreferences.getOneSignalInitialized();
-      if (alreadyInitialized) {
-        print('✅ FCM ya inicializado, saltando');
+      // Verificar si ya tiene token
+      final existingToken = await FirebaseMessaging.instance.getToken();
+
+      if (existingToken != null) {
+        // CASO 1: Ya tiene token - solo actualizar topic
+        print('🔑 Token existente detectado: ${existingToken.substring(0, 20)}...');
+        await FirebaseMessaging.instance.subscribeToTopic('eventos_cordoba');
+        print('🔔 Topic actualizado para token existente');
         return NotificationConfigState.success;
       }
 
-      print('📡 Inicializando FCM...');
-
-      // Solicitar permisos y obtener token
+      // CASO 2: No tiene token - inicialización completa
+      print('🔡 Sin token previo, inicializando FCM completo...');
       await FirebaseMessaging.instance.requestPermission();
       final token = await FirebaseMessaging.instance.getToken();
+      print('🔑 Nuevo FCM Token: $token');
+
+      // Suscribirse con el nuevo token
       await FirebaseMessaging.instance.subscribeToTopic('eventos_cordoba');
-      print('🔔 Suscrito a topic: eventos_cordoba');
-      // Marcar como inicializado (mantener mismo flag por compatibilidad)
+      print('🔔 Suscrito a topic con nuevo token');
+
       await UserPreferences.setOneSignalInitialized(true);
       print('✅ FCM inicializado correctamente');
-      print('🔑 FCM Token: $token');
 
       return NotificationConfigState.success;
     } catch (e) {
-      print('💥 ERROR inicializando FCM: $e');
-      return NotificationConfigState.errorUnknown;
-    }
-  }
-  static Future<NotificationConfigState> _configureListeners() async {
-    try {
-      print('🔧 PASO 7: Configurando listeners OneSignal...');
-
-      // Debug directo
-      final notificationsEnabled = await UserPreferences.getNotificationsReady();
-      print('🔍 PASO 7 Debug: notificationsReady = $notificationsEnabled');
-
-      if (notificationsEnabled) {
-        print('🔧 PASO 7: Registrando listeners directamente...');
-        // Registrar listeners directamente aquí, sin llamar a initialize()
-      }
-
-      return NotificationConfigState.success;
-    } catch (e) {
-      print('💥 ERROR configurando listeners: $e');
+      print('🚩 ERROR inicializando FCM: $e');
       return NotificationConfigState.errorUnknown;
     }
   }
