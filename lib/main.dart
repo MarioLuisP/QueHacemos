@@ -22,20 +22,51 @@ import 'src/models/user_preferences.dart';
 import 'src/services/notification_service.dart';
 import 'src/services/notification_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   if (message.data['action'] == 'daily_recovery') {
-    print("Data message recibido - ejecutando recovery directamente");
+    print("📅 Data message scheduling recibido en background");
 
     try {
-      await NotificationManager().executeRecovery();
-      print("Recovery ejecutado exitosamente desde background");
+      final hasFavorites = await UserPreferences.getHasFavoritesToday();
+
+      if (hasFavorites) {
+        await _showLocalNotification();
+        print("📱 Notificación local mostrada - tienes favoritos hoy");
+      } else {
+        print("🔕 Sin favoritos para hoy - no se muestra notificación");
+      }
     } catch (e) {
-      print("Error ejecutando recovery desde background: $e");
+      print("❌ Error en background handler: $e");
     }
   }
 }
+
+Future<void> _showLocalNotification() async {
+  const androidDetails = AndroidNotificationDetails(
+    'daily_favorites',
+    'Recordatorios Diarios',
+    channelDescription: 'Notificaciones de eventos favoritos del día',
+    importance: Importance.high,
+    priority: Priority.high,
+    icon: '@drawable/ic_notification',
+  );
+
+  const notificationDetails = NotificationDetails(android: androidDetails);
+
+  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  await flutterLocalNotificationsPlugin.show(
+    999,
+    '❤️ Favoritos de hoy ⭐',
+    'Hoy tienes eventos guardados en Favoritos! Chequea la app!',
+    notificationDetails,
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'es_ES';

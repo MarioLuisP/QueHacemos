@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../data/repositories/event_repository.dart';
 import 'notifications_provider.dart';
 import '../services/notification_service.dart';
+import '../models/user_preferences.dart';
 
 class FavoritesProvider with ChangeNotifier {
   final EventRepository _repository = EventRepository();
@@ -122,7 +123,7 @@ class FavoritesProvider with ChangeNotifier {
 
   bool isFavorite(String eventId) => _favoriteIds.contains(eventId);
 
-  Future<void> toggleFavorite(String eventId) async {
+  Future<void> toggleFavorite(String eventId, {String? eventTitle}) async {
     try {
       final numericId = int.parse(eventId);
       final wasAdded = await _repository.toggleFavorite(numericId);
@@ -135,16 +136,39 @@ class FavoritesProvider with ChangeNotifier {
         print('💔 Favorito removido: $eventId');
       }
 
-      // Sync con SimpleHomeProvider
       _syncWithSimpleHomeProvider(numericId, wasAdded);
+      await _sendFavoriteNotification(eventId, wasAdded, eventTitle);
 
-      // Enviar notificación de favorito
-      await _sendFavoriteNotification(eventId, wasAdded);
+      // NUEVO: Actualizar flag si es para hoy
+      await _updateTodayFavoritesFlag();
 
       notifyListeners();
 
     } catch (e) {
-      print('❌ Error toggle favorito $eventId: $e');
+      print('⚠️ Error toggle favorito $eventId: $e');
+    }
+  }
+
+// NUEVO: Método para actualizar flag
+  Future<void> _updateTodayFavoritesFlag() async {
+    try {
+      final favorites = await _repository.getAllFavorites();
+      final today = DateTime.now().toIso8601String().split('T')[0];
+
+      bool hasFavoritesToday = false;
+      for (final favorite in favorites) {
+        final dateStr = favorite['date']?.toString().split('T')[0];
+        if (dateStr == today) {
+          hasFavoritesToday = true;
+          break;
+        }
+      }
+
+      await UserPreferences.setHasFavoritesToday(hasFavoritesToday);
+      print('🚩 Flag actualizada: has_favorites_today = $hasFavoritesToday');
+
+    } catch (e) {
+      print('⚠️ Error actualizando flag today: $e');
     }
   }
 
@@ -190,29 +214,28 @@ class FavoritesProvider with ChangeNotifier {
 // ========== NOTIFICACIONES DE FAVORITOS ========== // NUEVO
 
   /// Enviar notificación inmediata de favorito (solo campanita)
-  Future<void> _sendFavoriteNotification(String eventId, bool isAdded) async {
+  Future<void> _sendFavoriteNotification(String eventId, bool isAdded, String? eventTitle) async {
     try {
       final notificationsProvider = NotificationsProvider.instance;
-      final eventDetails = await _getEventDetails(eventId);
+      final title = eventTitle ?? 'Evento'; // Sin query extra
 
-      // SOLO campanita inmediata - zero overhead adicional
       if (isAdded) {
         await notificationsProvider.addNotification(
           title: '❤️ Evento guardado en favoritos',
-          message: '${eventDetails?['title'] ?? 'Evento'}',
+          message: title,
           type: 'favorite_added',
           eventCode: eventId,
         );
       } else {
         await notificationsProvider.addNotification(
           title: '💔 Favorito removido',
-          message: '${eventDetails?['title'] ?? 'Evento'} removido de favoritos',
+          message: '$title removido de favoritos',
           type: 'favorite_removed',
           eventCode: eventId,
         );
       }
 
-      print('✅ Notificación de favorito enviada - sin overhead adicional');
+      print('✅ Notificación de favorito enviada - sin query extra');
 
     } catch (e) {
       print('⚠️ Error enviando notificación de favorito: $e');
@@ -220,16 +243,7 @@ class FavoritesProvider with ChangeNotifier {
   }
 
 
-  /// NUEVO: Obtener detalles de un evento específico
-  Future<Map<String, dynamic>?> _getEventDetails(String eventId) async {
-    try {
-      final numericId = int.parse(eventId);
-      return await _repository.getEventById(numericId);
-    } catch (e) {
-      print('⚠️ Error obteniendo detalles del evento $eventId: $e');
-      return null;
-    }
-  }
+
   List<Map<String, dynamic>> filterFavoriteEvents(List<Map<String, dynamic>> allEvents) { // MANTENER: sin cambios
     return allEvents.where((event) => isFavorite(event['id']?.toString() ?? '')).toList();
   }

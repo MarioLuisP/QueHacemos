@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 import '../providers/favorites_provider.dart';
 import '../models/user_preferences.dart';
+import '../data/repositories/event_repository.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 class NotificationManager {
   static final NotificationManager _instance = NotificationManager._internal();
@@ -87,7 +88,7 @@ class NotificationManager {
       } else {
         await favoritesProvider.scheduleNotificationsForToday();
       }
-
+      await _calculateTomorrowFavorites();
       return true;
 
     } catch (e) {
@@ -126,6 +127,37 @@ class NotificationManager {
     }
   }
 
+  /// Calcular y guardar flags de favoritos para mañana
+  Future<void> _calculateTomorrowFavorites() async {
+    try {
+      final favoritesProvider = FavoritesProvider();
+      await favoritesProvider.init(); // Asegurar que esté inicializado
+
+      // CAMBIAR ESTO:
+      // final favorites = await favoritesProvider._repository.getAllFavorites();
+
+      // POR ESTO:
+      final repository = EventRepository();
+      final favorites = await repository.getAllFavorites();
+
+      final tomorrow = DateTime.now().add(Duration(days: 1)).toIso8601String().split('T')[0];
+
+      bool hasFavorites = false;
+      for (final favorite in favorites) {
+        final dateStr = favorite['date']?.toString().split('T')[0];
+        if (dateStr == tomorrow) {
+          hasFavorites = true;
+          break;
+        }
+      }
+
+      await UserPreferences.setHasFavoritesToday(hasFavorites); // Para mañana
+      print('🏷️ Flag calculada para mañana ($tomorrow): has_favorites = $hasFavorites');
+
+    } catch (e) {
+      print('⚠️ Error calculando flags para mañana: $e');
+    }
+  }
   /// Verificar si dos fechas son el mismo día
   bool _isSameDay(DateTime date1, DateTime date2) {
     return date1.year == date2.year &&

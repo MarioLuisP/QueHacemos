@@ -30,6 +30,17 @@ class UserPreferences {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('favorite_ids', favoriteIds.toList());
   }
+  static Future<void> setHasFavoritesToday(bool hasFavorites) async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    await prefs.setBool('has_favorites_$today', hasFavorites);
+  }
+
+  static Future<bool> getHasFavoritesToday() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    return prefs.getBool('has_favorites_$today') ?? false;
+  }
 
   static Future<Set<String>> getActiveFilterCategories() async {
     final prefs = await SharedPreferences.getInstance();

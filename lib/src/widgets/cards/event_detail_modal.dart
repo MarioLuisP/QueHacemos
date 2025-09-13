@@ -282,7 +282,10 @@ class EventDetailContent extends StatelessWidget {
                   ),
                     onPressed: () {
                       AnalyticsService.trackFavoriteToggle(data.spacecode);
-                      context.read<FavoritesProvider>().toggleFavorite(data.id);
+                      context.read<FavoritesProvider>().toggleFavorite(
+                        data.id,
+                        eventTitle: data.title,
+                      );
                     }
                 ),
               );

@@ -58,13 +58,13 @@ class WeeklyPromptService {
     await UserPreferences.setNotificationPromptData('${now}_$declineCount');
   }
 
-  // Calcula días requeridos según rechazos: 7, 7, 30, nunca más
+  // Calcula días requeridos según rechazos
   static int _getRequiredDays(int declineCount) {
     switch (declineCount) {
-      case 0: return 7;   // Primera vez
-      case 1: return 7;   // Segunda vez
+      case 0: return 1;   // Primera vez
+      case 1: return 3;   // Segunda vez
       case 2: return 7;
-      case 3: return 30;  // Tercera vez
+      case 3: return 20;  // Tercera vez
       case 4: return 30;  // Cuarta vez
       default: return 999999; // No preguntar más
     }

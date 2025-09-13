@@ -127,7 +127,10 @@ class EventCardWidget extends StatelessWidget {
                           ),
                           onPressed: () {
                             AnalyticsService.trackFavoriteToggle(event.spacecode);
-                            context.read<FavoritesProvider>().toggleFavorite(event.id.toString());
+                            context.read<FavoritesProvider>().toggleFavorite(
+                              event.id.toString(),
+                              eventTitle: event.title,
+                            );
                           },
                         );
                       },
